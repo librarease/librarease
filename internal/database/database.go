@@ -2,8 +2,8 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
+	"librarease/internal/usecase"
 	"log"
 	"os"
 	"strconv"
@@ -11,47 +11,62 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/joho/godotenv/autoload"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-// Service represents a service that interacts with a database.
-type Service interface {
-	// Health returns a map of health status information.
-	// The keys and values in the map are service-specific.
-	Health() map[string]string
-
-	// Close terminates the database connection.
-	// It returns an error if the connection cannot be closed.
-	Close() error
-}
-
+// implements server/Service interface
 type service struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 var (
-	database   = os.Getenv("BLUEPRINT_DB_DATABASE")
-	password   = os.Getenv("BLUEPRINT_DB_PASSWORD")
-	username   = os.Getenv("BLUEPRINT_DB_USERNAME")
-	port       = os.Getenv("BLUEPRINT_DB_PORT")
-	host       = os.Getenv("BLUEPRINT_DB_HOST")
-	schema     = os.Getenv("BLUEPRINT_DB_SCHEMA")
-	dbInstance *service
+	database = os.Getenv("DB_DATABASE")
+	password = os.Getenv("DB_PASSWORD")
+	username = os.Getenv("DB_USER")
+	port     = os.Getenv("DB_PORT")
+	host     = os.Getenv("DB_HOST")
+	// dbInstance *service
 )
 
-func New() Service {
+func New() *service {
 	// Reuse Connection
-	if dbInstance != nil {
-		return dbInstance
-	}
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s", username, password, host, port, database, schema)
-	db, err := sql.Open("pgx", connStr)
+	// if dbInstance != nil {
+	// 	return dbInstance
+	// }
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", username, password, host, port, database)
+	// db, err := sql.Open("pgx", connStr)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// dbInstance = &service{
+	// 	db: db,
+	// }
+	// return dbInstance
+	gormDB, err := gorm.Open(postgres.Open(connStr), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+
 	if err != nil {
 		log.Fatal(err)
 	}
-	dbInstance = &service{
-		db: db,
+
+	if db, err := gormDB.DB(); err != nil {
+		log.Fatal(err)
+	} else if db != nil {
+		maxOpenConnections := 0
+		if m, err := strconv.Atoi(
+			os.Getenv("DB_MAX_OPEN_CONNECTIONS")); err == nil {
+			maxOpenConnections = m
+		}
+		db.SetMaxOpenConns(maxOpenConnections)
 	}
-	return dbInstance
+
+	// migrate the schema
+	gormDB.AutoMigrate(User{})
+
+	return &service{db: gormDB}
 }
 
 // Health checks the health of the database connection by pinging the database.
@@ -62,8 +77,10 @@ func (s *service) Health() map[string]string {
 
 	stats := make(map[string]string)
 
+	db, _ := s.db.DB()
+
 	// Ping the database
-	err := s.db.PingContext(ctx)
+	err := db.PingContext(ctx)
 	if err != nil {
 		stats["status"] = "down"
 		stats["error"] = fmt.Sprintf("db down: %v", err)
@@ -76,7 +93,7 @@ func (s *service) Health() map[string]string {
 	stats["message"] = "It's healthy"
 
 	// Get database stats (like open connections, in use, idle, etc.)
-	dbStats := s.db.Stats()
+	dbStats := db.Stats()
 	stats["open_connections"] = strconv.Itoa(dbStats.OpenConnections)
 	stats["in_use"] = strconv.Itoa(dbStats.InUse)
 	stats["idle"] = strconv.Itoa(dbStats.Idle)
@@ -110,6 +127,22 @@ func (s *service) Health() map[string]string {
 // If the connection is successfully closed, it returns nil.
 // If an error occurs while closing the connection, it returns the error.
 func (s *service) Close() error {
+	db, err := s.db.DB()
+	if err != nil {
+		return err
+	}
 	log.Printf("Disconnected from database: %s", database)
-	return s.db.Close()
+	return db.Close()
+}
+
+func (s *service) ListUsers(ctx context.Context) ([]usecase.User, error) {
+	users := make([]usecase.User, 0)
+
+	err := s.db.Table("users").Find(&users).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }

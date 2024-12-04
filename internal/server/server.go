@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,20 +11,38 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 
 	"librarease/internal/database"
+	"librarease/internal/usecase"
 )
+
+// Service represents a service that interacts with a database.
+type Service interface {
+	// Health returns a map of health status information.
+	// The keys and values in the map are service-specific.
+	Health() map[string]string
+
+	// Close terminates the database connection.
+	// It returns an error if the connection cannot be closed.
+	Close() error
+
+	// ListUsers returns a list of users.
+	// FIXME: user model, input params
+	ListUsers(context.Context) ([]usecase.User, error)
+}
 
 type Server struct {
 	port int
 
-	db database.Service
+	server Service
 }
 
 func NewServer() *http.Server {
+	repo := database.New()
+	sv := usecase.New(repo)
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 	NewServer := &Server{
 		port: port,
 
-		db: database.New(),
+		server: sv,
 	}
 
 	// Declare Server config

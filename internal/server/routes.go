@@ -32,6 +32,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	e.GET("/websocket", s.websocketHandler)
 
+	e.GET("/users", s.ListUsers)
+
 	return e
 }
 
@@ -44,7 +46,7 @@ func (s *Server) HelloWorldHandler(c echo.Context) error {
 }
 
 func (s *Server) healthHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, s.db.Health())
+	return c.JSON(http.StatusOK, s.server.Health())
 }
 
 func (s *Server) websocketHandler(c echo.Context) error {
