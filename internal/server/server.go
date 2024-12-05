@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	_ "github.com/joho/godotenv/autoload"
 
 	"librarease/internal/database"
@@ -27,22 +28,27 @@ type Service interface {
 	// ListUsers returns a list of users.
 	// FIXME: user model, input params
 	ListUsers(context.Context) ([]usecase.User, int, error)
+	CreateUser(context.Context, usecase.User) (usecase.User, error)
+	UpdateUser(context.Context, usecase.User) (usecase.User, error)
 }
 
 type Server struct {
 	port int
 
-	server Service
+	server    Service
+	validator *validator.Validate
 }
 
 func NewServer() *http.Server {
 	repo := database.New()
 	sv := usecase.New(repo)
+	v := validator.New()
+
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 	NewServer := &Server{
-		port: port,
-
-		server: sv,
+		port:      port,
+		server:    sv,
+		validator: v,
 	}
 
 	// Declare Server config
