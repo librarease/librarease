@@ -9,7 +9,7 @@ func New(repo Repository) Usecase {
 type Repository interface {
 	Health() map[string]string
 	Close() error
-	ListUsers(context.Context) ([]User, error)
+	ListUsers(context.Context) ([]User, int, error)
 }
 
 type Usecase struct {

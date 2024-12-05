@@ -1,16 +1,24 @@
 package usecase
 
-import "context"
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type User struct {
-	ID   string
-	Name string
+	ID        uuid.UUID
+	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeleteAt  *time.Time
 }
 
-func (u Usecase) ListUsers(ctx context.Context) ([]User, error) {
-	users, err := u.repo.ListUsers(ctx)
+func (u Usecase) ListUsers(ctx context.Context) ([]User, int, error) {
+	users, total, err := u.repo.ListUsers(ctx)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var userList []User
@@ -21,5 +29,5 @@ func (u Usecase) ListUsers(ctx context.Context) ([]User, error) {
 		})
 	}
 
-	return userList, nil
+	return userList, total, nil
 }

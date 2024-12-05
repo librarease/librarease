@@ -26,7 +26,7 @@ type Service interface {
 
 	// ListUsers returns a list of users.
 	// FIXME: user model, input params
-	ListUsers(context.Context) ([]usecase.User, error)
+	ListUsers(context.Context) ([]usecase.User, int, error)
 }
 
 type Server struct {

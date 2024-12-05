@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"librarease/internal/usecase"
 	"log"
 	"os"
 	"strconv"
@@ -52,19 +51,41 @@ func New() *service {
 		log.Fatal(err)
 	}
 
-	if db, err := gormDB.DB(); err != nil {
+	db, err := gormDB.DB()
+	if err != nil {
 		log.Fatal(err)
-	} else if db != nil {
-		maxOpenConnections := 0
-		if m, err := strconv.Atoi(
-			os.Getenv("DB_MAX_OPEN_CONNECTIONS")); err == nil {
-			maxOpenConnections = m
-		}
-		db.SetMaxOpenConns(maxOpenConnections)
 	}
 
+	var maxOpenConnections int
+	if m, err := strconv.Atoi(
+		os.Getenv("DB_MAX_OPEN_CONNECTIONS")); err == nil {
+		maxOpenConnections = m
+	}
+	db.SetMaxOpenConns(maxOpenConnections)
+
 	// migrate the schema
-	gormDB.AutoMigrate(User{})
+	err = gormDB.AutoMigrate(
+		User{},
+		Library{},
+		Staff{},
+		Book{},
+		Membership{},
+		Subscription{},
+		Borrowing{},
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = db.Exec(`
+        CREATE UNIQUE INDEX idx_unique_book_id_returned_at_null
+        ON borrowings (book_id)
+        WHERE returned_at IS NULL
+		AND deleted_at IS NULL;
+    `)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return &service{db: gormDB}
 }
@@ -133,16 +154,4 @@ func (s *service) Close() error {
 	}
 	log.Printf("Disconnected from database: %s", database)
 	return db.Close()
-}
-
-func (s *service) ListUsers(ctx context.Context) ([]usecase.User, error) {
-	users := make([]usecase.User, 0)
-
-	err := s.db.Table("users").Find(&users).Error
-
-	if err != nil {
-		return nil, err
-	}
-
-	return users, nil
 }
