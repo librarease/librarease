@@ -26,14 +26,16 @@ func (User) TableName() string {
 
 func (s *service) ListUsers(ctx context.Context) ([]usecase.User, int, error) {
 	var (
-		users []usecase.User
-		count int64
+		users  []User
+		uusers []usecase.User
+		count  int64
 	)
 
-	db := s.db.Table("users")
-	db.Count(&count)
+	db := s.db.Table("users").WithContext(ctx)
 
 	err := db.Find(&users).Error
+
+	db.Count(&count)
 
 	if err != nil {
 		return nil, 0, err
@@ -45,10 +47,47 @@ func (s *service) ListUsers(ctx context.Context) ([]usecase.User, int, error) {
 			Name:      u.Name,
 			CreatedAt: u.CreatedAt,
 			UpdatedAt: u.UpdatedAt,
-			DeleteAt:  u.DeleteAt,
 		}
-		users = append(users, uu)
+		uusers = append(uusers, uu)
 	}
 
-	return users, int(count), nil
+	return uusers, int(count), nil
+}
+
+func (s *service) CreateUser(ctx context.Context, user usecase.User) (usecase.User, error) {
+	u := User{
+		ID:   user.ID,
+		Name: user.Name,
+	}
+
+	err := s.db.WithContext(ctx).Create(&u).Error
+	if err != nil {
+		return usecase.User{}, err
+	}
+
+	return usecase.User{
+		ID:        u.ID,
+		Name:      u.Name,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+	}, nil
+}
+
+func (s *service) UpdateUser(ctx context.Context, user usecase.User) (usecase.User, error) {
+	u := User{
+		ID:   user.ID,
+		Name: user.Name,
+	}
+
+	err := s.db.WithContext(ctx).Where("id = ?", u.ID).Updates(&u).Error
+	if err != nil {
+		return usecase.User{}, err
+	}
+
+	return usecase.User{
+		ID:        u.ID,
+		Name:      u.Name,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+	}, nil
 }

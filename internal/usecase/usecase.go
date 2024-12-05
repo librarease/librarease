@@ -10,6 +10,8 @@ type Repository interface {
 	Health() map[string]string
 	Close() error
 	ListUsers(context.Context) ([]User, int, error)
+	CreateUser(context.Context, User) (User, error)
+	UpdateUser(context.Context, User) (User, error)
 }
 
 type Usecase struct {

@@ -1,30 +1,51 @@
 package server
 
-import "github.com/labstack/echo/v4"
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"time"
 
-func (s *Server) ListUsers(ctx echo.Context) error {
-	users, _, err := s.server.ListUsers(ctx.Request().Context())
-	if err != nil {
-		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	"github.com/coder/websocket"
+	"github.com/labstack/echo/v4"
+)
+
+func (s *Server) HelloWorldHandler(c echo.Context) error {
+	resp := map[string]string{
+		"message": "Hello World",
 	}
 
-	list := make([]User, 0, len(users))
-
-	for _, u := range users {
-		list = append(list, User{
-			ID:        u.ID.String(),
-			Name:      u.Name,
-			CreatedAt: u.CreatedAt.String(),
-			UpdatedAt: u.UpdatedAt.String(),
-		})
-	}
-
-	return ctx.JSON(200, list)
+	return c.JSON(http.StatusOK, resp)
 }
 
-type User struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+func (s *Server) healthHandler(c echo.Context) error {
+	return c.JSON(http.StatusOK, s.server.Health())
+}
+
+func (s *Server) websocketHandler(c echo.Context) error {
+	w := c.Response().Writer
+	r := c.Request()
+	socket, err := websocket.Accept(w, r, nil)
+
+	if err != nil {
+		log.Printf("could not open websocket: %v", err)
+		_, _ = w.Write([]byte("could not open websocket"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return nil
+	}
+
+	defer socket.Close(websocket.StatusGoingAway, "server closing websocket")
+
+	ctx := r.Context()
+	socketCtx := socket.CloseRead(ctx)
+
+	for {
+		payload := fmt.Sprintf("server timestamp: %d", time.Now().UnixNano())
+		err := socket.Write(socketCtx, websocket.MessageText, []byte(payload))
+		if err != nil {
+			break
+		}
+		time.Sleep(time.Second * 2)
+	}
+	return nil
 }
