@@ -35,6 +35,25 @@ func (u Usecase) ListUsers(ctx context.Context) ([]User, int, error) {
 	return userList, total, nil
 }
 
+func (u Usecase) GetUserByID(ctx context.Context, id string) (User, error) {
+	err := uuid.Validate(id)
+	if err != nil {
+		return User{}, err
+	}
+	user, err := u.repo.GetUserByID(ctx, id)
+	if err != nil {
+		return User{}, err
+	}
+
+	return User{
+		ID:        user.ID,
+		Name:      user.Name,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		DeleteAt:  user.DeleteAt,
+	}, nil
+}
+
 func (u Usecase) CreateUser(ctx context.Context, user User) (User, error) {
 	createdUser, err := u.repo.CreateUser(ctx, user)
 	if err != nil {
@@ -61,4 +80,17 @@ func (u Usecase) UpdateUser(ctx context.Context, user User) (User, error) {
 		CreatedAt: updatedUser.CreatedAt,
 		UpdatedAt: updatedUser.UpdatedAt,
 	}, nil
+}
+
+func (u Usecase) DeleteUser(ctx context.Context, id string) error {
+	err := uuid.Validate(id)
+	if err != nil {
+		return err
+	}
+	err = u.repo.DeleteUser(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
