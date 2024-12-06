@@ -54,9 +54,24 @@ func (s *service) ListUsers(ctx context.Context) ([]usecase.User, int, error) {
 	return uusers, int(count), nil
 }
 
+func (s *service) GetUserByID(ctx context.Context, id string) (usecase.User, error) {
+	var u User
+
+	err := s.db.WithContext(ctx).Where("id = ?", id).First(&u).Error
+	if err != nil {
+		return usecase.User{}, err
+	}
+
+	return usecase.User{
+		ID:        u.ID,
+		Name:      u.Name,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+	}, nil
+}
+
 func (s *service) CreateUser(ctx context.Context, user usecase.User) (usecase.User, error) {
 	u := User{
-		ID:   user.ID,
 		Name: user.Name,
 	}
 
@@ -90,4 +105,13 @@ func (s *service) UpdateUser(ctx context.Context, user usecase.User) (usecase.Us
 		CreatedAt: u.CreatedAt,
 		UpdatedAt: u.UpdatedAt,
 	}, nil
+}
+
+func (s *service) DeleteUser(ctx context.Context, id string) error {
+	err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&User{}).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

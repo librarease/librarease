@@ -1,6 +1,8 @@
 package database
 
 import (
+	"context"
+	"librarease/internal/usecase"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,4 +23,101 @@ type Library struct {
 
 func (Library) TableName() string {
 	return "libraries"
+}
+
+func (s *service) ListLibraries(ctx context.Context) ([]usecase.Library, int, error) {
+	var (
+		libs  []Library
+		ulibs []usecase.Library
+		count int64
+	)
+
+	db := s.db.Table("libraries").WithContext(ctx)
+
+	err := db.Find(&libs).Error
+
+	db.Count(&count)
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	for _, l := range libs {
+		ul := usecase.Library{
+			ID:        l.ID,
+			Name:      l.Name,
+			CreatedAt: l.CreatedAt,
+			UpdatedAt: l.UpdatedAt,
+		}
+		ulibs = append(ulibs, ul)
+	}
+
+	return ulibs, int(count), nil
+}
+
+func (s *service) GetLibraryByID(ctx context.Context, id string) (usecase.Library, error) {
+	var l Library
+
+	err := s.db.WithContext(ctx).Where("id = ?", id).First(&l).Error
+	if err != nil {
+		return usecase.Library{}, err
+	}
+
+	return usecase.Library{
+		ID:        l.ID,
+		Name:      l.Name,
+		CreatedAt: l.CreatedAt,
+		UpdatedAt: l.UpdatedAt,
+	}, nil
+}
+
+func (s *service) CreateLibrary(ctx context.Context, library usecase.Library) (usecase.Library, error) {
+	l := Library{
+		ID:        library.ID,
+		Name:      library.Name,
+		CreatedAt: library.CreatedAt,
+		UpdatedAt: library.UpdatedAt,
+	}
+
+	err := s.db.WithContext(ctx).Create(&l).Error
+	if err != nil {
+		return usecase.Library{}, err
+	}
+
+	return usecase.Library{
+		ID:        l.ID,
+		Name:      l.Name,
+		CreatedAt: l.CreatedAt,
+		UpdatedAt: l.UpdatedAt,
+	}, nil
+}
+
+func (s *service) UpdateLibrary(ctx context.Context, library usecase.Library) (usecase.Library, error) {
+	l := Library{
+		ID:        library.ID,
+		Name:      library.Name,
+		CreatedAt: library.CreatedAt,
+		UpdatedAt: library.UpdatedAt,
+	}
+
+	err := s.db.WithContext(ctx).Save(&l).Error
+	if err != nil {
+		return usecase.Library{}, err
+	}
+
+	return usecase.Library{
+		ID:        l.ID,
+		Name:      l.Name,
+		CreatedAt: l.CreatedAt,
+		UpdatedAt: l.UpdatedAt,
+	}, nil
+}
+
+func (s *service) DeleteLibrary(ctx context.Context, id string) error {
+	err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&Library{}).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

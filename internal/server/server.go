@@ -28,8 +28,16 @@ type Service interface {
 	// ListUsers returns a list of users.
 	// FIXME: user model, input params
 	ListUsers(context.Context) ([]usecase.User, int, error)
+	GetUserByID(context.Context, string) (usecase.User, error)
 	CreateUser(context.Context, usecase.User) (usecase.User, error)
 	UpdateUser(context.Context, usecase.User) (usecase.User, error)
+	DeleteUser(context.Context, string) error
+
+	ListLibraries(context.Context) ([]usecase.Library, int, error)
+	GetLibraryByID(context.Context, string) (usecase.Library, error)
+	CreateLibrary(context.Context, usecase.Library) (usecase.Library, error)
+	UpdateLibrary(context.Context, usecase.Library) (usecase.Library, error)
+	DeleteLibrary(context.Context, string) error
 }
 
 type Server struct {

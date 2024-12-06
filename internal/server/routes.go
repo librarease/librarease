@@ -26,9 +26,19 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	e.GET("/websocket", s.websocketHandler)
 
-	e.GET("/users", s.ListUsers)
-	e.POST("/users", s.CreateUser)
-	e.PUT("/users/:id", s.UpdateUser)
+	var userGroup = e.Group("/api/v1/users")
+	userGroup.GET("", s.ListUsers)
+	userGroup.POST("", s.CreateUser)
+	userGroup.GET("/:id", s.GetUserByID)
+	userGroup.PUT("/:id", s.UpdateUser)
+	userGroup.DELETE("/:id", s.DeleteUser)
+
+	var libraryGroup = e.Group("/api/v1/libraries")
+	libraryGroup.GET("", s.ListLibraries)
+	libraryGroup.POST("", s.CreateLibrary)
+	libraryGroup.GET("/:id", s.GetLibraryByID)
+	libraryGroup.PUT("/:id", s.UpdateLibrary)
+	libraryGroup.DELETE("/:id", s.DeleteLibrary)
 
 	return e
 }

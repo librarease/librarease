@@ -34,6 +34,21 @@ func (s *Server) ListUsers(ctx echo.Context) error {
 	return ctx.JSON(200, list)
 }
 
+func (s *Server) GetUserByID(ctx echo.Context) error {
+	id := ctx.Param("id")
+	u, err := s.server.GetUserByID(ctx.Request().Context(), id)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.JSON(200, User{
+		ID:        u.ID.String(),
+		Name:      u.Name,
+		CreatedAt: u.CreatedAt.String(),
+		UpdatedAt: u.UpdatedAt.String(),
+	})
+}
+
 func (s *Server) CreateUser(ctx echo.Context) error {
 	var user User
 	if err := ctx.Bind(&user); err != nil {
@@ -87,4 +102,14 @@ func (s *Server) UpdateUser(ctx echo.Context) error {
 		CreatedAt: u.CreatedAt.String(),
 		UpdatedAt: u.UpdatedAt.String(),
 	})
+}
+
+func (s *Server) DeleteUser(ctx echo.Context) error {
+	id := ctx.Param("id")
+	err := s.server.DeleteUser(ctx.Request().Context(), id)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.NoContent(204)
 }
