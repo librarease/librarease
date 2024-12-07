@@ -54,20 +54,49 @@ func (s *service) ListUsers(ctx context.Context) ([]usecase.User, int, error) {
 	return uusers, int(count), nil
 }
 
-func (s *service) GetUserByID(ctx context.Context, id string) (usecase.User, error) {
+func (s *service) GetUserByID(ctx context.Context, id string, opt usecase.GetUserByIDOption) (usecase.User, error) {
 	var u User
 
-	err := s.db.WithContext(ctx).Where("id = ?", id).First(&u).Error
+	db := s.db.WithContext(ctx).Model(&User{})
+
+	if opt.IncludeStaffs {
+		db.Preload("Staffs.Library")
+	}
+
+	err := db.Where("id = ?", id).First(&u).Error
 	if err != nil {
 		return usecase.User{}, err
 	}
 
-	return usecase.User{
+	uu := usecase.User{
 		ID:        u.ID,
 		Name:      u.Name,
 		CreatedAt: u.CreatedAt,
 		UpdatedAt: u.UpdatedAt,
-	}, nil
+	}
+	// TODO: redundant model conversion
+	if u.Staffs != nil {
+		for _, st := range u.Staffs {
+			ust := usecase.Staff{
+				ID:        st.ID,
+				Name:      st.Name,
+				LibraryID: st.LibraryID,
+				UserID:    st.UserID,
+				CreatedAt: st.CreatedAt,
+				UpdatedAt: st.UpdatedAt,
+			}
+			if st.Library != nil {
+				ust.Library = &usecase.Library{
+					ID:        st.Library.ID,
+					Name:      st.Library.Name,
+					CreatedAt: st.Library.CreatedAt,
+					UpdatedAt: st.Library.UpdatedAt,
+				}
+			}
+			uu.Staffs = append(uu.Staffs, ust)
+		}
+	}
+	return uu, nil
 }
 
 func (s *service) CreateUser(ctx context.Context, user usecase.User) (usecase.User, error) {

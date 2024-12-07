@@ -1,0 +1,44 @@
+package usecase
+
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type Staff struct {
+	ID        uuid.UUID
+	Name      string
+	LibraryID uuid.UUID
+	UserID    uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeleteAt  *time.Time
+	User      *User
+	Library   *Library
+	// Borrowings []Borrowing
+}
+
+func (u Usecase) ListStaffs(ctx context.Context, opt ListStaffsOption) ([]Staff, int, error) {
+	return u.repo.ListStaffs(ctx, opt)
+}
+
+type ListStaffsOption struct {
+	LibraryID string
+	UserID    string
+	Skip      int
+	Limit     int
+}
+
+func (u Usecase) CreateStaff(ctx context.Context, staff Staff) (Staff, error) {
+	return u.repo.CreateStaff(ctx, staff)
+}
+
+func (u Usecase) GetStaffByID(ctx context.Context, id string) (Staff, error) {
+	sid, err := uuid.Parse(id)
+	if err != nil {
+		return Staff{}, err
+	}
+	return u.repo.GetStaffByID(ctx, sid)
+}

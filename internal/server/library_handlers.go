@@ -11,8 +11,8 @@ type Library struct {
 	ID   string `json:"id" param:"id"`
 	Name string `json:"name" validate:"required"`
 	// Location  string `json:"location" validate:"required"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	CreatedAt string `json:"created_at,omitempty"`
+	UpdatedAt string `json:"updated_at,omitempty"`
 }
 
 func (s *Server) ListLibraries(ctx echo.Context) error {

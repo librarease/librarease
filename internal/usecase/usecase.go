@@ -1,6 +1,10 @@
 package usecase
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 func New(repo Repository) Usecase {
 	return Usecase{repo: repo}
@@ -12,7 +16,7 @@ type Repository interface {
 
 	// user
 	ListUsers(context.Context) ([]User, int, error)
-	GetUserByID(context.Context, string) (User, error)
+	GetUserByID(context.Context, string, GetUserByIDOption) (User, error)
 	CreateUser(context.Context, User) (User, error)
 	UpdateUser(context.Context, User) (User, error)
 	DeleteUser(context.Context, string) error
@@ -23,6 +27,11 @@ type Repository interface {
 	CreateLibrary(context.Context, Library) (Library, error)
 	UpdateLibrary(context.Context, Library) (Library, error)
 	DeleteLibrary(context.Context, string) error
+
+	// staff
+	ListStaffs(context.Context, ListStaffsOption) ([]Staff, int, error)
+	CreateStaff(context.Context, Staff) (Staff, error)
+	GetStaffByID(context.Context, uuid.UUID) (Staff, error)
 }
 
 type Usecase struct {

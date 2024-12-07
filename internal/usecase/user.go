@@ -13,6 +13,8 @@ type User struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeleteAt  *time.Time
+
+	Staffs []Staff
 }
 
 func (u Usecase) ListUsers(ctx context.Context) ([]User, int, error) {
@@ -35,23 +37,28 @@ func (u Usecase) ListUsers(ctx context.Context) ([]User, int, error) {
 	return userList, total, nil
 }
 
-func (u Usecase) GetUserByID(ctx context.Context, id string) (User, error) {
-	err := uuid.Validate(id)
-	if err != nil {
-		return User{}, err
-	}
-	user, err := u.repo.GetUserByID(ctx, id)
-	if err != nil {
-		return User{}, err
-	}
+type GetUserByIDOption struct {
+	IncludeStaffs bool
+}
 
-	return User{
-		ID:        user.ID,
-		Name:      user.Name,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		DeleteAt:  user.DeleteAt,
-	}, nil
+func (u Usecase) GetUserByID(ctx context.Context, id string, opt GetUserByIDOption) (User, error) {
+	// uid, err := uuid.Parse(id)
+	// if err != nil {
+	// 	return User{}, err
+	// }
+	// user, err := u.repo.GetUserByID(ctx, uid, opt)
+	// if err != nil {
+	// 	return User{}, err
+	// }
+
+	// return User{
+	// 	ID:        user.ID,
+	// 	Name:      user.Name,
+	// 	CreatedAt: user.CreatedAt,
+	// 	UpdatedAt: user.UpdatedAt,
+	// 	DeleteAt:  user.DeleteAt,
+	// }, nil
+	return u.repo.GetUserByID(ctx, id, opt)
 }
 
 func (u Usecase) CreateUser(ctx context.Context, user User) (User, error) {

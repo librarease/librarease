@@ -8,10 +8,11 @@ import (
 )
 
 type User struct {
-	ID        string `json:"id" param:"id"`
-	Name      string `json:"name" validate:"required"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	ID        string  `json:"id" param:"id"`
+	Name      string  `json:"name" validate:"required"`
+	CreatedAt string  `json:"created_at,omitempty"`
+	UpdatedAt string  `json:"updated_at,omitempty"`
+	Staffs    []Staff `json:"staffs,omitempty"`
 }
 
 func (s *Server) ListUsers(ctx echo.Context) error {
@@ -34,19 +35,60 @@ func (s *Server) ListUsers(ctx echo.Context) error {
 	return ctx.JSON(200, list)
 }
 
+type GetUserByIDRequest struct {
+	ID            string `param:"id" validate:"required,uuid"`
+	IncludeStaffs bool   `query:"include_staffs"`
+}
+
 func (s *Server) GetUserByID(ctx echo.Context) error {
-	id := ctx.Param("id")
-	u, err := s.server.GetUserByID(ctx.Request().Context(), id)
+	var req GetUserByIDRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	u, err := s.server.GetUserByID(ctx.Request().Context(), req.ID, usecase.GetUserByIDOption{
+		IncludeStaffs: req.IncludeStaffs,
+	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(200, User{
+	user := User{
 		ID:        u.ID.String(),
 		Name:      u.Name,
 		CreatedAt: u.CreatedAt.String(),
 		UpdatedAt: u.UpdatedAt.String(),
-	})
+	}
+
+	user.Staffs = make([]Staff, 0, len(u.Staffs))
+	for _, st := range u.Staffs {
+		staff := Staff{
+			ID:        st.ID.String(),
+			Name:      st.Name,
+			LibraryID: st.LibraryID.String(),
+			UserID:    st.UserID.String(),
+			CreatedAt: st.CreatedAt.String(),
+			UpdatedAt: st.UpdatedAt.String(),
+		}
+		// if st.User != nil {
+		// 	staff.User = &User{
+		// 		ID:   st.User.ID.String(),
+		// 		Name: st.User.Name,
+		// 	}
+		// }
+		if st.Library != nil {
+			staff.Library = &Library{
+				ID:   st.Library.ID.String(),
+				Name: st.Library.Name,
+			}
+		}
+		user.Staffs = append(user.Staffs, staff)
+	}
+
+	return ctx.JSON(200, user)
 }
 
 func (s *Server) CreateUser(ctx echo.Context) error {
