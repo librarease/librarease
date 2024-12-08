@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	_ "github.com/joho/godotenv/autoload"
 
 	"librarease/internal/database"
@@ -43,6 +44,17 @@ type Service interface {
 	CreateStaff(context.Context, usecase.Staff) (usecase.Staff, error)
 	GetStaffByID(context.Context, string) (usecase.Staff, error)
 	UpdateStaff(ctx context.Context, staff usecase.Staff) (usecase.Staff, error)
+
+	ListMemberships(context.Context, usecase.ListMembershipsOption) ([]usecase.Membership, int, error)
+	GetMembershipByID(context.Context, string) (usecase.Membership, error)
+	CreateMembership(context.Context, usecase.Membership) (usecase.Membership, error)
+	UpdateMembership(context.Context, usecase.Membership) (usecase.Membership, error)
+	// DeleteMembership(context.Context, string) error
+
+	ListSubscriptions(context.Context, usecase.ListSubscriptionsOption) ([]usecase.Subscription, int, error)
+	GetSubscriptionByID(context.Context, uuid.UUID) (usecase.Subscription, error)
+	CreateSubscription(context.Context, usecase.Subscription) (usecase.Subscription, error)
+	UpdateSubscription(context.Context, usecase.Subscription) (usecase.Subscription, error)
 }
 
 type Server struct {

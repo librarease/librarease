@@ -46,5 +46,18 @@ func (s *Server) RegisterRoutes() http.Handler {
 	staffGroup.GET("/:id", s.GetStaffByID)
 	staffGroup.PUT("/:id", s.UpdateStaff)
 
+	var membershipGroup = e.Group("/api/v1/memberships")
+	membershipGroup.GET("", s.ListMemberships)
+	membershipGroup.POST("", s.CreateMembership)
+	membershipGroup.GET("/:id", s.GetMembershipByID)
+	membershipGroup.PUT("/:id", s.UpdateMembership)
+	// membershipGroup.DELETE("/:id", s.DeleteMembership)
+
+	var subscriptionGroup = e.Group("/api/v1/subscriptions")
+	subscriptionGroup.GET("", s.ListSubscriptions)
+	subscriptionGroup.POST("", s.CreateSubscription)
+	subscriptionGroup.GET("/:id", s.GetSubscriptionByID)
+	subscriptionGroup.PUT("/:id", s.UpdateSubscription)
+
 	return e
 }

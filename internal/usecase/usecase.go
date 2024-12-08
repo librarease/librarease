@@ -33,6 +33,19 @@ type Repository interface {
 	CreateStaff(context.Context, Staff) (Staff, error)
 	GetStaffByID(context.Context, uuid.UUID) (Staff, error)
 	UpdateStaff(context.Context, Staff) (Staff, error)
+
+	// membership
+	ListMemberships(context.Context, ListMembershipsOption) ([]Membership, int, error)
+	GetMembershipByID(context.Context, uuid.UUID) (Membership, error)
+	CreateMembership(context.Context, Membership) (Membership, error)
+	UpdateMembership(context.Context, Membership) (Membership, error)
+	// DeleteMembership(context.Context, string) error
+
+	// subscription
+	ListSubscriptions(context.Context, ListSubscriptionsOption) ([]Subscription, int, error)
+	GetSubscriptionByID(context.Context, uuid.UUID) (Subscription, error)
+	CreateSubscription(context.Context, Subscription) (Subscription, error)
+	UpdateSubscription(context.Context, Subscription) (Subscription, error)
 }
 
 type Usecase struct {
