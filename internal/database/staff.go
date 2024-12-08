@@ -35,10 +35,16 @@ func (s *service) ListStaffs(ctx context.Context, opt usecase.ListStaffsOption) 
 
 	db := s.db.Table("staffs").Model([]Staff{}).WithContext(ctx)
 
+	if opt.LibraryID != "" {
+		db = db.Where("library_id = ?", opt.LibraryID)
+	}
+	if opt.UserID != "" {
+		db = db.Where("user_id = ?", opt.UserID)
+	}
+
 	err := db.
 		Preload("Library").
 		Preload("User").
-		Where("library_id = ?", opt.LibraryID).
 		Count(&count).
 		Limit(opt.Limit).
 		Offset(opt.Skip).
@@ -51,30 +57,14 @@ func (s *service) ListStaffs(ctx context.Context, opt usecase.ListStaffsOption) 
 
 	for _, st := range staffs {
 
-		staff := usecase.Staff{
-			ID:        st.ID,
-			Name:      st.Name,
-			LibraryID: st.LibraryID,
-			UserID:    st.UserID,
-			CreatedAt: st.CreatedAt,
-			UpdatedAt: st.UpdatedAt,
-			// DeleteAt:  st.DeletedAt.Time,
-		}
+		staff := st.ConvertToUsecase()
 		if st.User != nil {
-			staff.User = &usecase.User{
-				ID:        st.User.ID,
-				Name:      st.User.Name,
-				CreatedAt: st.User.CreatedAt,
-				UpdatedAt: st.User.UpdatedAt,
-			}
+			u := st.User.ConvertToUsecase()
+			staff.User = &u
 		}
 		if st.Library != nil {
-			staff.Library = &usecase.Library{
-				ID:        st.Library.ID,
-				Name:      st.Library.Name,
-				CreatedAt: st.Library.CreatedAt,
-				UpdatedAt: st.Library.UpdatedAt,
-			}
+			l := st.Library.ConvertToUsecase()
+			staff.Library = &l
 		}
 		ustaffs = append(ustaffs, staff)
 	}
@@ -88,12 +78,12 @@ func (s *service) CreateStaff(ctx context.Context, staff usecase.Staff) (usecase
 		UserID:    staff.UserID,
 	}
 
-	err := s.db.Create(&st).Preload("Library").Preload("User").Error
+	err := s.db.Create(&st).Error
 	if err != nil {
 		return usecase.Staff{}, err
 	}
 
-	return staff, nil
+	return st.ConvertToUsecase(), nil
 }
 
 func (s *service) GetStaffByID(ctx context.Context, id uuid.UUID) (usecase.Staff, error) {
@@ -108,30 +98,44 @@ func (s *service) GetStaffByID(ctx context.Context, id uuid.UUID) (usecase.Staff
 		return usecase.Staff{}, err
 	}
 
-	staff := usecase.Staff{
+	staff := st.ConvertToUsecase()
+	if st.User != nil {
+		u := st.User.ConvertToUsecase()
+		staff.User = &u
+	}
+	if st.Library != nil {
+		l := st.Library.ConvertToUsecase()
+		staff.Library = &l
+	}
+	return staff, nil
+}
+
+func (s *service) UpdateStaff(ctx context.Context, staff usecase.Staff) (usecase.Staff, error) {
+	st := Staff{
+		Name: staff.Name,
+	}
+
+	err := s.db.WithContext(ctx).Where("id = ?", staff.ID).Updates(&st).Error
+	if err != nil {
+		return usecase.Staff{}, err
+	}
+
+	return st.ConvertToUsecase(), nil
+}
+
+// Convert core model to Usecase
+func (st Staff) ConvertToUsecase() usecase.Staff {
+	var d *time.Time
+	if st.DeletedAt != nil {
+		d = &st.DeletedAt.Time
+	}
+	return usecase.Staff{
 		ID:        st.ID,
 		Name:      st.Name,
 		LibraryID: st.LibraryID,
 		UserID:    st.UserID,
 		CreatedAt: st.CreatedAt,
 		UpdatedAt: st.UpdatedAt,
-		// DeleteAt:  st.DeletedAt.Time,
+		DeleteAt:  d,
 	}
-	if st.User != nil {
-		staff.User = &usecase.User{
-			ID:        st.User.ID,
-			Name:      st.User.Name,
-			CreatedAt: st.User.CreatedAt,
-			UpdatedAt: st.User.UpdatedAt,
-		}
-	}
-	if st.Library != nil {
-		staff.Library = &usecase.Library{
-			ID:        st.Library.ID,
-			Name:      st.Library.Name,
-			CreatedAt: st.Library.CreatedAt,
-			UpdatedAt: st.Library.UpdatedAt,
-		}
-	}
-	return staff, nil
 }

@@ -43,12 +43,7 @@ func (s *service) ListLibraries(ctx context.Context) ([]usecase.Library, int, er
 	}
 
 	for _, l := range libs {
-		ul := usecase.Library{
-			ID:        l.ID,
-			Name:      l.Name,
-			CreatedAt: l.CreatedAt,
-			UpdatedAt: l.UpdatedAt,
-		}
+		ul := l.ConvertToUsecase()
 		ulibs = append(ulibs, ul)
 	}
 
@@ -63,12 +58,9 @@ func (s *service) GetLibraryByID(ctx context.Context, id string) (usecase.Librar
 		return usecase.Library{}, err
 	}
 
-	return usecase.Library{
-		ID:        l.ID,
-		Name:      l.Name,
-		CreatedAt: l.CreatedAt,
-		UpdatedAt: l.UpdatedAt,
-	}, nil
+	lib := l.ConvertToUsecase()
+
+	return lib, nil
 }
 
 func (s *service) CreateLibrary(ctx context.Context, library usecase.Library) (usecase.Library, error) {
@@ -120,4 +112,19 @@ func (s *service) DeleteLibrary(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+// Convert core model to Usecase
+func (lib Library) ConvertToUsecase() usecase.Library {
+	var d *time.Time
+	if lib.DeletedAt != nil {
+		d = &lib.DeletedAt.Time
+	}
+	return usecase.Library{
+		ID:        lib.ID,
+		Name:      lib.Name,
+		CreatedAt: lib.CreatedAt,
+		UpdatedAt: lib.UpdatedAt,
+		DeleteAt:  d,
+	}
 }

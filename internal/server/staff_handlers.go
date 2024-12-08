@@ -19,7 +19,8 @@ type Staff struct {
 }
 
 type ListStaffsRequest struct {
-	LibraryID string `param:"id" validate:"omitempty,uuid"`
+	LibraryID string `query:"library_id" validate:"omitempty,uuid"`
+	UserID    string `query:"user_id" validate:"omitempty,uuid"`
 	Skip      int    `query:"skip"`
 	Limit     int    `query:"limit" validate:"required,gte=1,lte=100"`
 }
@@ -38,6 +39,7 @@ func (s *Server) ListStaffs(ctx echo.Context) error {
 
 	staffs, _, err := s.server.ListStaffs(ctx.Request().Context(), usecase.ListStaffsOption{
 		LibraryID: req.LibraryID,
+		UserID:    req.UserID,
 		Skip:      req.Skip,
 		Limit:     req.Limit,
 	})
@@ -80,7 +82,7 @@ func (s *Server) ListStaffs(ctx echo.Context) error {
 
 type CreateStaffRequest struct {
 	Name      string `json:"name" validate:"required"`
-	LibraryID string `json:"library_id" validate:"required,uuid" param:"id"`
+	LibraryID string `json:"library_id" validate:"required,uuid"`
 	UserID    string `json:"user_id" validate:"required,uuid"`
 }
 
@@ -118,7 +120,7 @@ func (s *Server) CreateStaff(ctx echo.Context) error {
 }
 
 func (s *Server) GetStaffByID(ctx echo.Context) error {
-	id := ctx.Param("staff_id")
+	id := ctx.Param("id")
 	st, err := s.server.GetStaffByID(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -133,21 +135,46 @@ func (s *Server) GetStaffByID(ctx echo.Context) error {
 		UpdatedAt: st.UpdatedAt.String(),
 	}
 	if st.Library != nil {
-		staff.Library = &Library{
-			ID:        st.Library.ID.String(),
-			Name:      st.Library.Name,
-			CreatedAt: st.Library.CreatedAt.String(),
-			UpdatedAt: st.Library.UpdatedAt.String(),
-		}
+		lib := ConverLibraryFrom(*st.Library)
+		staff.Library = &lib
 	}
 	if st.User != nil {
-		staff.User = &User{
-			ID:        st.User.ID.String(),
-			Name:      st.User.Name,
-			CreatedAt: st.User.CreatedAt.String(),
-			UpdatedAt: st.User.UpdatedAt.String(),
-		}
+		u := ConvertUserFrom(*st.User)
+		staff.User = &u
 	}
 
 	return ctx.JSON(200, staff)
+}
+
+type UpdateStaffRequest struct {
+	ID   string `param:"id" validate:"required,uuid"`
+	Name string `json:"name"`
+}
+
+func (s *Server) UpdateStaff(ctx echo.Context) error {
+	var req UpdateStaffRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+
+	err := s.validator.Struct(req)
+	if err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	uid, _ := uuid.Parse(req.ID)
+
+	st, err := s.server.UpdateStaff(ctx.Request().Context(), usecase.Staff{
+		ID:   uid,
+		Name: req.Name,
+	})
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+	return ctx.JSON(200, Staff{
+		ID:        st.ID.String(),
+		Name:      st.Name,
+		CreatedAt: st.CreatedAt.String(),
+		UpdatedAt: st.UpdatedAt.String(),
+	})
 }

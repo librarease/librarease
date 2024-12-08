@@ -32,6 +32,7 @@ type Repository interface {
 	ListStaffs(context.Context, ListStaffsOption) ([]Staff, int, error)
 	CreateStaff(context.Context, Staff) (Staff, error)
 	GetStaffByID(context.Context, uuid.UUID) (Staff, error)
+	UpdateStaff(context.Context, Staff) (Staff, error)
 }
 
 type Usecase struct {

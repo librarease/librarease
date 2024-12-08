@@ -56,12 +56,7 @@ func (s *Server) GetUserByID(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	user := User{
-		ID:        u.ID.String(),
-		Name:      u.Name,
-		CreatedAt: u.CreatedAt.String(),
-		UpdatedAt: u.UpdatedAt.String(),
-	}
+	user := ConvertUserFrom(u)
 
 	user.Staffs = make([]Staff, 0, len(u.Staffs))
 	for _, st := range u.Staffs {
@@ -91,6 +86,15 @@ func (s *Server) GetUserByID(ctx echo.Context) error {
 	return ctx.JSON(200, user)
 }
 
+func ConvertUserFrom(u usecase.User) User {
+	return User{
+		ID:        u.ID.String(),
+		Name:      u.Name,
+		CreatedAt: u.CreatedAt.String(),
+		UpdatedAt: u.UpdatedAt.String(),
+	}
+}
+
 func (s *Server) CreateUser(ctx echo.Context) error {
 	var user User
 	if err := ctx.Bind(&user); err != nil {
@@ -109,12 +113,7 @@ func (s *Server) CreateUser(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(200, User{
-		ID:        u.ID.String(),
-		Name:      u.Name,
-		CreatedAt: u.CreatedAt.String(),
-		UpdatedAt: u.UpdatedAt.String(),
-	})
+	return ctx.JSON(200, ConvertUserFrom(u))
 }
 
 func (s *Server) UpdateUser(ctx echo.Context) error {

@@ -42,6 +42,7 @@ type Service interface {
 	ListStaffs(context.Context, usecase.ListStaffsOption) ([]usecase.Staff, int, error)
 	CreateStaff(context.Context, usecase.Staff) (usecase.Staff, error)
 	GetStaffByID(context.Context, string) (usecase.Staff, error)
+	UpdateStaff(ctx context.Context, staff usecase.Staff) (usecase.Staff, error)
 }
 
 type Server struct {

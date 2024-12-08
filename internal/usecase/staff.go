@@ -42,3 +42,7 @@ func (u Usecase) GetStaffByID(ctx context.Context, id string) (Staff, error) {
 	}
 	return u.repo.GetStaffByID(ctx, sid)
 }
+
+func (u Usecase) UpdateStaff(ctx context.Context, staff Staff) (Staff, error) {
+	return u.repo.UpdateStaff(ctx, staff)
+}

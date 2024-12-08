@@ -43,13 +43,9 @@ func (s *Server) GetLibraryByID(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(200, Library{
-		ID:   l.ID.String(),
-		Name: l.Name,
-		// Location:  l.Location,
-		CreatedAt: l.CreatedAt.String(),
-		UpdatedAt: l.UpdatedAt.String(),
-	})
+	lib := ConverLibraryFrom(l)
+
+	return ctx.JSON(200, lib)
 }
 
 func (s *Server) CreateLibrary(ctx echo.Context) error {
@@ -119,4 +115,14 @@ func (s *Server) DeleteLibrary(ctx echo.Context) error {
 	}
 
 	return ctx.NoContent(204)
+}
+
+func ConverLibraryFrom(lib usecase.Library) Library {
+	return Library{
+		ID:   lib.ID.String(),
+		Name: lib.Name,
+		// Location:  l.Location,
+		CreatedAt: lib.CreatedAt.String(),
+		UpdatedAt: lib.UpdatedAt.String(),
+	}
 }

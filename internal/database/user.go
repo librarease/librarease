@@ -42,13 +42,7 @@ func (s *service) ListUsers(ctx context.Context) ([]usecase.User, int, error) {
 	}
 
 	for _, u := range users {
-		uu := usecase.User{
-			ID:        u.ID,
-			Name:      u.Name,
-			CreatedAt: u.CreatedAt,
-			UpdatedAt: u.UpdatedAt,
-		}
-		uusers = append(uusers, uu)
+		uusers = append(uusers, u.ConvertToUsecase())
 	}
 
 	return uusers, int(count), nil
@@ -68,30 +62,13 @@ func (s *service) GetUserByID(ctx context.Context, id string, opt usecase.GetUse
 		return usecase.User{}, err
 	}
 
-	uu := usecase.User{
-		ID:        u.ID,
-		Name:      u.Name,
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
-	}
-	// TODO: redundant model conversion
+	uu := u.ConvertToUsecase()
 	if u.Staffs != nil {
 		for _, st := range u.Staffs {
-			ust := usecase.Staff{
-				ID:        st.ID,
-				Name:      st.Name,
-				LibraryID: st.LibraryID,
-				UserID:    st.UserID,
-				CreatedAt: st.CreatedAt,
-				UpdatedAt: st.UpdatedAt,
-			}
+			ust := st.ConvertToUsecase()
 			if st.Library != nil {
-				ust.Library = &usecase.Library{
-					ID:        st.Library.ID,
-					Name:      st.Library.Name,
-					CreatedAt: st.Library.CreatedAt,
-					UpdatedAt: st.Library.UpdatedAt,
-				}
+				l := st.Library.ConvertToUsecase()
+				ust.Library = &l
 			}
 			uu.Staffs = append(uu.Staffs, ust)
 		}
@@ -109,12 +86,7 @@ func (s *service) CreateUser(ctx context.Context, user usecase.User) (usecase.Us
 		return usecase.User{}, err
 	}
 
-	return usecase.User{
-		ID:        u.ID,
-		Name:      u.Name,
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
-	}, nil
+	return u.ConvertToUsecase(), nil
 }
 
 func (s *service) UpdateUser(ctx context.Context, user usecase.User) (usecase.User, error) {
@@ -143,4 +115,19 @@ func (s *service) DeleteUser(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+// Convert core model to Usecase
+func (u User) ConvertToUsecase() usecase.User {
+	var d *time.Time
+	if u.DeletedAt != nil {
+		d = &u.DeletedAt.Time
+	}
+	return usecase.User{
+		ID:        u.ID,
+		Name:      u.Name,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+		DeleteAt:  d,
+	}
 }
