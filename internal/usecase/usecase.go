@@ -28,6 +28,12 @@ type Repository interface {
 	UpdateLibrary(context.Context, Library) (Library, error)
 	DeleteLibrary(context.Context, string) error
 
+	// book
+	ListBooks(context.Context, ListBooksOption) ([]Book, int, error)
+	GetBookByID(context.Context, uuid.UUID) (Book, error)
+	CreateBook(context.Context, Book) (Book, error)
+	UpdateBook(context.Context, Book) (Book, error)
+
 	// staff
 	ListStaffs(context.Context, ListStaffsOption) ([]Staff, int, error)
 	CreateStaff(context.Context, Staff) (Staff, error)

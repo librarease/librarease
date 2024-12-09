@@ -53,6 +53,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 	membershipGroup.PUT("/:id", s.UpdateMembership)
 	// membershipGroup.DELETE("/:id", s.DeleteMembership)
 
+	var bookGroup = e.Group("/api/v1/books")
+	bookGroup.GET("", s.ListBooks)
+	bookGroup.POST("", s.CreateBook)
+	bookGroup.GET("/:id", s.GetBookByID)
+	bookGroup.PUT("/:id", s.UpdateBook)
+
 	var subscriptionGroup = e.Group("/api/v1/subscriptions")
 	subscriptionGroup.GET("", s.ListSubscriptions)
 	subscriptionGroup.POST("", s.CreateSubscription)

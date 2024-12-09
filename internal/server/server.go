@@ -45,6 +45,11 @@ type Service interface {
 	GetStaffByID(context.Context, string) (usecase.Staff, error)
 	UpdateStaff(ctx context.Context, staff usecase.Staff) (usecase.Staff, error)
 
+	ListBooks(context.Context, usecase.ListBooksOption) ([]usecase.Book, int, error)
+	GetBookByID(context.Context, uuid.UUID) (usecase.Book, error)
+	CreateBook(context.Context, usecase.Book) (usecase.Book, error)
+	UpdateBook(context.Context, usecase.Book) (usecase.Book, error)
+
 	ListMemberships(context.Context, usecase.ListMembershipsOption) ([]usecase.Membership, int, error)
 	GetMembershipByID(context.Context, string) (usecase.Membership, error)
 	CreateMembership(context.Context, usecase.Membership) (usecase.Membership, error)
