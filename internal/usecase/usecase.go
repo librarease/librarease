@@ -52,6 +52,12 @@ type Repository interface {
 	GetSubscriptionByID(context.Context, uuid.UUID) (Subscription, error)
 	CreateSubscription(context.Context, Subscription) (Subscription, error)
 	UpdateSubscription(context.Context, Subscription) (Subscription, error)
+
+	// borrowing
+	ListBorrowings(context.Context, ListBorrowingsOption) ([]Borrowing, int, error)
+	GetBorrowingByID(context.Context, uuid.UUID) (Borrowing, error)
+	CreateBorrowing(context.Context, Borrowing) (Borrowing, error)
+	UpdateBorrowing(context.Context, Borrowing) (Borrowing, error)
 }
 
 type Usecase struct {

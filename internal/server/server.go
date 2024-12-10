@@ -60,6 +60,11 @@ type Service interface {
 	GetSubscriptionByID(context.Context, uuid.UUID) (usecase.Subscription, error)
 	CreateSubscription(context.Context, usecase.Subscription) (usecase.Subscription, error)
 	UpdateSubscription(context.Context, usecase.Subscription) (usecase.Subscription, error)
+
+	ListBorrowings(context.Context, usecase.ListBorrowingsOption) ([]usecase.Borrowing, int, error)
+	GetBorrowingByID(context.Context, uuid.UUID) (usecase.Borrowing, error)
+	CreateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
+	UpdateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
 }
 
 type Server struct {
