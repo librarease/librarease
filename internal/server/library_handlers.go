@@ -2,6 +2,7 @@ package server
 
 import (
 	"librarease/internal/usecase"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -28,8 +29,8 @@ func (s *Server) ListLibraries(ctx echo.Context) error {
 			ID:   l.ID.String(),
 			Name: l.Name,
 			// Location:  l.Location,
-			CreatedAt: l.CreatedAt.String(),
-			UpdatedAt: l.UpdatedAt.String(),
+			CreatedAt: l.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: l.UpdatedAt.Format(time.RFC3339),
 		})
 	}
 
@@ -71,8 +72,8 @@ func (s *Server) CreateLibrary(ctx echo.Context) error {
 		ID:   l.ID.String(),
 		Name: l.Name,
 		// Location:  l.Location,
-		CreatedAt: l.CreatedAt.String(),
-		UpdatedAt: l.UpdatedAt.String(),
+		CreatedAt: l.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: l.UpdatedAt.Format(time.RFC3339),
 	})
 }
 
@@ -102,8 +103,8 @@ func (s *Server) UpdateLibrary(ctx echo.Context) error {
 		ID:   l.ID.String(),
 		Name: l.Name,
 		// Location:  l.Location,
-		CreatedAt: l.CreatedAt.String(),
-		UpdatedAt: l.UpdatedAt.String(),
+		CreatedAt: l.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: l.UpdatedAt.Format(time.RFC3339),
 	})
 }
 
@@ -122,7 +123,7 @@ func ConverLibraryFrom(lib usecase.Library) Library {
 		ID:   lib.ID.String(),
 		Name: lib.Name,
 		// Location:  l.Location,
-		CreatedAt: lib.CreatedAt.String(),
-		UpdatedAt: lib.UpdatedAt.String(),
+		CreatedAt: lib.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: lib.UpdatedAt.Format(time.RFC3339),
 	}
 }

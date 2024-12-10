@@ -12,17 +12,17 @@ type Subscription struct {
 	ID           string      `json:"id"`
 	UserID       string      `json:"user_id"`
 	MembershipID string      `json:"membership_id"`
-	CreatedAt    string      `json:"created_at"`
-	UpdatedAt    string      `json:"updated_at"`
+	CreatedAt    string      `json:"created_at,omitempty"`
+	UpdatedAt    string      `json:"updated_at,omitempty"`
 	DeletedAt    *string     `json:"deleted_at,omitempty"`
 	User         *User       `json:"user,omitempty"`
 	Membership   *Membership `json:"membership,omitempty"`
 
 	// Granfathering the membership
-	ExpiresAt       string `json:"expires_at"`
-	FinePerDay      int    `json:"fine_per_day"`
-	LoanPeriod      int    `json:"loan_period"`
-	ActiveLoanLimit int    `json:"active_loan_limit"`
+	ExpiresAt       string `json:"expires_at,omitempty"`
+	FinePerDay      int    `json:"fine_per_day,omitempty"`
+	LoanPeriod      int    `json:"loan_period,omitempty"`
+	ActiveLoanLimit int    `json:"active_loan_limit,omitempty"`
 }
 
 type ListSubscriptionsRequest struct {
@@ -64,8 +64,8 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 			ID:              sub.ID.String(),
 			UserID:          sub.UserID.String(),
 			MembershipID:    sub.MembershipID.String(),
-			CreatedAt:       sub.CreatedAt.String(),
-			UpdatedAt:       sub.UpdatedAt.String(),
+			CreatedAt:       sub.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:       sub.UpdatedAt.Format(time.RFC3339),
 			DeletedAt:       d,
 			ExpiresAt:       sub.ExpiresAt.String(),
 			FinePerDay:      sub.FinePerDay,
@@ -127,8 +127,8 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 		ID:              sub.ID.String(),
 		UserID:          sub.UserID.String(),
 		MembershipID:    sub.MembershipID.String(),
-		CreatedAt:       sub.CreatedAt.String(),
-		UpdatedAt:       sub.UpdatedAt.String(),
+		CreatedAt:       sub.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       sub.UpdatedAt.Format(time.RFC3339),
 		DeletedAt:       d,
 		ExpiresAt:       sub.ExpiresAt.String(),
 		FinePerDay:      sub.FinePerDay,
@@ -150,8 +150,8 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 			ActiveLoanLimit: sub.Membership.ActiveLoanLimit,
 			LoanPeriod:      sub.Membership.LoanPeriod,
 			FinePerDay:      sub.Membership.FinePerDay,
-			CreatedAt:       sub.Membership.CreatedAt.String(),
-			UpdatedAt:       sub.Membership.UpdatedAt.String(),
+			CreatedAt:       sub.Membership.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:       sub.Membership.UpdatedAt.Format(time.RFC3339),
 		}
 
 		if lib := sub.Membership.Library; lib != nil {
@@ -244,8 +244,8 @@ func (s *Server) UpdateSubscription(ctx echo.Context) error {
 		ID:              sub.ID.String(),
 		UserID:          sub.UserID.String(),
 		MembershipID:    sub.MembershipID.String(),
-		CreatedAt:       sub.CreatedAt.String(),
-		UpdatedAt:       sub.UpdatedAt.String(),
+		CreatedAt:       sub.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       sub.UpdatedAt.Format(time.RFC3339),
 		ExpiresAt:       sub.ExpiresAt.String(),
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,

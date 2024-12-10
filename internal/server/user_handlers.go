@@ -2,6 +2,7 @@ package server
 
 import (
 	"librarease/internal/usecase"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -27,8 +28,8 @@ func (s *Server) ListUsers(ctx echo.Context) error {
 		list = append(list, User{
 			ID:        u.ID.String(),
 			Name:      u.Name,
-			CreatedAt: u.CreatedAt.String(),
-			UpdatedAt: u.UpdatedAt.String(),
+			CreatedAt: u.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
 		})
 	}
 
@@ -65,8 +66,8 @@ func (s *Server) GetUserByID(ctx echo.Context) error {
 			Name:      st.Name,
 			LibraryID: st.LibraryID.String(),
 			UserID:    st.UserID.String(),
-			CreatedAt: st.CreatedAt.String(),
-			UpdatedAt: st.UpdatedAt.String(),
+			CreatedAt: st.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
 		}
 		// if st.User != nil {
 		// 	staff.User = &User{
@@ -90,8 +91,8 @@ func ConvertUserFrom(u usecase.User) User {
 	return User{
 		ID:        u.ID.String(),
 		Name:      u.Name,
-		CreatedAt: u.CreatedAt.String(),
-		UpdatedAt: u.UpdatedAt.String(),
+		CreatedAt: u.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
 	}
 }
 
@@ -140,8 +141,8 @@ func (s *Server) UpdateUser(ctx echo.Context) error {
 	return ctx.JSON(200, User{
 		ID:        u.ID.String(),
 		Name:      u.Name,
-		CreatedAt: u.CreatedAt.String(),
-		UpdatedAt: u.UpdatedAt.String(),
+		CreatedAt: u.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
 	})
 }
 

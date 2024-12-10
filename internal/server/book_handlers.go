@@ -2,6 +2,7 @@ package server
 
 import (
 	"librarease/internal/usecase"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -10,12 +11,12 @@ import (
 type Book struct {
 	ID        string   `json:"id"`
 	Title     string   `json:"title"`
-	Author    string   `json:"author"`
-	Year      int      `json:"year"`
+	Author    string   `json:"author,omitempty"`
+	Year      int      `json:"year,omitempty"`
 	Code      string   `json:"code"`
-	LibraryID string   `json:"library_id"`
-	CreatedAt string   `json:"created_at"`
-	UpdatedAt string   `json:"updated_at"`
+	LibraryID string   `json:"library_id,omitempty"`
+	CreatedAt string   `json:"created_at,omitempty"`
+	UpdatedAt string   `json:"updated_at,omitempty"`
 	DeletedAt *string  `json:"deleted_at,omitempty"`
 	Library   *Library `json:"library,omitempty"`
 }
@@ -58,16 +59,16 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 			Year:      b.Year,
 			Code:      b.Code,
 			LibraryID: b.LibraryID.String(),
-			CreatedAt: b.CreatedAt.String(),
-			UpdatedAt: b.UpdatedAt.String(),
+			CreatedAt: b.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
 			DeletedAt: d,
 		}
 		if b.Library != nil {
 			lib := Library{
 				ID:   b.Library.ID.String(),
 				Name: b.Library.Name,
-				// CreatedAt: b.Library.CreatedAt.String(),
-				// UpdatedAt: b.Library.UpdatedAt.String(),
+				// CreatedAt: b.Library.CreatedAt.Format(time.RFC3339),
+				// UpdatedAt: b.Library.UpdatedAt.Format(time.RFC3339),
 			}
 			book.Library = &lib
 		}
@@ -107,16 +108,16 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 		Year:      b.Year,
 		Code:      b.Code,
 		LibraryID: b.LibraryID.String(),
-		CreatedAt: b.CreatedAt.String(),
-		UpdatedAt: b.UpdatedAt.String(),
+		CreatedAt: b.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
 		DeletedAt: d,
 	}
 	if b.Library != nil {
 		lib := Library{
 			ID:        b.Library.ID.String(),
 			Name:      b.Library.Name,
-			CreatedAt: b.Library.CreatedAt.String(),
-			UpdatedAt: b.Library.UpdatedAt.String(),
+			CreatedAt: b.Library.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: b.Library.UpdatedAt.Format(time.RFC3339),
 		}
 		book.Library = &lib
 	}
@@ -165,8 +166,8 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		Year:      b.Year,
 		Code:      b.Code,
 		LibraryID: b.LibraryID.String(),
-		CreatedAt: b.CreatedAt.String(),
-		UpdatedAt: b.UpdatedAt.String(),
+		CreatedAt: b.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
 		DeletedAt: d,
 	})
 }
@@ -216,8 +217,8 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		Year:      b.Year,
 		Code:      b.Code,
 		LibraryID: b.LibraryID.String(),
-		CreatedAt: b.CreatedAt.String(),
-		UpdatedAt: b.UpdatedAt.String(),
+		CreatedAt: b.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
 		DeletedAt: d,
 	})
 }

@@ -18,7 +18,7 @@ type Borrowing struct {
 	ReturnedAt     *string `json:"returned_at"`
 	CreatedAt      string  `json:"created_at"`
 	UpdatedAt      string  `json:"updated_at"`
-	DeletedAt      *string `json:"deleted_at"`
+	DeletedAt      *string `json:"deleted_at,omitempty"`
 
 	Book         *Book         `json:"book"`
 	Subscription *Subscription `json:"subscription"`
@@ -148,7 +148,9 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 
 		if borrow.Subscription != nil {
 			sub := Subscription{
-				ID: borrow.SubscriptionID.String(),
+				ID:           borrow.SubscriptionID.String(),
+				UserID:       borrow.Subscription.UserID.String(),
+				MembershipID: borrow.Subscription.MembershipID.String(),
 			}
 			if borrow.Subscription.User != nil {
 				sub.User = &User{
@@ -158,8 +160,9 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 			}
 			if borrow.Subscription.Membership != nil {
 				m := Membership{
-					ID:   borrow.Subscription.Membership.ID.String(),
-					Name: borrow.Subscription.Membership.Name,
+					ID:        borrow.Subscription.Membership.ID.String(),
+					Name:      borrow.Subscription.Membership.Name,
+					LibraryID: borrow.Subscription.Membership.LibraryID.String(),
 				}
 
 				if borrow.Subscription.Membership.Library != nil {

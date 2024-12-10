@@ -59,6 +59,7 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	}
 	// TODO: ErrMembershipExpired
 	if s.ExpiresAt.Before(time.Now()) {
+		fmt.Println(s.ExpiresAt, time.Now())
 		return Borrowing{}, fmt.Errorf("membership subscription %s expired", s.ID)
 	}
 

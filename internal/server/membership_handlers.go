@@ -2,6 +2,7 @@ package server
 
 import (
 	"librarease/internal/usecase"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -59,15 +60,15 @@ func (s *Server) ListMemberships(ctx echo.Context) error {
 			ActiveLoanLimit: mem.ActiveLoanLimit,
 			LoanPeriod:      mem.LoanPeriod,
 			FinePerDay:      mem.FinePerDay,
-			CreatedAt:       mem.CreatedAt.String(),
-			UpdatedAt:       mem.UpdatedAt.String(),
+			CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
 			DeletedAt:       d,
 		}
 		if mem.Library != nil {
 			m.Library = &Library{
 				ID:   mem.Library.ID.String(),
 				Name: mem.Library.Name,
-				// CreatedAt: mem.Library.CreatedAt.String(),
+				// CreatedAt: mem.Library.CreatedAt.Format(time.RFC3339),
 				// UpdatedAt: mem.Library.UpdateAt.String(),
 			}
 		}
@@ -106,16 +107,16 @@ func (s *Server) GetMembershipByID(ctx echo.Context) error {
 		ActiveLoanLimit: mem.ActiveLoanLimit,
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
-		CreatedAt:       mem.CreatedAt.String(),
-		UpdatedAt:       mem.UpdatedAt.String(),
+		CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
 		DeletedAt:       d,
 	}
 	if mem.Library != nil {
 		m.Library = &Library{
 			ID:        mem.Library.ID.String(),
 			Name:      mem.Library.Name,
-			CreatedAt: mem.Library.CreatedAt.String(),
-			UpdatedAt: mem.Library.UpdatedAt.String(),
+			CreatedAt: mem.Library.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: mem.Library.UpdatedAt.Format(time.RFC3339),
 		}
 	}
 	return ctx.JSON(200, m)
@@ -159,8 +160,8 @@ func (s *Server) CreateMembership(ctx echo.Context) error {
 		ActiveLoanLimit: mem.ActiveLoanLimit,
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
-		CreatedAt:       mem.CreatedAt.String(),
-		UpdatedAt:       mem.UpdatedAt.String(),
+		CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
 	})
 }
 
@@ -204,7 +205,7 @@ func (s *Server) UpdateMembership(ctx echo.Context) error {
 		ActiveLoanLimit: mem.ActiveLoanLimit,
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
-		CreatedAt:       mem.CreatedAt.String(),
-		UpdatedAt:       mem.UpdatedAt.String(),
+		CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
 	})
 }

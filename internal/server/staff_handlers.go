@@ -2,6 +2,7 @@ package server
 
 import (
 	"librarease/internal/usecase"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -10,8 +11,8 @@ import (
 type Staff struct {
 	ID        string   `json:"id"`
 	Name      string   `json:"name"`
-	LibraryID string   `json:"library_id"`
-	UserID    string   `json:"user_id"`
+	LibraryID string   `json:"library_id,omitempty"`
+	UserID    string   `json:"user_id,omitempty"`
 	CreatedAt string   `json:"created_at,omitempty"`
 	UpdatedAt string   `json:"updated_at,omitempty"`
 	User      *User    `json:"user,omitempty"`
@@ -55,23 +56,23 @@ func (s *Server) ListStaffs(ctx echo.Context) error {
 			Name:      st.Name,
 			LibraryID: st.LibraryID.String(),
 			UserID:    st.UserID.String(),
-			CreatedAt: st.CreatedAt.String(),
-			UpdatedAt: st.UpdatedAt.String(),
+			CreatedAt: st.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
 		}
 		if st.User != nil {
 			staff.User = &User{
 				ID:   st.User.ID.String(),
 				Name: st.User.Name,
-				// CreatedAt: st.User.CreatedAt.String(),
-				// UpdatedAt: st.User.UpdatedAt.String(),
+				// CreatedAt: st.User.CreatedAt.Format(time.RFC3339),
+				// UpdatedAt: st.User.UpdatedAt.Format(time.RFC3339),
 			}
 		}
 		if st.Library != nil {
 			staff.Library = &Library{
 				ID:   st.Library.ID.String(),
 				Name: st.Library.Name,
-				// CreatedAt: st.Library.CreatedAt.String(),
-				// UpdatedAt: st.Library.UpdatedAt.String(),
+				// CreatedAt: st.Library.CreatedAt.Format(time.RFC3339),
+				// UpdatedAt: st.Library.UpdatedAt.Format(time.RFC3339),
 			}
 		}
 		list = append(list, staff)
@@ -114,8 +115,8 @@ func (s *Server) CreateStaff(ctx echo.Context) error {
 		Name:      st.Name,
 		LibraryID: st.LibraryID.String(),
 		UserID:    st.UserID.String(),
-		CreatedAt: st.CreatedAt.String(),
-		UpdatedAt: st.UpdatedAt.String(),
+		CreatedAt: st.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
 	})
 }
 
@@ -131,8 +132,8 @@ func (s *Server) GetStaffByID(ctx echo.Context) error {
 		Name:      st.Name,
 		LibraryID: st.LibraryID.String(),
 		UserID:    st.UserID.String(),
-		CreatedAt: st.CreatedAt.String(),
-		UpdatedAt: st.UpdatedAt.String(),
+		CreatedAt: st.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
 	}
 	if st.Library != nil {
 		lib := ConverLibraryFrom(*st.Library)
@@ -174,7 +175,7 @@ func (s *Server) UpdateStaff(ctx echo.Context) error {
 	return ctx.JSON(200, Staff{
 		ID:        st.ID.String(),
 		Name:      st.Name,
-		CreatedAt: st.CreatedAt.String(),
-		UpdatedAt: st.UpdatedAt.String(),
+		CreatedAt: st.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
 	})
 }
