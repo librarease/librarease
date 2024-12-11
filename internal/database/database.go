@@ -66,6 +66,7 @@ func New() *service {
 	// migrate the schema
 	err = gormDB.AutoMigrate(
 		User{},
+		AuthUser{},
 		Library{},
 		Staff{},
 		Book{},

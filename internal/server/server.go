@@ -13,6 +13,7 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 
 	"librarease/internal/database"
+	"librarease/internal/firebase"
 	"librarease/internal/usecase"
 )
 
@@ -65,6 +66,8 @@ type Service interface {
 	GetBorrowingByID(context.Context, uuid.UUID) (usecase.Borrowing, error)
 	CreateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
 	UpdateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
+
+	RegisterUser(context.Context, usecase.RegisterUser) (usecase.User, error)
 }
 
 type Server struct {
@@ -76,7 +79,8 @@ type Server struct {
 
 func NewServer() *http.Server {
 	repo := database.New()
-	sv := usecase.New(repo)
+	fb := firebase.New()
+	sv := usecase.New(repo, fb)
 	v := validator.New()
 
 	port, _ := strconv.Atoi(os.Getenv("PORT"))

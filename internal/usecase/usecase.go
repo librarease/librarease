@@ -6,8 +6,11 @@ import (
 	"github.com/google/uuid"
 )
 
-func New(repo Repository) Usecase {
-	return Usecase{repo: repo}
+func New(repo Repository, ip IdentityProvider) Usecase {
+	return Usecase{
+		repo:             repo,
+		identityProvider: ip,
+	}
 }
 
 type Repository interface {
@@ -58,10 +61,18 @@ type Repository interface {
 	GetBorrowingByID(context.Context, uuid.UUID) (Borrowing, error)
 	CreateBorrowing(context.Context, Borrowing) (Borrowing, error)
 	UpdateBorrowing(context.Context, Borrowing) (Borrowing, error)
+
+	// auth user
+	CreateAuthUser(context.Context, AuthUser) (AuthUser, error)
+}
+
+type IdentityProvider interface {
+	CreateUser(context.Context, RegisterUser) (string, error)
 }
 
 type Usecase struct {
-	repo Repository
+	repo             Repository
+	identityProvider IdentityProvider
 }
 
 func (u Usecase) Health() map[string]string {

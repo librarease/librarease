@@ -18,6 +18,7 @@ type User struct {
 
 	Staffs        []Staff
 	Subscriptions []Subscription
+	AuthUser      *AuthUser
 }
 
 func (User) TableName() string {
@@ -63,6 +64,7 @@ func (s *service) GetUserByID(ctx context.Context, id string, opt usecase.GetUse
 	if opt.IncludeStaffs {
 		db.Preload("Staffs.Library")
 	}
+	db.Preload("AuthUser")
 
 	err := db.Where("id = ?", id).First(&u).Error
 	if err != nil {

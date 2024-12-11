@@ -71,5 +71,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 	borrowingGroup.GET("/:id", s.GetBorrowingByID)
 	borrowingGroup.PUT("/:id", s.UpdateBorrowing)
 
+	var authGroup = e.Group("/api/v1/auth")
+	authGroup.POST("/register", s.RegisterUser)
+
 	return e
 }
