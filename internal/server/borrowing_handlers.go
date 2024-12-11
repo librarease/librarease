@@ -78,7 +78,7 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 		returnedAt = &t
 	}
 
-	borrows, _, err := s.server.ListBorrowings(ctx.Request().Context(), usecase.ListBorrowingsOption{
+	borrows, total, err := s.server.ListBorrowings(ctx.Request().Context(), usecase.ListBorrowingsOption{
 		Skip:           req.Skip,
 		Limit:          req.Limit,
 		BookID:         req.BookID,
@@ -179,7 +179,15 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 
 		list = append(list, m)
 	}
-	return ctx.JSON(200, list)
+
+	return ctx.JSON(200, Res{
+		Data: list,
+		Meta: &Meta{
+			Total: total,
+			Skip:  req.Skip,
+			Limit: req.Limit,
+		},
+	})
 }
 
 type GetBorrowingByIDRequest struct {
@@ -313,7 +321,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 		m.Subscription = &sub
 	}
 
-	return ctx.JSON(200, m)
+	return ctx.JSON(200, Res{Data: m})
 }
 
 type CreateBorrowingRequest struct {
@@ -382,7 +390,7 @@ func (s *Server) CreateBorrowing(ctx echo.Context) error {
 		tmp := borrow.ReturnedAt.Format(time.RFC3339)
 		r = &tmp
 	}
-	return ctx.JSON(201, Borrowing{
+	return ctx.JSON(201, Res{Data: Borrowing{
 		ID:             borrow.ID.String(),
 		BookID:         borrow.BookID.String(),
 		SubscriptionID: borrow.SubscriptionID.String(),
@@ -392,7 +400,7 @@ func (s *Server) CreateBorrowing(ctx echo.Context) error {
 		ReturnedAt:     r,
 		CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
-	})
+	}})
 }
 
 type UpdateBorrowingRequest struct {
@@ -464,7 +472,7 @@ func (s *Server) UpdateBorrowing(ctx echo.Context) error {
 		tmp := borrow.ReturnedAt.Format(time.RFC3339)
 		r = &tmp
 	}
-	return ctx.JSON(200, Borrowing{
+	return ctx.JSON(200, Res{Data: Borrowing{
 		ID:             borrow.ID.String(),
 		BookID:         borrow.BookID.String(),
 		SubscriptionID: borrow.SubscriptionID.String(),
@@ -474,5 +482,5 @@ func (s *Server) UpdateBorrowing(ctx echo.Context) error {
 		ReturnedAt:     r,
 		CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
-	})
+	}})
 }

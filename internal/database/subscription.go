@@ -39,7 +39,7 @@ func (s *service) ListSubscriptions(ctx context.Context, opt usecase.ListSubscri
 		count int64
 	)
 
-	db := s.db.Table("subscriptions").Model([]Subscription{}).WithContext(ctx)
+	db := s.db.Model([]Subscription{}).WithContext(ctx)
 
 	if opt.UserID != "" {
 		db = db.Where("user_id = ?", opt.UserID)

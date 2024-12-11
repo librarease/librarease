@@ -37,7 +37,7 @@ func (s *Server) ListMemberships(ctx echo.Context) error {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
-	memberships, _, err := s.server.ListMemberships(ctx.Request().Context(), usecase.ListMembershipsOption{
+	memberships, total, err := s.server.ListMemberships(ctx.Request().Context(), usecase.ListMembershipsOption{
 		Skip:      req.Skip,
 		Limit:     req.Limit,
 		LibraryID: req.LibraryID,
@@ -74,7 +74,15 @@ func (s *Server) ListMemberships(ctx echo.Context) error {
 		}
 		list = append(list, m)
 	}
-	return ctx.JSON(200, list)
+
+	return ctx.JSON(200, Res{
+		Data: list,
+		Meta: &Meta{
+			Total: total,
+			Skip:  req.Skip,
+			Limit: req.Limit,
+		},
+	})
 }
 
 type GetMembershipByIDRequest struct {
@@ -119,7 +127,7 @@ func (s *Server) GetMembershipByID(ctx echo.Context) error {
 			UpdatedAt: mem.Library.UpdatedAt.Format(time.RFC3339),
 		}
 	}
-	return ctx.JSON(200, m)
+	return ctx.JSON(200, Res{Data: m})
 }
 
 type CreateMembershipRequest struct {
@@ -152,7 +160,7 @@ func (s *Server) CreateMembership(ctx echo.Context) error {
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
-	return ctx.JSON(201, Membership{
+	return ctx.JSON(201, Res{Data: Membership{
 		ID:              mem.ID.String(),
 		Name:            mem.Name,
 		LibraryID:       mem.LibraryID.String(),
@@ -162,7 +170,7 @@ func (s *Server) CreateMembership(ctx echo.Context) error {
 		FinePerDay:      mem.FinePerDay,
 		CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
-	})
+	}})
 }
 
 type UpdateMembershipRequest struct {
@@ -197,7 +205,7 @@ func (s *Server) UpdateMembership(ctx echo.Context) error {
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
-	return ctx.JSON(200, Membership{
+	return ctx.JSON(200, Res{Data: Membership{
 		ID:              mem.ID.String(),
 		Name:            mem.Name,
 		LibraryID:       mem.LibraryID.String(),
@@ -207,5 +215,5 @@ func (s *Server) UpdateMembership(ctx echo.Context) error {
 		FinePerDay:      mem.FinePerDay,
 		CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
-	})
+	}})
 }

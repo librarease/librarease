@@ -24,18 +24,25 @@ func (User) TableName() string {
 	return "users"
 }
 
-func (s *service) ListUsers(ctx context.Context) ([]usecase.User, int, error) {
+func (s *service) ListUsers(ctx context.Context, opt usecase.ListUsersOption) ([]usecase.User, int, error) {
 	var (
 		users  []User
 		uusers []usecase.User
 		count  int64
 	)
 
-	db := s.db.Table("users").WithContext(ctx)
+	db := s.db.Model([]User{}).WithContext(ctx)
 
-	err := db.Find(&users).Error
+	if opt.Name != "" {
+		db = db.Where("name ILIKE ?", "%"+opt.Name+"%")
+	}
 
-	db.Count(&count)
+	err := db.
+		Count(&count).
+		Offset(opt.Skip).
+		Limit(opt.Limit).
+		Find(&users).
+		Error
 
 	if err != nil {
 		return nil, 0, err

@@ -42,7 +42,7 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
-	subs, _, err := s.server.ListSubscriptions(ctx.Request().Context(), usecase.ListSubscriptionsOption{
+	subs, total, err := s.server.ListSubscriptions(ctx.Request().Context(), usecase.ListSubscriptionsOption{
 		Skip:         req.Skip,
 		Limit:        req.Limit,
 		UserID:       req.UserID,
@@ -95,7 +95,14 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 		list = append(list, m)
 	}
 
-	return ctx.JSON(200, list)
+	return ctx.JSON(200, Res{
+		Data: list,
+		Meta: &Meta{
+			Total: total,
+			Skip:  req.Skip,
+			Limit: req.Limit,
+		},
+	})
 }
 
 type GetSubscriptionByIDRequest struct {
@@ -162,7 +169,7 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 		}
 	}
 
-	return ctx.JSON(200, m)
+	return ctx.JSON(200, Res{Data: m})
 }
 
 type CreateSubscriptionRequest struct {
@@ -190,7 +197,8 @@ func (s *Server) CreateSubscription(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(200, id)
+	// FIXME: return the created subscription
+	return ctx.JSON(200, Res{Data: id})
 }
 
 type UpdateSubscriptionRequest struct {
@@ -240,7 +248,7 @@ func (s *Server) UpdateSubscription(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(200, Subscription{
+	return ctx.JSON(200, Res{Data: Subscription{
 		ID:              sub.ID.String(),
 		UserID:          sub.UserID.String(),
 		MembershipID:    sub.MembershipID.String(),
@@ -250,5 +258,5 @@ func (s *Server) UpdateSubscription(ctx echo.Context) error {
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,
-	})
+	}})
 }

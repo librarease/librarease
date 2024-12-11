@@ -28,13 +28,13 @@ type Service interface {
 
 	// ListUsers returns a list of users.
 	// FIXME: user model, input params
-	ListUsers(context.Context) ([]usecase.User, int, error)
+	ListUsers(context.Context, usecase.ListUsersOption) ([]usecase.User, int, error)
 	GetUserByID(context.Context, string, usecase.GetUserByIDOption) (usecase.User, error)
 	CreateUser(context.Context, usecase.User) (usecase.User, error)
 	UpdateUser(context.Context, usecase.User) (usecase.User, error)
 	DeleteUser(context.Context, string) error
 
-	ListLibraries(context.Context) ([]usecase.Library, int, error)
+	ListLibraries(context.Context, usecase.ListLibrariesOption) ([]usecase.Library, int, error)
 	GetLibraryByID(context.Context, string) (usecase.Library, error)
 	CreateLibrary(context.Context, usecase.Library) (usecase.Library, error)
 	UpdateLibrary(context.Context, usecase.Library) (usecase.Library, error)
@@ -43,7 +43,7 @@ type Service interface {
 	ListStaffs(context.Context, usecase.ListStaffsOption) ([]usecase.Staff, int, error)
 	CreateStaff(context.Context, usecase.Staff) (usecase.Staff, error)
 	GetStaffByID(context.Context, string) (usecase.Staff, error)
-	UpdateStaff(ctx context.Context, staff usecase.Staff) (usecase.Staff, error)
+	UpdateStaff(context.Context, usecase.Staff) (usecase.Staff, error)
 
 	ListBooks(context.Context, usecase.ListBooksOption) ([]usecase.Book, int, error)
 	GetBookByID(context.Context, uuid.UUID) (usecase.Book, error)

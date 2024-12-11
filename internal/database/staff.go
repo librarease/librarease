@@ -33,7 +33,7 @@ func (s *service) ListStaffs(ctx context.Context, opt usecase.ListStaffsOption) 
 		count   int64
 	)
 
-	db := s.db.Table("staffs").Model([]Staff{}).WithContext(ctx)
+	db := s.db.Model([]Staff{}).WithContext(ctx)
 
 	if opt.LibraryID != "" {
 		db = db.Where("library_id = ?", opt.LibraryID)

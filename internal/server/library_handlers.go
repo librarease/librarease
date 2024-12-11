@@ -16,8 +16,26 @@ type Library struct {
 	UpdatedAt string `json:"updated_at,omitempty"`
 }
 
+type ListLibrariesRequest struct {
+	Skip  int    `query:"skip"`
+	Limit int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Name  string `query:"name" validate:"omitempty"`
+}
+
 func (s *Server) ListLibraries(ctx echo.Context) error {
-	libraries, _, err := s.server.ListLibraries(ctx.Request().Context())
+	var req ListLibrariesRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	libraries, total, err := s.server.ListLibraries(ctx.Request().Context(), usecase.ListLibrariesOption{
+		Skip:  req.Skip,
+		Limit: req.Limit,
+		Name:  req.Name,
+	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
@@ -34,7 +52,15 @@ func (s *Server) ListLibraries(ctx echo.Context) error {
 		})
 	}
 
-	return ctx.JSON(200, list)
+	// FIXME: Implement pagination
+	return ctx.JSON(200, Res{
+		Data: list,
+		Meta: &Meta{
+			Total: total,
+			Skip:  req.Skip,
+			Limit: req.Limit,
+		},
+	})
 }
 
 func (s *Server) GetLibraryByID(ctx echo.Context) error {
@@ -46,7 +72,7 @@ func (s *Server) GetLibraryByID(ctx echo.Context) error {
 
 	lib := ConverLibraryFrom(l)
 
-	return ctx.JSON(200, lib)
+	return ctx.JSON(200, Res{Data: lib})
 }
 
 func (s *Server) CreateLibrary(ctx echo.Context) error {
@@ -68,13 +94,13 @@ func (s *Server) CreateLibrary(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(200, Library{
+	return ctx.JSON(200, Res{Data: Library{
 		ID:   l.ID.String(),
 		Name: l.Name,
 		// Location:  l.Location,
 		CreatedAt: l.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: l.UpdatedAt.Format(time.RFC3339),
-	})
+	}})
 }
 
 func (s *Server) UpdateLibrary(ctx echo.Context) error {
@@ -99,13 +125,13 @@ func (s *Server) UpdateLibrary(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(200, Library{
+	return ctx.JSON(200, Res{Data: Library{
 		ID:   l.ID.String(),
 		Name: l.Name,
 		// Location:  l.Location,
 		CreatedAt: l.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: l.UpdatedAt.Format(time.RFC3339),
-	})
+	}})
 }
 
 func (s *Server) DeleteLibrary(ctx echo.Context) error {

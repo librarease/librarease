@@ -34,7 +34,7 @@ func (s *service) ListBooks(ctx context.Context, opt usecase.ListBooksOption) ([
 		count  int64
 	)
 
-	db := s.db.Table("books").WithContext(ctx)
+	db := s.db.Model([]Book{}).WithContext(ctx)
 
 	if opt.LibraryID != "" {
 		db = db.Where("library_id = ?", opt.LibraryID)

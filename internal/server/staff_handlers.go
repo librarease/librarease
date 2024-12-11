@@ -38,7 +38,7 @@ func (s *Server) ListStaffs(ctx echo.Context) error {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
-	staffs, _, err := s.server.ListStaffs(ctx.Request().Context(), usecase.ListStaffsOption{
+	staffs, total, err := s.server.ListStaffs(ctx.Request().Context(), usecase.ListStaffsOption{
 		LibraryID: req.LibraryID,
 		UserID:    req.UserID,
 		Skip:      req.Skip,
@@ -78,7 +78,14 @@ func (s *Server) ListStaffs(ctx echo.Context) error {
 		list = append(list, staff)
 	}
 
-	return ctx.JSON(200, list)
+	return ctx.JSON(200, Res{
+		Data: list,
+		Meta: &Meta{
+			Total: total,
+			Skip:  req.Skip,
+			Limit: req.Limit,
+		},
+	})
 }
 
 type CreateStaffRequest struct {
@@ -110,14 +117,14 @@ func (s *Server) CreateStaff(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(201, Staff{
+	return ctx.JSON(201, Res{Data: Staff{
 		ID:        st.ID.String(),
 		Name:      st.Name,
 		LibraryID: st.LibraryID.String(),
 		UserID:    st.UserID.String(),
 		CreatedAt: st.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
-	})
+	}})
 }
 
 func (s *Server) GetStaffByID(ctx echo.Context) error {
@@ -144,7 +151,7 @@ func (s *Server) GetStaffByID(ctx echo.Context) error {
 		staff.User = &u
 	}
 
-	return ctx.JSON(200, staff)
+	return ctx.JSON(200, Res{Data: staff})
 }
 
 type UpdateStaffRequest struct {
@@ -172,10 +179,10 @@ func (s *Server) UpdateStaff(ctx echo.Context) error {
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
-	return ctx.JSON(200, Staff{
+	return ctx.JSON(200, Res{Data: Staff{
 		ID:        st.ID.String(),
 		Name:      st.Name,
 		CreatedAt: st.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
-	})
+	}})
 }

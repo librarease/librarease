@@ -36,7 +36,7 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
-	list, _, err := s.server.ListBooks(ctx.Request().Context(), usecase.ListBooksOption{
+	list, total, err := s.server.ListBooks(ctx.Request().Context(), usecase.ListBooksOption{
 		Skip:      req.Skip,
 		Limit:     req.Limit,
 		LibraryID: req.LibraryID,
@@ -75,7 +75,14 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 		books = append(books, book)
 	}
 
-	return ctx.JSON(200, books)
+	return ctx.JSON(200, Res{
+		Data: books,
+		Meta: &Meta{
+			Total: total,
+			Skip:  req.Skip,
+			Limit: req.Limit,
+		},
+	})
 }
 
 type GetBookByIDRequest struct {
@@ -121,7 +128,10 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 		}
 		book.Library = &lib
 	}
-	return ctx.JSON(200, book)
+
+	return ctx.JSON(200, Res{
+		Data: book,
+	})
 }
 
 type CreateBookRequest struct {
@@ -159,7 +169,7 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		ds := b.DeletedAt.String()
 		d = &ds
 	}
-	return ctx.JSON(201, Book{
+	return ctx.JSON(201, Res{Data: Book{
 		ID:        b.ID.String(),
 		Title:     b.Title,
 		Author:    b.Author,
@@ -169,7 +179,7 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		CreatedAt: b.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
 		DeletedAt: d,
-	})
+	}})
 }
 
 type UpdateBookRequest struct {
@@ -210,7 +220,7 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		ds := b.DeletedAt.String()
 		d = &ds
 	}
-	return ctx.JSON(200, Book{
+	return ctx.JSON(200, Res{Data: Book{
 		ID:        b.ID.String(),
 		Title:     b.Title,
 		Author:    b.Author,
@@ -220,5 +230,5 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		CreatedAt: b.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
 		DeletedAt: d,
-	})
+	}})
 }

@@ -37,7 +37,7 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		count    int64
 	)
 
-	db := s.db.Table("borrowings").Model([]Borrowing{}).WithContext(ctx)
+	db := s.db.Model([]Borrowing{}).WithContext(ctx)
 
 	if opt.BookID != "" {
 		db = db.Where("book_id = ?", opt.BookID)
@@ -132,6 +132,7 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.B
 	var b Borrowing
 
 	err := s.db.
+		Model(Borrowing{}).
 		WithContext(ctx).
 		Preload("Book").
 		Preload("Staff").

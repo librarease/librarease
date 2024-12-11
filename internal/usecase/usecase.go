@@ -15,14 +15,14 @@ type Repository interface {
 	Close() error
 
 	// user
-	ListUsers(context.Context) ([]User, int, error)
+	ListUsers(context.Context, ListUsersOption) ([]User, int, error)
 	GetUserByID(context.Context, string, GetUserByIDOption) (User, error)
 	CreateUser(context.Context, User) (User, error)
 	UpdateUser(context.Context, User) (User, error)
 	DeleteUser(context.Context, string) error
 
 	// library
-	ListLibraries(context.Context) ([]Library, int, error)
+	ListLibraries(context.Context, ListLibrariesOption) ([]Library, int, error)
 	GetLibraryByID(context.Context, string) (Library, error)
 	CreateLibrary(context.Context, Library) (Library, error)
 	UpdateLibrary(context.Context, Library) (Library, error)

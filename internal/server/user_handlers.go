@@ -16,8 +16,26 @@ type User struct {
 	Staffs    []Staff `json:"staffs,omitempty"`
 }
 
+type ListUserRequest struct {
+	Skip  int    `query:"skip"`
+	Limit int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Name  string `query:"name" validate:"omitempty"`
+}
+
 func (s *Server) ListUsers(ctx echo.Context) error {
-	users, _, err := s.server.ListUsers(ctx.Request().Context())
+	var req ListUserRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	users, total, err := s.server.ListUsers(ctx.Request().Context(), usecase.ListUsersOption{
+		Skip:  req.Skip,
+		Limit: req.Limit,
+		Name:  req.Name,
+	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
@@ -33,7 +51,14 @@ func (s *Server) ListUsers(ctx echo.Context) error {
 		})
 	}
 
-	return ctx.JSON(200, list)
+	return ctx.JSON(200, Res{
+		Data: list,
+		Meta: &Meta{
+			Total: total,
+			Skip:  req.Skip,
+			Limit: req.Limit,
+		},
+	})
 }
 
 type GetUserByIDRequest struct {
@@ -84,7 +109,7 @@ func (s *Server) GetUserByID(ctx echo.Context) error {
 		user.Staffs = append(user.Staffs, staff)
 	}
 
-	return ctx.JSON(200, user)
+	return ctx.JSON(200, Res{Data: user})
 }
 
 func ConvertUserFrom(u usecase.User) User {
@@ -114,7 +139,7 @@ func (s *Server) CreateUser(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(200, ConvertUserFrom(u))
+	return ctx.JSON(200, Res{Data: ConvertUserFrom(u)})
 }
 
 func (s *Server) UpdateUser(ctx echo.Context) error {
@@ -138,12 +163,12 @@ func (s *Server) UpdateUser(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(200, User{
+	return ctx.JSON(200, Res{Data: User{
 		ID:        u.ID.String(),
 		Name:      u.Name,
 		CreatedAt: u.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
-	})
+	}})
 }
 
 func (s *Server) DeleteUser(ctx echo.Context) error {

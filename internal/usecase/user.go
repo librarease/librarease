@@ -17,8 +17,14 @@ type User struct {
 	Staffs []Staff
 }
 
-func (u Usecase) ListUsers(ctx context.Context) ([]User, int, error) {
-	users, total, err := u.repo.ListUsers(ctx)
+type ListUsersOption struct {
+	Skip  int
+	Limit int
+	Name  string
+}
+
+func (u Usecase) ListUsers(ctx context.Context, opt ListUsersOption) ([]User, int, error) {
+	users, total, err := u.repo.ListUsers(ctx, opt)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -14,9 +14,14 @@ type Library struct {
 	UpdatedAt time.Time
 	DeleteAt  *time.Time
 }
+type ListLibrariesOption struct {
+	Skip  int
+	Limit int
+	Name  string
+}
 
-func (u Usecase) ListLibraries(ctx context.Context) ([]Library, int, error) {
-	libs, total, err := u.repo.ListLibraries(ctx)
+func (u Usecase) ListLibraries(ctx context.Context, opt ListLibrariesOption) ([]Library, int, error) {
+	libs, total, err := u.repo.ListLibraries(ctx, opt)
 	if err != nil {
 		return nil, 0, err
 	}

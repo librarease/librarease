@@ -25,18 +25,25 @@ func (Library) TableName() string {
 	return "libraries"
 }
 
-func (s *service) ListLibraries(ctx context.Context) ([]usecase.Library, int, error) {
+func (s *service) ListLibraries(ctx context.Context, opt usecase.ListLibrariesOption) ([]usecase.Library, int, error) {
 	var (
 		libs  []Library
 		ulibs []usecase.Library
 		count int64
 	)
 
-	db := s.db.Table("libraries").WithContext(ctx)
+	db := s.db.Model([]Library{}).WithContext(ctx)
 
-	err := db.Find(&libs).Error
+	if opt.Name != "" {
+		db = db.Where("name ILIKE ?", "%"+opt.Name+"%")
+	}
 
-	db.Count(&count)
+	err := db.
+		Count(&count).
+		Offset(opt.Skip).
+		Limit(opt.Limit).
+		Find(&libs).
+		Error
 
 	if err != nil {
 		return nil, 0, err
