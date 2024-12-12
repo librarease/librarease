@@ -1,6 +1,7 @@
 package server
 
 import (
+	"librarease/internal/config"
 	"librarease/internal/usecase"
 	"time"
 
@@ -11,15 +12,18 @@ import (
 type User struct {
 	ID        string  `json:"id" param:"id"`
 	Name      string  `json:"name" validate:"required"`
+	Email     string  `json:"email,omitempty"`
 	CreatedAt string  `json:"created_at,omitempty"`
 	UpdatedAt string  `json:"updated_at,omitempty"`
 	Staffs    []Staff `json:"staffs,omitempty"`
 }
 
 type ListUserRequest struct {
-	Skip  int    `query:"skip"`
-	Limit int    `query:"limit" validate:"required,gte=1,lte=100"`
-	Name  string `query:"name" validate:"omitempty"`
+	Skip   int    `query:"skip"`
+	Limit  int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Name   string `query:"name" validate:"omitempty"`
+	SortBy string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at name email"`
+	SortIn string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 }
 
 func (s *Server) ListUsers(ctx echo.Context) error {
@@ -32,9 +36,11 @@ func (s *Server) ListUsers(ctx echo.Context) error {
 	}
 
 	users, total, err := s.server.ListUsers(ctx.Request().Context(), usecase.ListUsersOption{
-		Skip:  req.Skip,
-		Limit: req.Limit,
-		Name:  req.Name,
+		Skip:   req.Skip,
+		Limit:  req.Limit,
+		Name:   req.Name,
+		SortBy: req.SortBy,
+		SortIn: req.SortIn,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -46,6 +52,7 @@ func (s *Server) ListUsers(ctx echo.Context) error {
 		list = append(list, User{
 			ID:        u.ID.String(),
 			Name:      u.Name,
+			Email:     u.Email,
 			CreatedAt: u.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
 		})
@@ -171,12 +178,62 @@ func (s *Server) UpdateUser(ctx echo.Context) error {
 	}})
 }
 
+type DeleteUserRequest struct {
+	ID string `param:"id" validate:"required"`
+}
+
 func (s *Server) DeleteUser(ctx echo.Context) error {
-	id := ctx.Param("id")
-	err := s.server.DeleteUser(ctx.Request().Context(), id)
+	var req DeleteUserRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+	err := s.server.DeleteUser(ctx.Request().Context(), req.ID)
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
 	return ctx.NoContent(204)
+}
+
+func (s *Server) GetMe(ctx echo.Context) error {
+	var id = ctx.Get(config.HEADER_KEY_X_USER_ID).(string)
+	if id == "" {
+		return ctx.JSON(400, map[string]string{"error": "user id is required"})
+	}
+	u, err := s.server.GetUserByID(ctx.Request().Context(), id, usecase.GetUserByIDOption{
+		IncludeStaffs: true,
+	})
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+	user := ConvertUserFrom(u)
+
+	user.Staffs = make([]Staff, 0, len(u.Staffs))
+	for _, st := range u.Staffs {
+		staff := Staff{
+			ID:        st.ID.String(),
+			Name:      st.Name,
+			LibraryID: st.LibraryID.String(),
+			UserID:    st.UserID.String(),
+			CreatedAt: st.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
+		}
+		// if st.User != nil {
+		// 	staff.User = &User{
+		// 		ID:   st.User.ID.String(),
+		// 		Name: st.User.Name,
+		// 	}
+		// }
+		if st.Library != nil {
+			staff.Library = &Library{
+				ID:   st.Library.ID.String(),
+				Name: st.Library.Name,
+			}
+		}
+		user.Staffs = append(user.Staffs, staff)
+	}
+	return ctx.JSON(200, Res{Data: user})
 }

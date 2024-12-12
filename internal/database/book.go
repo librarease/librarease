@@ -36,8 +36,27 @@ func (s *service) ListBooks(ctx context.Context, opt usecase.ListBooksOption) ([
 
 	db := s.db.Model([]Book{}).WithContext(ctx)
 
-	if opt.LibraryID != "" {
-		db = db.Where("library_id = ?", opt.LibraryID)
+	if opt.LibraryID != nil {
+		db = db.Where("library_id in", opt.LibraryID)
+	}
+
+	if opt.Title != "" {
+		db = db.Where("title ILIKE ?", "%"+opt.Title+"%")
+	}
+
+	if opt.IDs != nil {
+		db = db.Where("id IN ?", opt.IDs)
+	}
+
+	var (
+		orderIn = "DESC"
+		orderBy = "created_at"
+	)
+	if opt.SortBy != "" {
+		orderBy = opt.SortBy
+	}
+	if opt.SortIn != "" {
+		orderIn = opt.SortIn
 	}
 
 	err := db.
@@ -45,6 +64,7 @@ func (s *service) ListBooks(ctx context.Context, opt usecase.ListBooksOption) ([
 		Count(&count).
 		Limit(opt.Limit).
 		Offset(opt.Skip).
+		Order(orderBy + " " + orderIn).
 		Find(&books).
 		Error
 

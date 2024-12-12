@@ -25,6 +25,9 @@ type ListBooksRequest struct {
 	LibraryID string `query:"library_id" validate:"omitempty,uuid"`
 	Skip      int    `query:"skip"`
 	Limit     int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Title     string `query:"title" validate:"omitempty"`
+	SortBy    string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at title author year code"`
+	SortIn    string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 }
 
 func (s *Server) ListBooks(ctx echo.Context) error {
@@ -36,10 +39,15 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
+	libUUID, err := uuid.Parse(req.LibraryID)
+
 	list, total, err := s.server.ListBooks(ctx.Request().Context(), usecase.ListBooksOption{
 		Skip:      req.Skip,
 		Limit:     req.Limit,
-		LibraryID: req.LibraryID,
+		LibraryID: []uuid.UUID{libUUID},
+		Title:     req.Title,
+		SortBy:    req.SortBy,
+		SortIn:    req.SortIn,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

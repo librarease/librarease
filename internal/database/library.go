@@ -38,10 +38,26 @@ func (s *service) ListLibraries(ctx context.Context, opt usecase.ListLibrariesOp
 		db = db.Where("name ILIKE ?", "%"+opt.Name+"%")
 	}
 
+	if opt.IDs != nil {
+		db = db.Where("id IN ?", opt.IDs)
+	}
+
+	var (
+		orderIn = "DESC"
+		orderBy = "created_at"
+	)
+	if opt.SortBy != "" {
+		orderBy = opt.SortBy
+	}
+	if opt.SortIn != "" {
+		orderIn = opt.SortIn
+	}
+
 	err := db.
 		Count(&count).
 		Offset(opt.Skip).
 		Limit(opt.Limit).
+		Order(orderBy + " " + orderIn).
 		Find(&libs).
 		Error
 

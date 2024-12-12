@@ -15,9 +15,12 @@ type Library struct {
 	DeleteAt  *time.Time
 }
 type ListLibrariesOption struct {
-	Skip  int
-	Limit int
-	Name  string
+	Skip   int
+	Limit  int
+	Name   string
+	IDs    uuid.UUIDs
+	SortBy string
+	SortIn string
 }
 
 func (u Usecase) ListLibraries(ctx context.Context, opt ListLibrariesOption) ([]Library, int, error) {

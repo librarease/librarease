@@ -20,12 +20,14 @@ type User struct {
 }
 
 type ListUsersOption struct {
-	Skip  int
-	Limit int
-	Name  string
-	Email string
-	Phone string
-	IDs   uuid.UUIDs
+	Skip   int
+	Limit  int
+	Name   string
+	Email  string
+	Phone  string
+	IDs    uuid.UUIDs
+	SortBy string
+	SortIn string
 }
 
 func (u Usecase) ListUsers(ctx context.Context, opt ListUsersOption) ([]User, int, error) {

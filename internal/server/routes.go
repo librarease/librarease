@@ -32,6 +32,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	userGroup.GET("/:id", s.GetUserByID)
 	userGroup.PUT("/:id", s.UpdateUser)
 	userGroup.DELETE("/:id", s.DeleteUser)
+	userGroup.GET("/me", s.GetMe, WithUserID())
 
 	var libraryGroup = e.Group("/api/v1/libraries")
 	libraryGroup.GET("", s.ListLibraries)
