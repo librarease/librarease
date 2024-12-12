@@ -12,6 +12,8 @@ import (
 type User struct {
 	ID        uuid.UUID       `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
 	Name      string          `gorm:"column:name;type:varchar(255)"`
+	Email     string          `gorm:"column:email;type:varchar(255)"`
+	Phone     string          `gorm:"column:phone;type:varchar(255)"`
 	CreatedAt time.Time       `gorm:"column:created_at"`
 	UpdatedAt time.Time       `gorm:"column:updated_at"`
 	DeletedAt *gorm.DeletedAt `gorm:"column:deleted_at"`
@@ -112,6 +114,8 @@ func (s *service) UpdateUser(ctx context.Context, user usecase.User) (usecase.Us
 	return usecase.User{
 		ID:        u.ID,
 		Name:      u.Name,
+		Email:     u.Email,
+		Phone:     u.Phone,
 		CreatedAt: u.CreatedAt,
 		UpdatedAt: u.UpdatedAt,
 	}, nil
@@ -135,6 +139,8 @@ func (u User) ConvertToUsecase() usecase.User {
 	return usecase.User{
 		ID:        u.ID,
 		Name:      u.Name,
+		Email:     u.Email,
+		Phone:     u.Phone,
 		CreatedAt: u.CreatedAt,
 		UpdatedAt: u.UpdatedAt,
 		DeleteAt:  d,

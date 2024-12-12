@@ -30,7 +30,8 @@ func (u Usecase) RegisterUser(ctx context.Context, ru RegisterUser) (User, error
 	}
 
 	user, err := u.CreateUser(ctx, User{
-		Name: ru.Name,
+		Name:  ru.Name,
+		Email: ru.Email,
 	})
 	if err != nil {
 		return User{}, err

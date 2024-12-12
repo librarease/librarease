@@ -10,6 +10,8 @@ import (
 type User struct {
 	ID        uuid.UUID
 	Name      string
+	Email     string
+	Phone     string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeleteAt  *time.Time
@@ -21,6 +23,9 @@ type ListUsersOption struct {
 	Skip  int
 	Limit int
 	Name  string
+	Email string
+	Phone string
+	IDs   uuid.UUIDs
 }
 
 func (u Usecase) ListUsers(ctx context.Context, opt ListUsersOption) ([]User, int, error) {
@@ -34,6 +39,8 @@ func (u Usecase) ListUsers(ctx context.Context, opt ListUsersOption) ([]User, in
 		userList = append(userList, User{
 			ID:        user.ID,
 			Name:      user.Name,
+			Email:     user.Email,
+			Phone:     user.Phone,
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
 			DeleteAt:  user.DeleteAt,
@@ -76,6 +83,8 @@ func (u Usecase) CreateUser(ctx context.Context, user User) (User, error) {
 	return User{
 		ID:        createdUser.ID,
 		Name:      createdUser.Name,
+		Email:     createdUser.Email,
+		Phone:     createdUser.Phone,
 		CreatedAt: createdUser.CreatedAt,
 		UpdatedAt: createdUser.UpdatedAt,
 	}, nil
@@ -90,6 +99,8 @@ func (u Usecase) UpdateUser(ctx context.Context, user User) (User, error) {
 	return User{
 		ID:        updatedUser.ID,
 		Name:      updatedUser.Name,
+		Email:     updatedUser.Email,
+		Phone:     updatedUser.Phone,
 		CreatedAt: updatedUser.CreatedAt,
 		UpdatedAt: updatedUser.UpdatedAt,
 	}, nil
