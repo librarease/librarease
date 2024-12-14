@@ -21,13 +21,13 @@ type Book struct {
 }
 
 type ListBooksOption struct {
-	Skip      int
-	Limit     int
-	LibraryID uuid.UUIDs
-	IDs       uuid.UUIDs
-	Title     string
-	SortBy    string
-	SortIn    string
+	Skip       int
+	Limit      int
+	LibraryIDs uuid.UUIDs
+	IDs        uuid.UUIDs
+	Title      string
+	SortBy     string
+	SortIn     string
 }
 
 func (u Usecase) ListBooks(ctx context.Context, opt ListBooksOption) ([]Book, int, error) {

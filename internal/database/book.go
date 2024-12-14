@@ -36,8 +36,8 @@ func (s *service) ListBooks(ctx context.Context, opt usecase.ListBooksOption) ([
 
 	db := s.db.Model([]Book{}).WithContext(ctx)
 
-	if opt.LibraryID != nil {
-		db = db.Where("library_id in", opt.LibraryID)
+	if opt.LibraryIDs != nil {
+		db = db.Where("library_id IN ?", opt.LibraryIDs)
 	}
 
 	if opt.Title != "" {

@@ -39,15 +39,19 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
-	libUUID, err := uuid.Parse(req.LibraryID)
+	var libIDs uuid.UUIDs
+	if req.LibraryID != "" {
+		id, _ := uuid.Parse(req.LibraryID)
+		libIDs = append(libIDs, id)
+	}
 
 	list, total, err := s.server.ListBooks(ctx.Request().Context(), usecase.ListBooksOption{
-		Skip:      req.Skip,
-		Limit:     req.Limit,
-		LibraryID: []uuid.UUID{libUUID},
-		Title:     req.Title,
-		SortBy:    req.SortBy,
-		SortIn:    req.SortIn,
+		Skip:       req.Skip,
+		Limit:      req.Limit,
+		LibraryIDs: libIDs,
+		Title:      req.Title,
+		SortBy:     req.SortBy,
+		SortIn:     req.SortIn,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

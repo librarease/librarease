@@ -70,7 +70,10 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		db = db.Joins("Subscription").Where("user_id = ?", opt.UserID)
 	}
 	if opt.LibraryID != "" {
-		db = db.Joins("Subscription.Membership").Where("library_id = ?", opt.LibraryID)
+		db = db.Joins("Book").Where("library_id = ?", opt.LibraryID)
+		// db = db.Joins("JOIN subscriptions s ON borrowings.subscription_id = s.id").
+		// 	Joins("JOIN memberships m ON s.membership_id = m.id").
+		// 	Where("m.library_id = ?", opt.LibraryID)
 	}
 
 	err := db.
