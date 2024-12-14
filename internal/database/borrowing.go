@@ -76,6 +76,17 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		// 	Where("m.library_id = ?", opt.LibraryID)
 	}
 
+	var (
+		orderIn = "DESC"
+		orderBy = "created_at"
+	)
+	if opt.SortBy != "" {
+		orderBy = opt.SortBy
+	}
+	if opt.SortIn != "" {
+		orderIn = opt.SortIn
+	}
+
 	err := db.
 		Preload("Book").
 		Preload("Staff").
@@ -86,6 +97,7 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		Count(&count).
 		Limit(opt.Limit).
 		Offset(opt.Skip).
+		Order(orderBy + " " + orderIn).
 		Find(&borrows).
 		Error
 

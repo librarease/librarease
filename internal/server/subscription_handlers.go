@@ -26,11 +26,13 @@ type Subscription struct {
 }
 
 type ListSubscriptionsRequest struct {
-	Skip         int    `query:"skip"`
-	Limit        int    `query:"limit" validate:"required,gte=1,lte=100"`
-	UserID       string `query:"user_id" validate:"omitempty,uuid"`
-	MembershipID string `query:"membership_id" validate:"omitempty,uuid"`
-	LibraryID    string `query:"library_id" validate:"omitempty,uuid"`
+	Skip           int    `query:"skip"`
+	Limit          int    `query:"limit" validate:"required,gte=1,lte=100"`
+	UserID         string `query:"user_id" validate:"omitempty,uuid"`
+	MembershipID   string `query:"membership_id" validate:"omitempty,uuid"`
+	LibraryID      string `query:"library_id" validate:"omitempty,uuid"`
+	MembershipName string `query:"membership_name" validate:"omitempty"`
+	IsActive       bool   `query:"is_active"`
 }
 
 func (s *Server) ListSubscriptions(ctx echo.Context) error {
@@ -43,11 +45,13 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 	}
 
 	subs, total, err := s.server.ListSubscriptions(ctx.Request().Context(), usecase.ListSubscriptionsOption{
-		Skip:         req.Skip,
-		Limit:        req.Limit,
-		UserID:       req.UserID,
-		MembershipID: req.MembershipID,
-		LibraryID:    req.LibraryID,
+		Skip:           req.Skip,
+		Limit:          req.Limit,
+		UserID:         req.UserID,
+		MembershipID:   req.MembershipID,
+		LibraryID:      req.LibraryID,
+		MembershipName: req.MembershipName,
+		IsActive:       req.IsActive,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

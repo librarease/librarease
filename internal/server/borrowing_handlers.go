@@ -26,8 +26,10 @@ type Borrowing struct {
 }
 
 type ListBorrowingsOption struct {
-	Skip  int `query:"skip"`
-	Limit int `query:"limit" validate:"required,gte=1,lte=100"`
+	Skip   int    `query:"skip"`
+	Limit  int    `query:"limit" validate:"required,gte=1,lte=100"`
+	SortBy string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at"`
+	SortIn string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 
 	BookID         string  `query:"book_id" validate:"omitempty,uuid"`
 	SubscriptionID string  `query:"subscription_id" validate:"omitempty,uuid"`
@@ -92,6 +94,8 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 		ReturnedAt:     returnedAt,
 		IsActive:       req.IsActive,
 		IsExpired:      req.IsExpired,
+		SortBy:         req.SortBy,
+		SortIn:         req.SortIn,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

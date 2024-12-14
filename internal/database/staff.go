@@ -42,6 +42,9 @@ func (s *service) ListStaffs(ctx context.Context, opt usecase.ListStaffsOption) 
 	if opt.UserID != "" {
 		db = db.Where("user_id = ?", opt.UserID)
 	}
+	if opt.Name != "" {
+		db = db.Where("name ILIKE ?", "%"+opt.Name+"%")
+	}
 
 	err := db.
 		Preload("Library").

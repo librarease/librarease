@@ -24,6 +24,7 @@ type ListStaffsRequest struct {
 	UserID    string `query:"user_id" validate:"omitempty,uuid"`
 	Skip      int    `query:"skip"`
 	Limit     int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Name      string `query:"name" validate:"omitempty"`
 }
 
 func (s *Server) ListStaffs(ctx echo.Context) error {
@@ -43,6 +44,7 @@ func (s *Server) ListStaffs(ctx echo.Context) error {
 		UserID:    req.UserID,
 		Skip:      req.Skip,
 		Limit:     req.Limit,
+		Name:      req.Name,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

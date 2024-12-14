@@ -27,11 +27,13 @@ type Subscription struct {
 }
 
 type ListSubscriptionsOption struct {
-	Skip         int
-	Limit        int
-	UserID       string
-	MembershipID string
-	LibraryID    string
+	Skip           int
+	Limit          int
+	UserID         string
+	MembershipID   string
+	LibraryID      string
+	MembershipName string
+	IsActive       bool
 }
 
 func (u Usecase) ListSubscriptions(ctx context.Context, opt ListSubscriptionsOption) ([]Subscription, int, error) {

@@ -40,6 +40,8 @@ type ListBorrowingsOption struct {
 	ReturnedAt   *time.Time
 	IsActive     bool
 	IsExpired    bool
+	SortBy       string
+	SortIn       string
 }
 
 func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) ([]Borrowing, int, error) {

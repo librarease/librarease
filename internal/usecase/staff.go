@@ -29,6 +29,7 @@ type ListStaffsOption struct {
 	UserID    string
 	Skip      int
 	Limit     int
+	Name      string
 }
 
 func (u Usecase) CreateStaff(ctx context.Context, staff Staff) (Staff, error) {

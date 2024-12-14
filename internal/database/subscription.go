@@ -50,6 +50,14 @@ func (s *service) ListSubscriptions(ctx context.Context, opt usecase.ListSubscri
 	if opt.LibraryID != "" {
 		db = db.Joins("Membership").Where("library_id = ?", opt.LibraryID)
 	}
+	if opt.IsActive {
+		db = db.Where("expires_at > ?", time.Now())
+	}
+	if opt.MembershipName != "" {
+		db = db.
+			Joins("JOIN memberships m ON subscriptions.membership_id = m.id").
+			Where("m.name ILIKE ?", "%"+opt.MembershipName+"%")
+	}
 
 	err := db.
 		Preload("User").
