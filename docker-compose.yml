@@ -6,8 +6,6 @@ services:
     shm_size: 256mb
     networks:
       - internal_network
-    healthcheck:
-      test: ['CMD', 'pg_isready', '-U', 'postgres']
     volumes:
       - /home/ubuntu/librarease/postgres16:/var/lib/postgresql/data
     environment:
@@ -27,6 +25,8 @@ services:
       - internal_network
     ports:
       - 8080:8080
+    volumes:
+      - /home/ubuntu/deploy/librarease-dev-firebase-adminsdk-e8lye-00bfca0d58.json:/app/librarease-dev-firebase-adminsdk-e8lye-00bfca0d58.json
     environment:
       - APP_ENV=production
       - PORT=8080
@@ -38,6 +38,20 @@ services:
       - DB_SCHEMA=public
     depends_on: 
       - db
+
+  frontend-service:
+    restart: always
+    image: 211125740494.dkr.ecr.ap-southeast-1.amazonaws.com/libraraease:frontend
+    container_name: frontend-service
+    networks:
+      - internal_network
+    ports:
+      - 80:3000
+    environment:
+      - APP_ENV=production
+      - PORT=80
+    depends_on: 
+      - api-service
       
 
 networks:

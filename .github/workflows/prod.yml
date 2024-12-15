@@ -119,4 +119,4 @@ jobs:
                 eval "$(ssh-agent -s)"
                 ssh-add ~/.ssh/action
                 cd /home/ubuntu/deploy
-                docker compose up -d
+                docker compose up -d --pull always
