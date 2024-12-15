@@ -25,10 +25,12 @@ func (u Usecase) ListStaffs(ctx context.Context, opt ListStaffsOption) ([]Staff,
 }
 
 type ListStaffsOption struct {
-	LibraryID string
-	UserID    string
 	Skip      int
 	Limit     int
+	SortBy    string
+	SortIn    string
+	LibraryID string
+	UserID    string
 	Name      string
 }
 

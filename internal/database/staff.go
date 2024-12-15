@@ -46,12 +46,25 @@ func (s *service) ListStaffs(ctx context.Context, opt usecase.ListStaffsOption) 
 		db = db.Where("name ILIKE ?", "%"+opt.Name+"%")
 	}
 
+	var (
+		orderIn = "DESC"
+		orderBy = "created_at"
+	)
+	if opt.SortBy != "" {
+		orderBy = opt.SortBy
+	}
+	if opt.SortIn != "" {
+		orderIn = opt.SortIn
+	}
+
 	err := db.
 		Preload("Library").
 		Preload("User").
+		Joins("JOIN libraries l on l.id = staffs.library_id AND l.deleted_at IS NULL").
 		Count(&count).
 		Limit(opt.Limit).
 		Offset(opt.Skip).
+		Order(orderBy + " " + orderIn).
 		Find(&staffs).
 		Error
 
