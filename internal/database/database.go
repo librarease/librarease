@@ -79,6 +79,13 @@ func New() *service {
 	}
 
 	_, err = db.Exec(`
+		CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = db.Exec(`
         CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_book_id_returned_at_null
         ON borrowings (book_id)
         WHERE returned_at IS NULL
