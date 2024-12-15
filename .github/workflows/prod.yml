@@ -119,6 +119,6 @@ jobs:
               key: ${{ secrets.PROD_SERVER_SSH_KEY }}
               script: |
                 eval "$(ssh-agent -s)"
-                ssh-add ~/.ssh/id_rsa
+                ssh-add ~/.ssh/action
                 cd /home/ubuntu/deploy
                 docker-compose up -d
