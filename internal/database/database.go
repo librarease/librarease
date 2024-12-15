@@ -63,6 +63,13 @@ func New() *service {
 	}
 	db.SetMaxOpenConns(maxOpenConnections)
 
+	_, err = db.Exec(`
+		CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// migrate the schema
 	err = gormDB.AutoMigrate(
 		User{},
@@ -74,13 +81,6 @@ func New() *service {
 		Subscription{},
 		Borrowing{},
 	)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = db.Exec(`
-		CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-	`)
 	if err != nil {
 		log.Fatal(err)
 	}

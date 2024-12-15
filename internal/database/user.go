@@ -105,7 +105,8 @@ func (s *service) GetUserByID(ctx context.Context, id string, opt usecase.GetUse
 
 func (s *service) CreateUser(ctx context.Context, user usecase.User) (usecase.User, error) {
 	u := User{
-		Name: user.Name,
+		Name:  user.Name,
+		Email: user.Email,
 	}
 
 	err := s.db.WithContext(ctx).Create(&u).Error

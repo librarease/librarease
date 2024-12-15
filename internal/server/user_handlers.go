@@ -123,6 +123,7 @@ func ConvertUserFrom(u usecase.User) User {
 	return User{
 		ID:        u.ID.String(),
 		Name:      u.Name,
+		Email:     u.Email,
 		CreatedAt: u.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
 	}
@@ -140,7 +141,8 @@ func (s *Server) CreateUser(ctx echo.Context) error {
 	}
 
 	u, err := s.server.CreateUser(ctx.Request().Context(), usecase.User{
-		Name: user.Name,
+		Name:  user.Name,
+		Email: user.Email,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
