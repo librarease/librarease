@@ -1,11 +1,9 @@
 run-name: Deploy to Libaraease API @${{ github.actor }}
-
 on:
     workflow_dispatch:
     push:
         branches:
             - main
-
 permissions:
     contents: read
     id-token: write 
@@ -99,7 +97,7 @@ jobs:
                 mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
     deploy-api-service:
-        name: Deploy to Main Channel Container
+        name: Deploy to API Service
         runs-on: ubuntu-latest
         needs: build-and-push
         steps:
@@ -121,4 +119,4 @@ jobs:
                 eval "$(ssh-agent -s)"
                 ssh-add ~/.ssh/action
                 cd /home/ubuntu/deploy
-                docker-compose up -d
+                docker compose up -d
