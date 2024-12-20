@@ -45,6 +45,9 @@ func (s *service) ListStaffs(ctx context.Context, opt usecase.ListStaffsOption) 
 	if opt.Name != "" {
 		db = db.Where("name ILIKE ?", "%"+opt.Name+"%")
 	}
+	if opt.StaffRole != "" {
+		db = db.Where("role = ?", opt.StaffRole)
+	}
 
 	var (
 		orderIn = "DESC"
@@ -93,6 +96,7 @@ func (s *service) CreateStaff(ctx context.Context, staff usecase.Staff) (usecase
 		Name:      staff.Name,
 		LibraryID: staff.LibraryID,
 		UserID:    staff.UserID,
+		Role:      string(staff.Role),
 	}
 
 	err := s.db.Create(&st).Error
@@ -151,6 +155,7 @@ func (st Staff) ConvertToUsecase() usecase.Staff {
 		Name:      st.Name,
 		LibraryID: st.LibraryID,
 		UserID:    st.UserID,
+		Role:      usecase.StaffRole(st.Role),
 		CreatedAt: st.CreatedAt,
 		UpdatedAt: st.UpdatedAt,
 		DeleteAt:  d,

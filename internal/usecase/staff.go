@@ -7,11 +7,19 @@ import (
 	"github.com/google/uuid"
 )
 
+type StaffRole string
+
+const (
+	StaffRoleAdmin StaffRole = "ADMIN"
+	StaffRoleUser  StaffRole = "USER"
+)
+
 type Staff struct {
 	ID        uuid.UUID
 	Name      string
 	LibraryID uuid.UUID
 	UserID    uuid.UUID
+	Role      StaffRole
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeleteAt  *time.Time
@@ -32,6 +40,7 @@ type ListStaffsOption struct {
 	LibraryID string
 	UserID    string
 	Name      string
+	StaffRole StaffRole
 }
 
 func (u Usecase) CreateStaff(ctx context.Context, staff Staff) (Staff, error) {

@@ -13,6 +13,7 @@ type Staff struct {
 	Name      string   `json:"name"`
 	LibraryID string   `json:"library_id,omitempty"`
 	UserID    string   `json:"user_id,omitempty"`
+	Role      string   `json:"role"`
 	CreatedAt string   `json:"created_at,omitempty"`
 	UpdatedAt string   `json:"updated_at,omitempty"`
 	User      *User    `json:"user,omitempty"`
@@ -25,6 +26,7 @@ type ListStaffsRequest struct {
 	Skip      int    `query:"skip"`
 	Limit     int    `query:"limit" validate:"required,gte=1,lte=100"`
 	Name      string `query:"name" validate:"omitempty"`
+	Role      string `query:"role" validate:"omitempty,oneof=ADMIN STAFF"`
 	SortBy    string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at"`
 	SortIn    string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 }
@@ -42,13 +44,14 @@ func (s *Server) ListStaffs(ctx echo.Context) error {
 	}
 
 	staffs, total, err := s.server.ListStaffs(ctx.Request().Context(), usecase.ListStaffsOption{
-		LibraryID: req.LibraryID,
-		UserID:    req.UserID,
 		Skip:      req.Skip,
 		Limit:     req.Limit,
-		Name:      req.Name,
 		SortBy:    req.SortBy,
 		SortIn:    req.SortIn,
+		LibraryID: req.LibraryID,
+		UserID:    req.UserID,
+		Name:      req.Name,
+		StaffRole: usecase.StaffRole(req.Role),
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -62,6 +65,7 @@ func (s *Server) ListStaffs(ctx echo.Context) error {
 			Name:      st.Name,
 			LibraryID: st.LibraryID.String(),
 			UserID:    st.UserID.String(),
+			Role:      string(st.Role),
 			CreatedAt: st.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
 		}
@@ -98,6 +102,7 @@ type CreateStaffRequest struct {
 	Name      string `json:"name" validate:"required"`
 	LibraryID string `json:"library_id" validate:"required,uuid"`
 	UserID    string `json:"user_id" validate:"required,uuid"`
+	Staff     string `json:"staff" validate:"omitempty,oneof=ADMIN STAFF"`
 }
 
 func (s *Server) CreateStaff(ctx echo.Context) error {
@@ -118,6 +123,7 @@ func (s *Server) CreateStaff(ctx echo.Context) error {
 		Name:      req.Name,
 		LibraryID: libID,
 		UserID:    uID,
+		Role:      usecase.StaffRole(req.Staff),
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -126,6 +132,7 @@ func (s *Server) CreateStaff(ctx echo.Context) error {
 	return ctx.JSON(201, Res{Data: Staff{
 		ID:        st.ID.String(),
 		Name:      st.Name,
+		Role:      string(st.Role),
 		LibraryID: st.LibraryID.String(),
 		UserID:    st.UserID.String(),
 		CreatedAt: st.CreatedAt.Format(time.RFC3339),
@@ -145,6 +152,7 @@ func (s *Server) GetStaffByID(ctx echo.Context) error {
 		Name:      st.Name,
 		LibraryID: st.LibraryID.String(),
 		UserID:    st.UserID.String(),
+		Role:      string(st.Role),
 		CreatedAt: st.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
 	}
@@ -163,6 +171,7 @@ func (s *Server) GetStaffByID(ctx echo.Context) error {
 type UpdateStaffRequest struct {
 	ID   string `param:"id" validate:"required,uuid"`
 	Name string `json:"name"`
+	Role string `json:"role" validate:"omitempty,oneof=ADMIN STAFF"`
 }
 
 func (s *Server) UpdateStaff(ctx echo.Context) error {
@@ -181,6 +190,7 @@ func (s *Server) UpdateStaff(ctx echo.Context) error {
 	st, err := s.server.UpdateStaff(ctx.Request().Context(), usecase.Staff{
 		ID:   uid,
 		Name: req.Name,
+		Role: usecase.StaffRole(req.Role),
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -188,6 +198,7 @@ func (s *Server) UpdateStaff(ctx echo.Context) error {
 	return ctx.JSON(200, Res{Data: Staff{
 		ID:        st.ID.String(),
 		Name:      st.Name,
+		Role:      string(st.Role),
 		CreatedAt: st.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
 	}})
