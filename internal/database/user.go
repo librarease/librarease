@@ -44,6 +44,10 @@ func (s *service) ListUsers(ctx context.Context, opt usecase.ListUsersOption) ([
 		db = db.Where("id IN ?", opt.IDs)
 	}
 
+	if opt.GlobalRole != "" {
+		db = db.Joins("JOIN auth_users ON auth_users.user_id = users.id").Where("auth_users.global_role = ?", opt.GlobalRole)
+	}
+
 	var (
 		orderIn = "DESC"
 		orderBy = "created_at"

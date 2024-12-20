@@ -80,6 +80,14 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 		returnedAt = &t
 	}
 
+	// NOTE: libIDs.Strings() initializes a slice of strings
+	// meaning non-nil but empty
+	var libIDs uuid.UUIDs
+	if req.LibraryID != "" {
+		id, _ := uuid.Parse(req.LibraryID)
+		libIDs = append(libIDs, id)
+	}
+
 	borrows, total, err := s.server.ListBorrowings(ctx.Request().Context(), usecase.ListBorrowingsOption{
 		Skip:           req.Skip,
 		Limit:          req.Limit,
@@ -87,7 +95,7 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 		SubscriptionID: req.SubscriptionID,
 		StaffID:        req.StaffID,
 		MembershipID:   req.MembershipID,
-		LibraryID:      req.LibraryID,
+		LibraryIDs:     libIDs.Strings(),
 		UserID:         req.UserID,
 		BorrowedAt:     borrowedAt,
 		DueAt:          dueAt,

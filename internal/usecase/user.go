@@ -7,6 +7,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type GlobalRole string
+
+const (
+	GlobalRoleSuperAdmin GlobalRole = "SUPERADMIN"
+	GlobalRoleAdmin      GlobalRole = "ADMIN"
+	GlobalRoleUser       GlobalRole = "USER"
+)
+
 type User struct {
 	ID        uuid.UUID
 	Name      string
@@ -20,14 +28,15 @@ type User struct {
 }
 
 type ListUsersOption struct {
-	Skip   int
-	Limit  int
-	Name   string
-	Email  string
-	Phone  string
-	IDs    uuid.UUIDs
-	SortBy string
-	SortIn string
+	Skip       int
+	Limit      int
+	SortBy     string
+	SortIn     string
+	Name       string
+	Email      string
+	Phone      string
+	IDs        uuid.UUIDs
+	GlobalRole GlobalRole
 }
 
 func (u Usecase) ListUsers(ctx context.Context, opt ListUsersOption) ([]User, int, error) {

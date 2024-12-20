@@ -64,6 +64,7 @@ type Repository interface {
 
 	// auth user
 	CreateAuthUser(context.Context, AuthUser) (AuthUser, error)
+	GetAuthUser(context.Context, GetAuthUserOption) (AuthUser, error)
 }
 
 type IdentityProvider interface {

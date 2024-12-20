@@ -67,7 +67,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	subscriptionGroup.PUT("/:id", s.UpdateSubscription)
 
 	var borrowingGroup = e.Group("/api/v1/borrowings")
-	borrowingGroup.GET("", s.ListBorrowings)
+	borrowingGroup.GET("", s.ListBorrowings, WithUserID())
 	borrowingGroup.POST("", s.CreateBorrowing)
 	borrowingGroup.GET("/:id", s.GetBorrowingByID)
 	borrowingGroup.PUT("/:id", s.UpdateBorrowing)

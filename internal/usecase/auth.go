@@ -46,3 +46,19 @@ func (u Usecase) RegisterUser(ctx context.Context, ru RegisterUser) (User, error
 	}
 	return user, nil
 }
+
+type GetAuthUserOption struct {
+	UID        string
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	GlobalRole string
+}
+
+// get auth user by firebase uid
+func (u Usecase) GetAuthUser(ctx context.Context, opt GetAuthUserOption) (AuthUser, error) {
+	authUser, err := u.repo.GetAuthUser(ctx, opt)
+	if err != nil {
+		return AuthUser{}, err
+	}
+	return authUser, nil
+}

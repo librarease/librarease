@@ -3,6 +3,8 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"librarease/internal/config"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,7 +35,7 @@ type ListBorrowingsOption struct {
 	StaffID        string
 
 	MembershipID string
-	LibraryID    string
+	LibraryIDs   []string
 	UserID       string
 	BorrowedAt   time.Time
 	DueAt        time.Time
@@ -44,7 +46,74 @@ type ListBorrowingsOption struct {
 	SortIn       string
 }
 
+// TODO: separate client and admin borrowing list route
 func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) ([]Borrowing, int, error) {
+
+	uid, b := ctx.Value(config.CTX_KEY_FB_UID).(string)
+	if !b {
+		return nil, 0, fmt.Errorf("firebase uid not found in context")
+	}
+	au, err := u.GetAuthUser(ctx, GetAuthUserOption{
+		UID: uid,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	switch au.GlobalRole {
+	case "SUPERADMIN":
+		fmt.Println("[DEBUG] global superadmin")
+		// ALLOW ALL
+	case "ADMIN":
+		fmt.Println("[DEBUG] global admin")
+		// ALLlOW ALL
+	case "USER":
+		fmt.Println("[DEBUG] global user")
+		staffs, _, err := u.ListStaffs(ctx, ListStaffsOption{
+			UserID: au.UserID.String(),
+			// FIXME: unknown optimal limit
+			Limit: 500,
+		})
+		if err != nil {
+			return nil, 0, err
+		}
+		// user is not staff
+		if len(staffs) == 0 {
+			fmt.Println("[DEBUG] user is not staff, filtering by user id")
+			opt.UserID = au.UserID.String()
+		} else {
+			fmt.Println("[DEBUG] user is staff")
+			// user is staff
+			var staffLibIDs []string
+			for _, staff := range staffs {
+				staffLibIDs = append(staffLibIDs, staff.LibraryID.String())
+			}
+			// user is staff, filtering by library ids
+			if len(opt.LibraryIDs) > 0 {
+				fmt.Println("[DEBUG] filtering by library ids query")
+				var intersectLibIDs []string
+				for _, id := range opt.LibraryIDs {
+					// filter out library ids that are not assigned to the staff
+					if slices.Contains(staffLibIDs, id) {
+						intersectLibIDs = append(intersectLibIDs, id)
+					}
+				}
+				if len(intersectLibIDs) == 0 {
+					// user is filtering by library ids but none of the ids are assigned to the staff
+					fmt.Println("[DEBUG] staff filters by lib ids but none assigned")
+					opt.LibraryIDs = staffLibIDs
+				} else {
+					// user is filtering by library ids and some of the ids are assigned to the staff
+					fmt.Println("[DEBUG] staff filters by lib ids and some assigned")
+					opt.LibraryIDs = intersectLibIDs
+				}
+			} else {
+				fmt.Println("[DEBUG] filtering by default assigned libraries")
+				// user is staff, filters default to assigned libraries
+				opt.LibraryIDs = staffLibIDs
+			}
+		}
+	}
 	return u.repo.ListBorrowings(ctx, opt)
 }
 

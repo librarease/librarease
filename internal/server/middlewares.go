@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"librarease/internal/config"
 	"os"
 
@@ -17,7 +18,10 @@ func WithUserID() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			if isLocal {
 				userID := c.Request().Header.Get(config.HEADER_KEY_X_USER_ID)
-				c.Set(config.HEADER_KEY_X_USER_ID, userID)
+				oc := c.Request().Context()
+				nc := context.WithValue(oc, config.CTX_KEY_FB_UID, userID)
+				c.SetRequest(c.Request().WithContext(nc))
+				c.Set(string(config.CTX_KEY_FB_UID), userID)
 				return next(c)
 			}
 			// TODO: Implement logic to get user ID from JWT token.

@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"fmt"
+	"librarease/internal/config"
 	"time"
 
 	"github.com/google/uuid"
@@ -77,6 +79,48 @@ func (u Usecase) CreateLibrary(ctx context.Context, library Library) (Library, e
 }
 
 func (u Usecase) UpdateLibrary(ctx context.Context, library Library) (Library, error) {
+	uid := ctx.Value(config.CTX_KEY_FB_UID).(string)
+	au, err := u.GetAuthUser(ctx, GetAuthUserOption{
+		UID: uid,
+	})
+	if err != nil {
+		return Library{}, err
+	}
+
+	switch au.GlobalRole {
+	case "SUPERADMIN":
+		// ALLOW
+	case "ADMIN":
+		// ALLlOW
+	case "USER":
+		staffs, _, err := u.ListStaffs(ctx, ListStaffsOption{
+			UserID:    au.UserID.String(),
+			LibraryID: library.ID.String(),
+		})
+		if err != nil {
+			return Library{}, err
+		}
+		if len(staffs) == 0 {
+			// TODO: implement error
+			return Library{}, fmt.Errorf("you are not staff of this library")
+		}
+
+		if staffs[0].Role != StaffRoleAdmin {
+			// TODO: implement error
+			return Library{}, fmt.Errorf("you are not allowed to update library")
+		}
+
+		// if len(opt.IDs) > 0 {
+		// 	for _, id := range opt.IDs {
+		// 		if slices.Contains(staffLibIDs, id) {
+		// 			opt.IDs = append(opt.IDs, id)
+		// 		}
+		// 	}
+		// } else {
+		// 	opt.IDs = staffLibIDs
+		// }
+
+	}
 	lib, err := u.repo.UpdateLibrary(ctx, library)
 	if err != nil {
 		return Library{}, err
@@ -95,6 +139,25 @@ func (u Usecase) DeleteLibrary(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+
+	uid := ctx.Value(config.CTX_KEY_FB_UID).(string)
+	au, err := u.GetAuthUser(ctx, GetAuthUserOption{
+		UID: uid,
+	})
+	if err != nil {
+		return err
+	}
+
+	switch au.GlobalRole {
+	case "SUPERADMIN":
+		// ALLOW
+	case "ADMIN":
+		// ALLlOW
+	default:
+		// TODO: implement error
+		return fmt.Errorf("you are not allowed to delete library")
+	}
+
 	err = u.repo.DeleteLibrary(ctx, id)
 	if err != nil {
 		return err

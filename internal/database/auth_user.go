@@ -46,3 +46,29 @@ func (a AuthUser) ConvertToUsecase() usecase.AuthUser {
 		UpdatedAt:  a.UpdatedAt,
 	}
 }
+
+func (s *service) GetAuthUser(ctx context.Context, opt usecase.GetAuthUserOption) (usecase.AuthUser, error) {
+	var u AuthUser
+
+	db := s.db.WithContext(ctx).Model(&AuthUser{})
+	if opt.UID != "" {
+		db = db.Where("uid = ?", opt.UID)
+	}
+	if opt.ID != uuid.Nil {
+		db = db.Where("user_id = ?", opt.ID)
+	}
+	if opt.GlobalRole != "" {
+		db = db.Where("global_role = ?", opt.GlobalRole)
+	}
+	if opt.UserID != uuid.Nil {
+		db = db.Where("user_id = ?", opt.UserID)
+	}
+
+	err := db.First(&u).Error
+
+	if err != nil {
+		return usecase.AuthUser{}, err
+	}
+
+	return u.ConvertToUsecase(), nil
+}
