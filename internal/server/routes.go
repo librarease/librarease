@@ -20,11 +20,11 @@ func (s *Server) RegisterRoutes() http.Handler {
 		MaxAge:           300,
 	}))
 
-	e.GET("/", s.HelloWorldHandler)
+	e.GET("/api", s.HelloWorldHandler)
 
-	e.GET("/health", s.healthHandler)
+	e.GET("/api/health", s.healthHandler)
 
-	e.GET("/websocket", s.websocketHandler)
+	e.GET("/api/websocket", s.websocketHandler)
 
 	var userGroup = e.Group("/api/v1/users")
 	userGroup.GET("", s.ListUsers)
