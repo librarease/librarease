@@ -66,12 +66,12 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 		// ALLOW ALL
 	case "ADMIN":
 		fmt.Println("[DEBUG] global admin")
-		// ALLlOW ALL
+		// ALLOW ALL
 	case "USER":
 		fmt.Println("[DEBUG] global user")
 		staffs, _, err := u.ListStaffs(ctx, ListStaffsOption{
 			UserID: au.UserID.String(),
-			// FIXME: unknown optimal limit
+			// Using a limit of 500 for now, adjust as needed based on expected data size
 			Limit: 500,
 		})
 		if err != nil {
@@ -81,39 +81,44 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 		if len(staffs) == 0 {
 			fmt.Println("[DEBUG] user is not staff, filtering by user id")
 			opt.UserID = au.UserID.String()
-		} else {
-			fmt.Println("[DEBUG] user is staff")
-			// user is staff
-			var staffLibIDs []string
-			for _, staff := range staffs {
-				staffLibIDs = append(staffLibIDs, staff.LibraryID.String())
-			}
-			// user is staff, filtering by library ids
-			if len(opt.LibraryIDs) > 0 {
-				fmt.Println("[DEBUG] filtering by library ids query")
-				var intersectLibIDs []string
-				for _, id := range opt.LibraryIDs {
-					// filter out library ids that are not assigned to the staff
-					if slices.Contains(staffLibIDs, id) {
-						intersectLibIDs = append(intersectLibIDs, id)
-					}
-				}
-				if len(intersectLibIDs) == 0 {
-					// user is filtering by library ids but none of the ids are assigned to the staff
-					fmt.Println("[DEBUG] staff filters by lib ids but none assigned")
-					opt.LibraryIDs = staffLibIDs
-				} else {
-					// user is filtering by library ids and some of the ids are assigned to the staff
-					fmt.Println("[DEBUG] staff filters by lib ids and some assigned")
-					opt.LibraryIDs = intersectLibIDs
-				}
-			} else {
-				fmt.Println("[DEBUG] filtering by default assigned libraries")
-				// user is staff, filters default to assigned libraries
-				opt.LibraryIDs = staffLibIDs
+			break
+		}
+
+		// user is staff
+		fmt.Println("[DEBUG] user is staff")
+		var staffLibIDs []string
+		for _, staff := range staffs {
+			staffLibIDs = append(staffLibIDs, staff.LibraryID.String())
+		}
+		// user is staff, filtering by library ids
+		if len(opt.LibraryIDs) == 0 {
+			// user is staff, filters default to assigned libraries
+			fmt.Println("[DEBUG] filtering by default assigned libraries")
+			opt.LibraryIDs = staffLibIDs
+			break
+		}
+
+		fmt.Println("[DEBUG] filtering by library ids query")
+		var intersectLibIDs []string
+		for _, id := range opt.LibraryIDs {
+			// filter out library ids that are not assigned to the staff
+			if slices.Contains(staffLibIDs, id) {
+				intersectLibIDs = append(intersectLibIDs, id)
 			}
 		}
+
+		if len(intersectLibIDs) == 0 {
+			// user is filtering by library ids but none of the ids are assigned to the staff
+			fmt.Println("[DEBUG] staff filters by lib ids but none assigned")
+			opt.LibraryIDs = staffLibIDs
+			break
+		}
+
+		// user is filtering by library ids and some of the ids are assigned to the staff
+		fmt.Println("[DEBUG] staff filters by lib ids and some assigned")
+		opt.LibraryIDs = intersectLibIDs
 	}
+
 	return u.repo.ListBorrowings(ctx, opt)
 }
 
