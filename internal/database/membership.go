@@ -47,7 +47,7 @@ func (s *service) ListMemberships(ctx context.Context, opt usecase.ListMembershi
 	}
 
 	err := db.
-		Joins("JOIN libraries l on l.id = memberships.library_id AND l.deleted_at IS NULL").
+		Preload("Library").
 		Count(&count).
 		Limit(opt.Limit).
 		Offset(opt.Skip).
