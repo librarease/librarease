@@ -38,12 +38,16 @@ func (s *service) ListMemberships(ctx context.Context, opt usecase.ListMembershi
 
 	db := s.db.Model([]Membership{}).WithContext(ctx)
 
-	if opt.LibraryID != "" {
-		db = db.Where("library_id = ?", opt.LibraryID)
+	if opt.Name != "" {
+		db = db.Where("memberships.name ILIKE ?", "%"+opt.Name+"%")
+	}
+
+	if len(opt.LibraryIDs) > 0 {
+		db = db.Where("l.id IN ?", opt.LibraryIDs)
 	}
 
 	err := db.
-		Joins("Library").
+		Joins("JOIN libraries l on l.id = memberships.library_id AND l.deleted_at IS NULL").
 		Count(&count).
 		Limit(opt.Limit).
 		Offset(opt.Skip).

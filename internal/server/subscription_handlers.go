@@ -71,7 +71,7 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 			CreatedAt:       sub.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:       sub.UpdatedAt.Format(time.RFC3339),
 			DeletedAt:       d,
-			ExpiresAt:       sub.ExpiresAt.String(),
+			ExpiresAt:       sub.ExpiresAt.Format(time.RFC3339),
 			FinePerDay:      sub.FinePerDay,
 			LoanPeriod:      sub.LoanPeriod,
 			ActiveLoanLimit: sub.ActiveLoanLimit,

@@ -23,9 +23,10 @@ type Membership struct {
 }
 
 type ListMembershipsRequest struct {
-	LibraryID string `query:"library_id" validate:"omitempty,uuid"`
-	Skip      int    `query:"skip"`
-	Limit     int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Skip       int        `query:"skip"`
+	Limit      int        `query:"limit" validate:"required,gte=1,lte=100"`
+	Name       string     `query:"name" validate:"omitempty"`
+	LibraryIDs uuid.UUIDs `query:"library_ids" validate:"omitempty,dive,uuid"`
 }
 
 func (s *Server) ListMemberships(ctx echo.Context) error {
@@ -38,9 +39,10 @@ func (s *Server) ListMemberships(ctx echo.Context) error {
 	}
 
 	memberships, total, err := s.server.ListMemberships(ctx.Request().Context(), usecase.ListMembershipsOption{
-		Skip:      req.Skip,
-		Limit:     req.Limit,
-		LibraryID: req.LibraryID,
+		Skip:       req.Skip,
+		Limit:      req.Limit,
+		Name:       req.Name,
+		LibraryIDs: req.LibraryIDs,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

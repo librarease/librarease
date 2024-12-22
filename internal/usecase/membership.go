@@ -23,9 +23,10 @@ type Membership struct {
 }
 
 type ListMembershipsOption struct {
-	Skip      int
-	Limit     int
-	LibraryID string
+	Skip       int
+	Limit      int
+	Name       string
+	LibraryIDs uuid.UUIDs
 }
 
 func (u Usecase) ListMemberships(ctx context.Context, opt ListMembershipsOption) ([]Membership, int, error) {
