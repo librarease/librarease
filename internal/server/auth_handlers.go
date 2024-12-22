@@ -47,6 +47,7 @@ func (s *Server) RegisterUser(ctx echo.Context) error {
 	return ctx.JSON(200, User{
 		ID:        u.ID.String(),
 		Name:      u.Name,
+		Email:     u.Email,
 		CreatedAt: u.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
 	})

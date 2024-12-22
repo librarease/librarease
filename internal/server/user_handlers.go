@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"librarease/internal/config"
 	"librarease/internal/usecase"
 	"time"
@@ -91,9 +92,7 @@ func (s *Server) GetUserByID(ctx echo.Context) error {
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
-	au, err := s.server.GetAuthUser(ctx.Request().Context(), usecase.GetAuthUserOption{
-		UserID: u.ID,
-	})
+	au, err := s.server.GetAuthUserByUID(ctx.Request().Context(), req.ID)
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
@@ -212,16 +211,17 @@ func (s *Server) DeleteUser(ctx echo.Context) error {
 }
 
 func (s *Server) GetMe(ctx echo.Context) error {
-	var id, ok = ctx.Get(string(config.CTX_KEY_FB_UID)).(string)
+
+	role, ok := ctx.Request().Context().Value(config.CTX_KEY_USER_ROLE).(string)
 	if !ok {
-		return ctx.JSON(400, map[string]string{"error": "user id is required"})
+		return fmt.Errorf("user role not found in context")
 	}
-	au, err := s.server.GetAuthUser(ctx.Request().Context(), usecase.GetAuthUserOption{UID: id})
-	if err != nil {
-		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	userID, ok := ctx.Request().Context().Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return fmt.Errorf("user id not found in context")
 	}
 
-	u, err := s.server.GetUserByID(ctx.Request().Context(), au.UserID.String(), usecase.GetUserByIDOption{
+	u, err := s.server.GetUserByID(ctx.Request().Context(), userID.String(), usecase.GetUserByIDOption{
 		IncludeStaffs: true,
 	})
 	if err != nil {
@@ -229,7 +229,7 @@ func (s *Server) GetMe(ctx echo.Context) error {
 	}
 	user := ConvertUserFrom(u)
 
-	user.GlobalRole = au.GlobalRole
+	user.GlobalRole = role
 
 	user.Staffs = make([]Staff, 0, len(u.Staffs))
 	for _, st := range u.Staffs {

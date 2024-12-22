@@ -47,24 +47,36 @@ func (a AuthUser) ConvertToUsecase() usecase.AuthUser {
 	}
 }
 
-func (s *service) GetAuthUser(ctx context.Context, opt usecase.GetAuthUserOption) (usecase.AuthUser, error) {
+func (s *service) GetAuthUserByUID(ctx context.Context, uid string) (usecase.AuthUser, error) {
 	var u AuthUser
 
 	db := s.db.WithContext(ctx).Model(&AuthUser{})
-	if opt.UID != "" {
-		db = db.Where("uid = ?", opt.UID)
-	}
-	if opt.ID != uuid.Nil {
-		db = db.Where("user_id = ?", opt.ID)
-	}
-	if opt.GlobalRole != "" {
-		db = db.Where("global_role = ?", opt.GlobalRole)
-	}
-	if opt.UserID != uuid.Nil {
-		db = db.Where("user_id = ?", opt.UserID)
+	// if opt.UID != "" {
+	// 	db = db.Where("uid = ?", opt.UID)
+	// }
+	// if opt.ID != uuid.Nil {
+	// 	db = db.Where("user_id = ?", opt.ID)
+	// }
+	// if opt.GlobalRole != "" {
+	// 	db = db.Where("global_role = ?", opt.GlobalRole)
+	// }
+	// if opt.UserID != uuid.Nil {
+	// 	db = db.Where("user_id = ?", opt.UserID)
+	// }
+
+	err := db.First(&u, "uid = ?", uid).Error
+
+	if err != nil {
+		return usecase.AuthUser{}, err
 	}
 
-	err := db.First(&u).Error
+	return u.ConvertToUsecase(), nil
+}
+
+func (s *service) GetAuthUserByUserID(ctx context.Context, id string) (usecase.AuthUser, error) {
+	var u AuthUser
+
+	err := s.db.WithContext(ctx).First(&u, "user_id = ?", id).Error
 
 	if err != nil {
 		return usecase.AuthUser{}, err

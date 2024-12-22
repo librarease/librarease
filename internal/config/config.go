@@ -9,9 +9,10 @@ const (
 	ENV_KEY_APP_ENV = "APP_ENV"
 )
 
-type ContextKey string
+type ContextKey uint
 
 const (
-	CTX_KEY_USER_ID ContextKey = "user_id"
-	CTX_KEY_FB_UID  ContextKey = "fb_uid"
+	_ ContextKey = iota
+	CTX_KEY_USER_ID
+	CTX_KEY_USER_ROLE
 )

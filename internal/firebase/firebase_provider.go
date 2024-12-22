@@ -52,3 +52,12 @@ func (f *Firebase) CreateUser(ctx context.Context, ru usecase.RegisterUser) (str
 
 	return user.UID, nil
 }
+
+// used by middleware
+func (f *Firebase) VerifyIDToken(ctx context.Context, token string) (string, error) {
+	t, err := f.client.VerifyIDToken(ctx, token)
+	if err != nil {
+		return "", err
+	}
+	return t.UID, nil
+}

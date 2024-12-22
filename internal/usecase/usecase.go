@@ -64,11 +64,13 @@ type Repository interface {
 
 	// auth user
 	CreateAuthUser(context.Context, AuthUser) (AuthUser, error)
-	GetAuthUser(context.Context, GetAuthUserOption) (AuthUser, error)
+	GetAuthUserByUID(context.Context, string) (AuthUser, error)
+	GetAuthUserByUserID(context.Context, string) (AuthUser, error)
 }
 
 type IdentityProvider interface {
 	CreateUser(context.Context, RegisterUser) (string, error)
+	VerifyIDToken(context.Context, string) (string, error)
 }
 
 type Usecase struct {
