@@ -32,7 +32,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	userGroup.GET("/:id", s.GetUserByID)
 	userGroup.PUT("/:id", s.UpdateUser)
 	userGroup.DELETE("/:id", s.DeleteUser)
-	userGroup.GET("/me", s.GetMe, WithUserID())
+	userGroup.GET("/me", s.GetMe, s.AuthMiddleware)
 
 	var libraryGroup = e.Group("/api/v1/libraries")
 	libraryGroup.GET("", s.ListLibraries)
@@ -67,7 +67,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	subscriptionGroup.PUT("/:id", s.UpdateSubscription)
 
 	var borrowingGroup = e.Group("/api/v1/borrowings")
-	borrowingGroup.GET("", s.ListBorrowings, WithUserID())
+	borrowingGroup.GET("", s.ListBorrowings, s.AuthMiddleware)
 	borrowingGroup.POST("", s.CreateBorrowing)
 	borrowingGroup.GET("/:id", s.GetBorrowingByID)
 	borrowingGroup.PUT("/:id", s.UpdateBorrowing)

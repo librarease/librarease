@@ -49,18 +49,16 @@ type ListBorrowingsOption struct {
 // TODO: separate client and admin borrowing list route
 func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) ([]Borrowing, int, error) {
 
-	uid, b := ctx.Value(config.CTX_KEY_FB_UID).(string)
-	if !b {
-		return nil, 0, fmt.Errorf("firebase uid not found in context")
+	role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+	if !ok {
+		return nil, 0, fmt.Errorf("user role not found in context")
 	}
-	au, err := u.GetAuthUser(ctx, GetAuthUserOption{
-		UID: uid,
-	})
-	if err != nil {
-		return nil, 0, err
+	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return nil, 0, fmt.Errorf("user id not found in context")
 	}
 
-	switch au.GlobalRole {
+	switch role {
 	case "SUPERADMIN":
 		fmt.Println("[DEBUG] global superadmin")
 		// ALLOW ALL
@@ -70,7 +68,7 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 	case "USER":
 		fmt.Println("[DEBUG] global user")
 		staffs, _, err := u.ListStaffs(ctx, ListStaffsOption{
-			UserID: au.UserID.String(),
+			UserID: userID.String(),
 			// Using a limit of 500 for now, adjust as needed based on expected data size
 			Limit: 500,
 		})
@@ -80,7 +78,7 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 		// user is not staff
 		if len(staffs) == 0 {
 			fmt.Println("[DEBUG] user is not staff, filtering by user id")
-			opt.UserID = au.UserID.String()
+			opt.UserID = userID.String()
 			break
 		}
 

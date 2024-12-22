@@ -34,7 +34,8 @@ type Service interface {
 	CreateUser(context.Context, usecase.User) (usecase.User, error)
 	UpdateUser(context.Context, usecase.User) (usecase.User, error)
 	DeleteUser(context.Context, string) error
-	GetAuthUser(context.Context, usecase.GetAuthUserOption) (usecase.AuthUser, error)
+	GetAuthUserByUID(context.Context, string) (usecase.AuthUser, error)
+	GetAuthUserByUserID(context.Context, string) (usecase.AuthUser, error)
 
 	ListLibraries(context.Context, usecase.ListLibrariesOption) ([]usecase.Library, int, error)
 	GetLibraryByID(context.Context, string) (usecase.Library, error)
@@ -69,6 +70,7 @@ type Service interface {
 	UpdateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
 
 	RegisterUser(context.Context, usecase.RegisterUser) (usecase.User, error)
+	VerifyIDToken(context.Context, string) (string, error)
 }
 
 type Server struct {

@@ -79,22 +79,24 @@ func (u Usecase) CreateLibrary(ctx context.Context, library Library) (Library, e
 }
 
 func (u Usecase) UpdateLibrary(ctx context.Context, library Library) (Library, error) {
-	uid := ctx.Value(config.CTX_KEY_FB_UID).(string)
-	au, err := u.GetAuthUser(ctx, GetAuthUserOption{
-		UID: uid,
-	})
-	if err != nil {
-		return Library{}, err
+
+	role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+	if !ok {
+		return Library{}, fmt.Errorf("user role not found in context")
+	}
+	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return Library{}, fmt.Errorf("user id not found in context")
 	}
 
-	switch au.GlobalRole {
+	switch role {
 	case "SUPERADMIN":
 		// ALLOW
 	case "ADMIN":
 		// ALLlOW
 	case "USER":
 		staffs, _, err := u.ListStaffs(ctx, ListStaffsOption{
-			UserID:    au.UserID.String(),
+			UserID:    userID.String(),
 			LibraryID: library.ID.String(),
 		})
 		if err != nil {
@@ -140,15 +142,12 @@ func (u Usecase) DeleteLibrary(ctx context.Context, id string) error {
 		return err
 	}
 
-	uid := ctx.Value(config.CTX_KEY_FB_UID).(string)
-	au, err := u.GetAuthUser(ctx, GetAuthUserOption{
-		UID: uid,
-	})
-	if err != nil {
-		return err
+	role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+	if !ok {
+		return fmt.Errorf("user role not found in context")
 	}
 
-	switch au.GlobalRole {
+	switch role {
 	case "SUPERADMIN":
 		// ALLOW
 	case "ADMIN":

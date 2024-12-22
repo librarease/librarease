@@ -47,18 +47,25 @@ func (u Usecase) RegisterUser(ctx context.Context, ru RegisterUser) (User, error
 	return user, nil
 }
 
-type GetAuthUserOption struct {
-	UID        string
-	ID         uuid.UUID
-	UserID     uuid.UUID
-	GlobalRole string
-}
-
 // get auth user by firebase uid
-func (u Usecase) GetAuthUser(ctx context.Context, opt GetAuthUserOption) (AuthUser, error) {
-	authUser, err := u.repo.GetAuthUser(ctx, opt)
+func (u Usecase) GetAuthUserByUID(ctx context.Context, uid string) (AuthUser, error) {
+	authUser, err := u.repo.GetAuthUserByUID(ctx, uid)
 	if err != nil {
 		return AuthUser{}, err
 	}
 	return authUser, nil
+}
+
+// get auth user by user id
+func (u Usecase) GetAuthUserByUserID(ctx context.Context, id string) (AuthUser, error) {
+	authUser, err := u.repo.GetAuthUserByUserID(ctx, id)
+	if err != nil {
+		return AuthUser{}, err
+	}
+	return authUser, nil
+}
+
+// used by middleware
+func (u Usecase) VerifyIDToken(ctx context.Context, token string) (string, error) {
+	return u.identityProvider.VerifyIDToken(ctx, token)
 }
