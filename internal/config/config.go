@@ -2,11 +2,13 @@ package config
 
 // Header constants.
 const (
-	HEADER_KEY_X_USER_ID = "X-User-Id"
+	HEADER_KEY_X_UID       = "X-Uid"
+	HEADER_KEY_X_CLIENT_ID = "X-Client-Id"
 )
 
 const (
-	ENV_KEY_APP_ENV = "APP_ENV"
+	ENV_KEY_APP_ENV   = "APP_ENV"
+	ENV_KEY_CLIENT_ID = "CLIENT_ID"
 )
 
 type ContextKey uint

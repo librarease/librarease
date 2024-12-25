@@ -31,6 +31,38 @@ var (
 // 	}
 // }
 
+func (s *Server) getUID(c echo.Context) (string, error) {
+
+	var (
+		reqClientID = c.Request().Header.Get(config.HEADER_KEY_X_CLIENT_ID)
+		reqUID      = c.Request().Header.Get(config.HEADER_KEY_X_UID)
+		clientID    = os.Getenv(config.ENV_KEY_CLIENT_ID)
+	)
+
+	fmt.Printf("[AuthMiddleware] reqClientID: %s\n", reqClientID)
+	fmt.Printf("[AuthMiddleware] reqUID: %s\n", reqUID)
+	fmt.Printf("[AuthMiddleware] clientID: %s\n", clientID)
+
+	if reqClientID != "" &&
+		reqUID != "" &&
+		reqClientID == clientID {
+
+		fmt.Printf("[AuthMiddleware] internal client request: %s\n", reqUID)
+		return reqUID, nil
+	}
+
+	var auth = c.Request().Header.Get("Authorization")
+
+	if len(auth) < len("Bearer ") {
+		return auth, c.JSON(401, map[string]string{"error": "Authorization header is required"})
+	}
+
+	token := auth[len("Bearer "):]
+	fmt.Printf("[AuthMiddleware] token: %s...\n", token[:10])
+
+	return s.server.VerifyIDToken(c.Request().Context(), token)
+}
+
 // AuthMiddleware check authorization header and verify the token
 // using injected server.VerifyIDToken method, transforms request
 // to have Firebase UID value in downstream context.
@@ -41,13 +73,8 @@ func (s *Server) AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			ctx = c.Request().Context()
 		)
 
-		auth := c.Request().Header.Get("Authorization")
-		if auth == "" {
-			return c.JSON(401, map[string]string{"error": "Authorization header is required"})
-		}
-		token := auth[len("Bearer "):]
-		fmt.Printf("[AuthMiddleware] token: %s...\n", token[:10])
-		uid, err := s.server.VerifyIDToken(ctx, token)
+		uid, err := s.getUID(c)
+
 		if err != nil {
 			fmt.Println("[AuthMiddleware] error: ", err)
 			return c.JSON(401, map[string]string{
