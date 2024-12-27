@@ -43,7 +43,7 @@ func (s *service) ListMemberships(ctx context.Context, opt usecase.ListMembershi
 	}
 
 	if len(opt.LibraryIDs) > 0 {
-		db = db.Where("l.id IN ?", opt.LibraryIDs)
+		db = db.Where("library_id IN ?", opt.LibraryIDs)
 	}
 
 	err := db.
