@@ -61,7 +61,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	bookGroup.PUT("/:id", s.UpdateBook)
 
 	var subscriptionGroup = e.Group("/api/v1/subscriptions")
-	subscriptionGroup.GET("", s.ListSubscriptions)
+	subscriptionGroup.GET("", s.ListSubscriptions, s.AuthMiddleware)
 	subscriptionGroup.POST("", s.CreateSubscription)
 	subscriptionGroup.GET("/:id", s.GetSubscriptionByID)
 	subscriptionGroup.PUT("/:id", s.UpdateSubscription)

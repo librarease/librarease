@@ -70,7 +70,7 @@ func (s *Server) getUID(c echo.Context) (string, error) {
 	var auth = c.Request().Header.Get("Authorization")
 
 	if len(auth) < len("Bearer ") {
-		return auth, c.JSON(401, map[string]string{"error": "Authorization header is required"})
+		return auth, fmt.Errorf("authorization header is required")
 	}
 
 	token := auth[len("Bearer "):]

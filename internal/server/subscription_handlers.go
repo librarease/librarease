@@ -44,12 +44,20 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
+	// NOTE: since Echo's default binding doesn't support binding slice of UUIDs
+	// we only accept single string in the query parameter
+	var libIDs uuid.UUIDs
+	if req.LibraryID != "" {
+		id, _ := uuid.Parse(req.LibraryID)
+		libIDs = append(libIDs, id)
+	}
+
 	subs, total, err := s.server.ListSubscriptions(ctx.Request().Context(), usecase.ListSubscriptionsOption{
 		Skip:           req.Skip,
 		Limit:          req.Limit,
 		UserID:         req.UserID,
 		MembershipID:   req.MembershipID,
-		LibraryID:      req.LibraryID,
+		LibraryIDs:     libIDs,
 		MembershipName: req.MembershipName,
 		IsActive:       req.IsActive,
 	})

@@ -47,8 +47,8 @@ func (s *service) ListSubscriptions(ctx context.Context, opt usecase.ListSubscri
 	if opt.MembershipID != "" {
 		db = db.Where("membership_id = ?", opt.MembershipID)
 	}
-	if opt.LibraryID != "" {
-		db = db.Joins("Membership").Where("library_id = ?", opt.LibraryID)
+	if len(opt.LibraryIDs) > 0 {
+		db = db.Joins("Membership").Where("library_id IN ?", opt.LibraryIDs)
 	}
 	if opt.IsActive {
 		db = db.Where("expires_at > ?", time.Now())
