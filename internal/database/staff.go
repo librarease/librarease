@@ -63,7 +63,6 @@ func (s *service) ListStaffs(ctx context.Context, opt usecase.ListStaffsOption) 
 	err := db.
 		Preload("Library").
 		Preload("User").
-		Joins("JOIN libraries l on l.id = staffs.library_id AND l.deleted_at IS NULL").
 		Count(&count).
 		Limit(opt.Limit).
 		Offset(opt.Skip).

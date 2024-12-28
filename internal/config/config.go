@@ -7,8 +7,9 @@ const (
 )
 
 const (
-	ENV_KEY_APP_ENV   = "APP_ENV"
-	ENV_KEY_CLIENT_ID = "CLIENT_ID"
+	ENV_KEY_APP_ENV        = "APP_ENV"
+	ENV_KEY_CLIENT_ID      = "CLIENT_ID"
+	ENV_KEY_SESSION_COOKIE = "SESSION_COOKIE_NAME"
 )
 
 type ContextKey uint

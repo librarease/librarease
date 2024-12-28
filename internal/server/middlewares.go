@@ -22,7 +22,7 @@ func (s *Server) AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		uid, err := s.getUID(c)
 
 		if err != nil {
-			fmt.Println("[AuthMiddleware] error: ", err)
+			fmt.Printf("[AuthMiddleware] error: %v\n", err)
 			return c.JSON(401, map[string]string{
 				"error":   err.Error(),
 				"message": "Invalid token",
@@ -67,14 +67,24 @@ func (s *Server) getUID(c echo.Context) (string, error) {
 		return reqUID, nil
 	}
 
-	var auth = c.Request().Header.Get("Authorization")
+	// check for Authorization header
+	var authH = c.Request().Header.Get("Authorization")
 
-	if len(auth) < len("Bearer ") {
-		return auth, fmt.Errorf("authorization header is required")
+	if len(authH) >= len("Bearer ") {
+		token := authH[len("Bearer "):]
+		// FIXME: potential panic
+		fmt.Printf("[AuthMiddleware] token: %s...\n", token[:10])
+
+		return s.server.VerifyIDToken(c.Request().Context(), token)
 	}
 
-	token := auth[len("Bearer "):]
-	fmt.Printf("[AuthMiddleware] token: %s...\n", token[:10])
+	// check for session cookie
+	cname := os.Getenv(config.ENV_KEY_SESSION_COOKIE)
+	authC, err := c.Request().Cookie(cname)
+	if err != nil {
+		fmt.Printf("[AuthMiddleware] cookie: %s not found\n", cname)
+		return "", fmt.Errorf("cookie %s not found: %v", cname, err)
+	}
 
-	return s.server.VerifyIDToken(c.Request().Context(), token)
+	return s.server.VerifyIDToken(c.Request().Context(), authC.Value)
 }
