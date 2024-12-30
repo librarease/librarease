@@ -15,6 +15,7 @@ type Membership struct {
 	ActiveLoanLimit int
 	LoanPeriod      int
 	FinePerDay      int
+	Price           int
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	DeletedAt       *time.Time

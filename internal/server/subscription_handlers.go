@@ -20,6 +20,7 @@ type Subscription struct {
 
 	// Granfathering the membership
 	ExpiresAt       string `json:"expires_at,omitempty"`
+	Amount          int    `json:"amount,omitempty"`
 	FinePerDay      int    `json:"fine_per_day,omitempty"`
 	LoanPeriod      int    `json:"loan_period,omitempty"`
 	ActiveLoanLimit int    `json:"active_loan_limit,omitempty"`
@@ -80,6 +81,7 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 			UpdatedAt:       sub.UpdatedAt.Format(time.RFC3339),
 			DeletedAt:       d,
 			ExpiresAt:       sub.ExpiresAt.Format(time.RFC3339),
+			Amount:          sub.Amount,
 			FinePerDay:      sub.FinePerDay,
 			LoanPeriod:      sub.LoanPeriod,
 			ActiveLoanLimit: sub.ActiveLoanLimit,
@@ -150,6 +152,7 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 		UpdatedAt:       sub.UpdatedAt.Format(time.RFC3339),
 		DeletedAt:       d,
 		ExpiresAt:       sub.ExpiresAt.String(),
+		Amount:          sub.Amount,
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,
@@ -169,6 +172,7 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 			ActiveLoanLimit: sub.Membership.ActiveLoanLimit,
 			LoanPeriod:      sub.Membership.LoanPeriod,
 			FinePerDay:      sub.Membership.FinePerDay,
+			Price:           sub.Membership.Price,
 			CreatedAt:       sub.Membership.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:       sub.Membership.UpdatedAt.Format(time.RFC3339),
 		}
@@ -218,6 +222,7 @@ type UpdateSubscriptionRequest struct {
 	UserID          string `json:"user_id" validate:"omitempty,uuid"`
 	MembershipID    string `json:"membership_id" validate:"omitempty,uuid"`
 	ExpiresAt       string `json:"expires_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	Amount          int    `json:"amount" validate:"omitempty,number"`
 	FinePerDay      int    `json:"fine_per_day" validate:"omitempty,number"`
 	LoanPeriod      int    `json:"loan_period" validate:"omitempty,number"`
 	ActiveLoanLimit int    `json:"active_loan_limit" validate:"omitempty,number"`
@@ -252,6 +257,7 @@ func (s *Server) UpdateSubscription(ctx echo.Context) error {
 		UserID:          userID,
 		MembershipID:    membershipID,
 		ExpiresAt:       exp,
+		Amount:          req.Amount,
 		FinePerDay:      req.FinePerDay,
 		LoanPeriod:      req.LoanPeriod,
 		ActiveLoanLimit: req.ActiveLoanLimit,
@@ -267,6 +273,7 @@ func (s *Server) UpdateSubscription(ctx echo.Context) error {
 		CreatedAt:       sub.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:       sub.UpdatedAt.Format(time.RFC3339),
 		ExpiresAt:       sub.ExpiresAt.String(),
+		Amount:          sub.Amount,
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,

@@ -18,6 +18,7 @@ type Membership struct {
 	ActiveLoanLimit int             `gorm:"column:active_loan_limit;type:int"`
 	LoanPeriod      int             `gorm:"column:loan_period;type:int"`
 	FinePerDay      int             `gorm:"column:fine_per_day;type:int"`
+	Price           int             `gorm:"column:price;type:int"`
 	CreatedAt       time.Time       `gorm:"column:created_at"`
 	UpdatedAt       time.Time       `gorm:"column:updated_at"`
 	DeletedAt       *gorm.DeletedAt `gorm:"column:deleted_at"`
@@ -98,6 +99,7 @@ func (s *service) CreateMembership(ctx context.Context, m usecase.Membership) (u
 		ActiveLoanLimit: m.ActiveLoanLimit,
 		LoanPeriod:      m.LoanPeriod,
 		FinePerDay:      m.FinePerDay,
+		Price:           m.Price,
 	}
 
 	if err := s.db.WithContext(ctx).Create(&mem).Error; err != nil {
@@ -116,6 +118,7 @@ func (s *service) UpdateMembership(ctx context.Context, m usecase.Membership) (u
 		ActiveLoanLimit: m.ActiveLoanLimit,
 		LoanPeriod:      m.LoanPeriod,
 		FinePerDay:      m.FinePerDay,
+		Price:           m.Price,
 	}
 
 	err := s.db.WithContext(ctx).Updates(&mem).Error
@@ -144,6 +147,7 @@ func (m Membership) ConvertToUsecase() usecase.Membership {
 		ActiveLoanLimit: m.ActiveLoanLimit,
 		LoanPeriod:      m.LoanPeriod,
 		FinePerDay:      m.FinePerDay,
+		Price:           m.Price,
 		CreatedAt:       m.CreatedAt,
 		DeletedAt:       d,
 	}

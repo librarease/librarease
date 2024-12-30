@@ -23,6 +23,7 @@ type Subscription struct {
 
 	// Granfathering the membership
 	ExpiresAt       time.Time `gorm:"column:expires_at"`
+	Amount          int       `gorm:"column:amount;type:int"`
 	FinePerDay      int       `gorm:"column:fine_per_day;type:int"`
 	LoanPeriod      int       `gorm:"column:loan_period;type:int"`
 	ActiveLoanLimit int       `gorm:"column:active_loan_limit;type:int"`
@@ -101,6 +102,7 @@ func (s *service) CreateSubscription(ctx context.Context, sub usecase.Subscripti
 		CreatedAt:       sub.CreatedAt,
 		UpdatedAt:       sub.UpdatedAt,
 		ExpiresAt:       sub.ExpiresAt,
+		Amount:          sub.Amount,
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,
@@ -152,6 +154,7 @@ func (s *service) UpdateSubscription(ctx context.Context, sub usecase.Subscripti
 		CreatedAt:       sub.CreatedAt,
 		UpdatedAt:       sub.UpdatedAt,
 		ExpiresAt:       sub.ExpiresAt,
+		Amount:          sub.Amount,
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,
@@ -180,6 +183,7 @@ func (s Subscription) ConvertToUsecase() usecase.Subscription {
 		UpdatedAt:       s.UpdatedAt,
 		DeletedAt:       d,
 		ExpiresAt:       s.ExpiresAt,
+		Amount:          s.Amount,
 		FinePerDay:      s.FinePerDay,
 		LoanPeriod:      s.LoanPeriod,
 		ActiveLoanLimit: s.ActiveLoanLimit,

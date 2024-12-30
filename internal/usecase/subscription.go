@@ -20,6 +20,7 @@ type Subscription struct {
 
 	// Granfathering the membership
 	ExpiresAt       time.Time
+	Amount          int
 	FinePerDay      int
 	LoanPeriod      int
 	ActiveLoanLimit int
@@ -120,6 +121,7 @@ func (u Usecase) CreateSubscription(ctx context.Context, sub Subscription) (Subs
 	}
 	// Granfathering the membership
 	sub.ExpiresAt = time.Now().AddDate(0, 0, m.Duration)
+	sub.Amount = m.Price
 	sub.LoanPeriod = m.LoanPeriod
 	sub.FinePerDay = m.FinePerDay
 	sub.ActiveLoanLimit = m.ActiveLoanLimit

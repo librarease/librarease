@@ -16,6 +16,7 @@ type Membership struct {
 	ActiveLoanLimit int      `json:"active_loan_limit,omitempty"`
 	LoanPeriod      int      `json:"loan_period,omitempty"`
 	FinePerDay      int      `json:"fine_per_day,omitempty"`
+	Price           int      `json:"price,omitempty"`
 	CreatedAt       string   `json:"created_at,omitempty"`
 	UpdatedAt       string   `json:"updated_at,omitempty"`
 	DeletedAt       string   `json:"deleted_at,omitempty"`
@@ -68,6 +69,7 @@ func (s *Server) ListMemberships(ctx echo.Context) error {
 			ActiveLoanLimit: mem.ActiveLoanLimit,
 			LoanPeriod:      mem.LoanPeriod,
 			FinePerDay:      mem.FinePerDay,
+			Price:           mem.Price,
 			CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
 			DeletedAt:       d,
@@ -123,6 +125,7 @@ func (s *Server) GetMembershipByID(ctx echo.Context) error {
 		ActiveLoanLimit: mem.ActiveLoanLimit,
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
+		Price:           mem.Price,
 		CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
 		DeletedAt:       d,
@@ -145,6 +148,7 @@ type CreateMembershipRequest struct {
 	ActiveLoanLimit int    `json:"active_loan_limit" validate:"required,number"`
 	LoanPeriod      int    `json:"loan_period" validate:"required,number"`
 	FinePerDay      int    `json:"fine_per_day" validate:"number"`
+	Price           int    `json:"price" validate:"number"`
 }
 
 func (s *Server) CreateMembership(ctx echo.Context) error {
@@ -164,6 +168,7 @@ func (s *Server) CreateMembership(ctx echo.Context) error {
 		ActiveLoanLimit: req.ActiveLoanLimit,
 		LoanPeriod:      req.LoanPeriod,
 		FinePerDay:      req.FinePerDay,
+		Price:           req.Price,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -176,6 +181,7 @@ func (s *Server) CreateMembership(ctx echo.Context) error {
 		ActiveLoanLimit: mem.ActiveLoanLimit,
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
+		Price:           mem.Price,
 		CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
 	}})
@@ -189,6 +195,7 @@ type UpdateMembershipRequest struct {
 	ActiveLoanLimit int    `json:"active_loan_limit" validate:"number"`
 	LoanPeriod      int    `json:"loan_period" validate:"number"`
 	FinePerDay      int    `json:"fine_per_day" validate:"number"`
+	Price           int    `json:"price" validate:"number"`
 }
 
 func (s *Server) UpdateMembership(ctx echo.Context) error {
@@ -209,6 +216,7 @@ func (s *Server) UpdateMembership(ctx echo.Context) error {
 		ActiveLoanLimit: req.ActiveLoanLimit,
 		LoanPeriod:      req.LoanPeriod,
 		FinePerDay:      req.FinePerDay,
+		Price:           req.Price,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -221,6 +229,7 @@ func (s *Server) UpdateMembership(ctx echo.Context) error {
 		ActiveLoanLimit: mem.ActiveLoanLimit,
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
+		Price:           mem.Price,
 		CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
 	}})
