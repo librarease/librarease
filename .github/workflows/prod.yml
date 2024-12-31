@@ -1,122 +1,80 @@
+name: Deploy to Libaraease API
 run-name: Deploy to Libaraease API @${{ github.actor }}
+
 on:
-    workflow_dispatch:
-    push:
-        branches:
-            - main
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:      
+      - '**.md'
+      - 'docs/**'
+      - '.github/**/*.md'
+
 permissions:
-    contents: read
-    id-token: write 
+  contents: read
+  id-token: write 
+
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true 
 
 jobs:
-    build-and-push:
-        name: Build and Push Image
-        runs-on: ubuntu-latest
-        timeout-minutes: 30 
+  build-and-push:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # Reduced from 30 as it's usually sufficient
 
-        steps:
-          - name: Checkout Repository
-            uses: actions/checkout@v4  # Updated to latest version
-            with:
-                fetch-depth: 1  # Shallow clone for faster checkout
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-          - name: Set up Go
-            uses: actions/setup-go@v4  # Updated to latest version
-            with:
-                go-version: '1.23.0'  # Specify the Go version you need
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.0'
+          cache: true    # Enable Go module caching
 
-          - name: Cache Go Modules
-            uses: actions/cache@v4  # Updated to latest version
-            with:
-                path: |
-                    ~/.cache/go-build
-                    ~/go/pkg/mod
-                key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-                restore-keys: |
-                    ${{ runner.os }}-go-
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-          - name: Install Dependencies
-            run: go mod download
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-        #   - name: Run Tests
-        #     run: go test ./...
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-flags: --debug
 
-          - name: Configure AWS Credentials
-            uses: aws-actions/configure-aws-credentials@v4  # Updated to latest version
-            with:
-                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                aws-region: ${{ secrets.AWS_REGION }}
+      - name: Build and Push Image
+        uses: docker/build-push-action@v5    # Using the official Docker build-push action
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ secrets.REPOSITORY }}:${{ vars.PROD_IMAGE_TAG }}
+          cache-from: type=gha    # Using GitHub Actions cache
+          cache-to: type=gha,mode=max
 
-          - name: Login to Amazon ECR
-            id: login-ecr
-            uses: aws-actions/amazon-ecr-login@v2  # Updated to latest version
-
-          - name: Set up Docker Buildx
-            uses: docker/setup-buildx-action@v3  # Updated to latest version
-            with:
-                version: latest
-                driver-opts: |
-                    image=moby/buildkit:master
-                    network=host
-
-          - name: Cache Docker Layers
-            uses: actions/cache@v4  # Updated to latest version
-            with:
-                path: |
-                    /tmp/.buildx-cache
-                    /tmp/.yarn-cache
-                    /tmp/.bundle-cache
-                key: ${{ runner.os }}-buildx-${{ github.sha }}
-                restore-keys: |
-                    ${{ runner.os }}-buildx-${{ github.ref }}
-                    ${{ runner.os }}-buildx-
-
-          - name: Build and Push Image to Amazon ECR
-            id: build-image
-            env:
-                ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-                ECR_REPOSITORY: ${{ secrets.REPOSITORY }}
-                IMAGE_TAG: ${{ vars.PROD_IMAGE_TAG }}
-            run: |
-                docker buildx build \
-                    --platform linux/amd64 \
-                    --cache-from=type=local,src=/tmp/.buildx-cache \
-                    --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
-                    --push \
-                    -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-                    .
-
-          # Temp fix for build cache 
-          - name: Move Cache
-            run: |
-                rm -rf /tmp/.buildx-cache
-                mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-    deploy-api-service:
-        name: Deploy to API Service
-        runs-on: ubuntu-latest
-        needs: build-and-push
-        steps:
-          - name: Git Checkout
-            uses: actions/checkout@v2
-          - name: Echo Branch
-            run: echo running on branch ${GITHUB_REF##*/}
-          - uses: actions/setup-node@v3
-            with:
-              node-version: 18
-          - name: Deploy to server
-            uses: appleboy/ssh-action@master
-            with:
-              host: ${{ secrets.PROD_SERVER_IP }}
-              username: ${{ secrets.PROD_SERVER_USERNAME }}
-              port: ${{ secrets.PORT }}
-              key: ${{ secrets.PROD_SERVER_SSH_KEY }}
-              script: |
-                eval "$(ssh-agent -s)"
-                ssh-add ~/.ssh/action
-                cd /home/ubuntu/deploy
-                bash deploy.sh 
+  deploy-api-service:
+    name: Deploy to API Service
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PROD_SERVER_IP }}
+          username: ${{ secrets.PROD_SERVER_USERNAME }}
+          port: ${{ secrets.PORT }}
+          key: ${{ secrets.PROD_SERVER_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/deploy
+            bash deploy.sh
