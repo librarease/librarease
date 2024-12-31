@@ -10,11 +10,16 @@ import (
 )
 
 type Library struct {
-	ID        uuid.UUID
-	Name      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeleteAt  *time.Time
+	ID          uuid.UUID
+	Name        string
+	Logo        string
+	Address     string
+	Phone       string
+	Email       string
+	Description string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeleteAt    *time.Time
 }
 type ListLibrariesOption struct {
 	Skip   int
@@ -34,33 +39,40 @@ func (u Usecase) ListLibraries(ctx context.Context, opt ListLibrariesOption) ([]
 	var userList []Library
 	for _, lib := range libs {
 		userList = append(userList, Library{
-			ID:        lib.ID,
-			Name:      lib.Name,
-			CreatedAt: lib.CreatedAt,
-			UpdatedAt: lib.UpdatedAt,
-			DeleteAt:  lib.DeleteAt,
+			ID:          lib.ID,
+			Name:        lib.Name,
+			Logo:        lib.Logo,
+			Address:     lib.Address,
+			Phone:       lib.Phone,
+			Email:       lib.Email,
+			Description: lib.Description,
+			CreatedAt:   lib.CreatedAt,
+			UpdatedAt:   lib.UpdatedAt,
+			DeleteAt:    lib.DeleteAt,
 		})
 	}
 
 	return userList, total, nil
 }
 
-func (u Usecase) GetLibraryByID(ctx context.Context, id string) (Library, error) {
-	err := uuid.Validate(id)
-	if err != nil {
-		return Library{}, err
-	}
+func (u Usecase) GetLibraryByID(ctx context.Context, id uuid.UUID) (Library, error) {
+
 	lib, err := u.repo.GetLibraryByID(ctx, id)
 	if err != nil {
 		return Library{}, err
 	}
 
 	return Library{
-		ID:        lib.ID,
-		Name:      lib.Name,
-		CreatedAt: lib.CreatedAt,
-		UpdatedAt: lib.UpdatedAt,
-		DeleteAt:  lib.DeleteAt,
+		ID:          lib.ID,
+		Name:        lib.Name,
+		Logo:        lib.Logo,
+		Address:     lib.Address,
+		Phone:       lib.Phone,
+		Email:       lib.Email,
+		Description: lib.Description,
+		CreatedAt:   lib.CreatedAt,
+		UpdatedAt:   lib.UpdatedAt,
+		DeleteAt:    lib.DeleteAt,
 	}, nil
 }
 
@@ -71,14 +83,17 @@ func (u Usecase) CreateLibrary(ctx context.Context, library Library) (Library, e
 	}
 
 	return Library{
-		ID:        lib.ID,
-		Name:      lib.Name,
-		CreatedAt: lib.CreatedAt,
-		UpdatedAt: lib.UpdatedAt,
+		ID:          lib.ID,
+		Name:        lib.Name,
+		Logo:        lib.Logo,
+		Address:     lib.Address,
+		Phone:       lib.Phone,
+		Email:       lib.Email,
+		Description: lib.Description,
 	}, nil
 }
 
-func (u Usecase) UpdateLibrary(ctx context.Context, library Library) (Library, error) {
+func (u Usecase) UpdateLibrary(ctx context.Context, id uuid.UUID, library Library) (Library, error) {
 
 	role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
 	if !ok {
@@ -123,24 +138,25 @@ func (u Usecase) UpdateLibrary(ctx context.Context, library Library) (Library, e
 		// }
 
 	}
-	lib, err := u.repo.UpdateLibrary(ctx, library)
+	lib, err := u.repo.UpdateLibrary(ctx, id, library)
 	if err != nil {
 		return Library{}, err
 	}
 
 	return Library{
-		ID:        lib.ID,
-		Name:      lib.Name,
-		CreatedAt: lib.CreatedAt,
-		UpdatedAt: lib.UpdatedAt,
+		ID:          lib.ID,
+		Name:        lib.Name,
+		Logo:        lib.Logo,
+		Address:     lib.Address,
+		Phone:       lib.Phone,
+		Email:       lib.Email,
+		Description: lib.Description,
+		CreatedAt:   lib.CreatedAt,
+		UpdatedAt:   lib.UpdatedAt,
 	}, nil
 }
 
-func (u Usecase) DeleteLibrary(ctx context.Context, id string) error {
-	err := uuid.Validate(id)
-	if err != nil {
-		return err
-	}
+func (u Usecase) DeleteLibrary(ctx context.Context, id uuid.UUID) error {
 
 	role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
 	if !ok {
@@ -157,7 +173,7 @@ func (u Usecase) DeleteLibrary(ctx context.Context, id string) error {
 		return fmt.Errorf("you are not allowed to delete library")
 	}
 
-	err = u.repo.DeleteLibrary(ctx, id)
+	err := u.repo.DeleteLibrary(ctx, id)
 	if err != nil {
 		return err
 	}

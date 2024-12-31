@@ -38,10 +38,10 @@ type Service interface {
 	GetAuthUserByUserID(context.Context, string) (usecase.AuthUser, error)
 
 	ListLibraries(context.Context, usecase.ListLibrariesOption) ([]usecase.Library, int, error)
-	GetLibraryByID(context.Context, string) (usecase.Library, error)
+	GetLibraryByID(context.Context, uuid.UUID) (usecase.Library, error)
 	CreateLibrary(context.Context, usecase.Library) (usecase.Library, error)
-	UpdateLibrary(context.Context, usecase.Library) (usecase.Library, error)
-	DeleteLibrary(context.Context, string) error
+	UpdateLibrary(context.Context, uuid.UUID, usecase.Library) (usecase.Library, error)
+	DeleteLibrary(context.Context, uuid.UUID) error
 
 	ListStaffs(context.Context, usecase.ListStaffsOption) ([]usecase.Staff, int, error)
 	CreateStaff(context.Context, usecase.Staff) (usecase.Staff, error)

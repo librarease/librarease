@@ -9,11 +9,15 @@ import (
 )
 
 type Library struct {
-	ID   string `json:"id" param:"id"`
-	Name string `json:"name" validate:"required"`
-	// Location  string `json:"location" validate:"required"`
-	CreatedAt string `json:"created_at,omitempty"`
-	UpdatedAt string `json:"updated_at,omitempty"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Logo        string `json:"logo,omitempty"`
+	Address     string `json:"address,omitempty"`
+	Phone       string `json:"phone,omitempty"`
+	Email       string `json:"email,omitempty"`
+	Description string `json:"description,omitempty"`
+	CreatedAt   string `json:"created_at,omitempty"`
+	UpdatedAt   string `json:"updated_at,omitempty"`
 }
 
 type ListLibrariesRequest struct {
@@ -48,11 +52,15 @@ func (s *Server) ListLibraries(ctx echo.Context) error {
 
 	for _, l := range libraries {
 		list = append(list, Library{
-			ID:   l.ID.String(),
-			Name: l.Name,
-			// Location:  l.Location,
-			CreatedAt: l.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: l.UpdatedAt.Format(time.RFC3339),
+			ID:          l.ID.String(),
+			Name:        l.Name,
+			Logo:        l.Logo,
+			Address:     l.Address,
+			Phone:       l.Phone,
+			Email:       l.Email,
+			Description: l.Description,
+			CreatedAt:   l.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:   l.UpdatedAt.Format(time.RFC3339),
 		})
 	}
 
@@ -67,8 +75,20 @@ func (s *Server) ListLibraries(ctx echo.Context) error {
 	})
 }
 
+type GetLibraryByIDRequest struct {
+	ID string `param:"id" validate:"required,uuid"`
+}
+
 func (s *Server) GetLibraryByID(ctx echo.Context) error {
-	id := ctx.Param("id")
+	var req GetLibraryByIDRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+	id, _ := uuid.Parse(req.ID)
+
 	l, err := s.server.GetLibraryByID(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -79,67 +99,112 @@ func (s *Server) GetLibraryByID(ctx echo.Context) error {
 	return ctx.JSON(200, Res{Data: lib})
 }
 
+type CreateLibraryRequest struct {
+	Name        string `json:"name" validate:"required"`
+	Logo        string `json:"logo"`
+	Address     string `json:"address"`
+	Phone       string `json:"phone"`
+	Email       string `json:"email"`
+	Description string `json:"description"`
+}
+
 func (s *Server) CreateLibrary(ctx echo.Context) error {
-	var library Library
-	if err := ctx.Bind(&library); err != nil {
+	var req CreateLibraryRequest
+	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}
 
-	err := s.validator.Struct(library)
+	err := s.validator.Struct(req)
 	if err != nil {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
 	l, err := s.server.CreateLibrary(ctx.Request().Context(), usecase.Library{
-		Name: library.Name,
-		// Location: library.Location,
+		Name:        req.Name,
+		Logo:        req.Logo,
+		Address:     req.Address,
+		Phone:       req.Phone,
+		Email:       req.Email,
+		Description: req.Description,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(200, Res{Data: Library{
-		ID:   l.ID.String(),
-		Name: l.Name,
-		// Location:  l.Location,
-		CreatedAt: l.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: l.UpdatedAt.Format(time.RFC3339),
+	return ctx.JSON(201, Res{Data: Library{
+		ID:          l.ID.String(),
+		Name:        l.Name,
+		Logo:        l.Logo,
+		Address:     l.Address,
+		Phone:       l.Phone,
+		Email:       l.Email,
+		Description: l.Description,
+		CreatedAt:   l.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   l.UpdatedAt.Format(time.RFC3339),
 	}})
 }
 
+type UpdateLibraryRequest struct {
+	ID          string `json:"-" param:"id"`
+	Name        string `json:"name"`
+	Logo        string `json:"logo"`
+	Address     string `json:"address"`
+	Phone       string `json:"phone"`
+	Email       string `json:"email"`
+	Description string `json:"description"`
+}
+
 func (s *Server) UpdateLibrary(ctx echo.Context) error {
-	var library Library
-	if err := ctx.Bind(&library); err != nil {
+	var req UpdateLibraryRequest
+	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}
 
-	err := s.validator.Struct(library)
+	err := s.validator.Struct(req)
 	if err != nil {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
-	id, _ := uuid.Parse(library.ID)
+	id, _ := uuid.Parse(req.ID)
 
-	l, err := s.server.UpdateLibrary(ctx.Request().Context(), usecase.Library{
-		ID:   id,
-		Name: library.Name,
-		// Location: library.Location,
+	l, err := s.server.UpdateLibrary(ctx.Request().Context(), id, usecase.Library{
+		Name:        req.Name,
+		Logo:        req.Logo,
+		Address:     req.Address,
+		Phone:       req.Phone,
+		Email:       req.Email,
+		Description: req.Description,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
 	return ctx.JSON(200, Res{Data: Library{
-		ID:   l.ID.String(),
-		Name: l.Name,
-		// Location:  l.Location,
-		CreatedAt: l.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: l.UpdatedAt.Format(time.RFC3339),
+		ID:          l.ID.String(),
+		Name:        l.Name,
+		Logo:        l.Logo,
+		Address:     l.Address,
+		Phone:       l.Phone,
+		Email:       l.Email,
+		Description: l.Description,
+		CreatedAt:   l.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   l.UpdatedAt.Format(time.RFC3339),
 	}})
 }
 
+type DeleteLibraryRequest struct {
+	ID string `param:"id" validate:"required,uuid"`
+}
+
 func (s *Server) DeleteLibrary(ctx echo.Context) error {
-	id := ctx.Param("id")
+	var req DeleteLibraryRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+	id, _ := uuid.Parse(req.ID)
 	err := s.server.DeleteLibrary(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -150,10 +215,14 @@ func (s *Server) DeleteLibrary(ctx echo.Context) error {
 
 func ConverLibraryFrom(lib usecase.Library) Library {
 	return Library{
-		ID:   lib.ID.String(),
-		Name: lib.Name,
-		// Location:  l.Location,
-		CreatedAt: lib.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: lib.UpdatedAt.Format(time.RFC3339),
+		ID:          lib.ID.String(),
+		Name:        lib.Name,
+		Logo:        lib.Logo,
+		Address:     lib.Address,
+		Phone:       lib.Phone,
+		Email:       lib.Email,
+		Description: lib.Description,
+		CreatedAt:   lib.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   lib.UpdatedAt.Format(time.RFC3339),
 	}
 }

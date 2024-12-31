@@ -7,14 +7,20 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Library struct {
-	ID        uuid.UUID       `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
-	Name      string          `gorm:"column:name;type:varchar(255)"`
-	CreatedAt time.Time       `gorm:"column:created_at"`
-	UpdatedAt time.Time       `gorm:"column:updated_at"`
-	DeletedAt *gorm.DeletedAt `gorm:"column:deleted_at"`
+	ID          uuid.UUID       `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
+	Name        string          `gorm:"column:name;type:varchar(255)"`
+	Logo        string          `gorm:"column:logo;type:varchar(255)"`
+	Address     string          `gorm:"column:address;type:varchar(255)"`
+	Phone       string          `gorm:"column:phone;type:varchar(255)"`
+	Email       string          `gorm:"column:email;type:varchar(255)"`
+	Description string          `gorm:"column:description;type:text"`
+	CreatedAt   time.Time       `gorm:"column:created_at"`
+	UpdatedAt   time.Time       `gorm:"column:updated_at"`
+	DeletedAt   *gorm.DeletedAt `gorm:"column:deleted_at"`
 
 	Staffs      []Staff
 	Books       []Book
@@ -73,7 +79,7 @@ func (s *service) ListLibraries(ctx context.Context, opt usecase.ListLibrariesOp
 	return ulibs, int(count), nil
 }
 
-func (s *service) GetLibraryByID(ctx context.Context, id string) (usecase.Library, error) {
+func (s *service) GetLibraryByID(ctx context.Context, id uuid.UUID) (usecase.Library, error) {
 	var l Library
 
 	err := s.db.WithContext(ctx).Where("id = ?", id).First(&l).Error
@@ -88,47 +94,62 @@ func (s *service) GetLibraryByID(ctx context.Context, id string) (usecase.Librar
 
 func (s *service) CreateLibrary(ctx context.Context, library usecase.Library) (usecase.Library, error) {
 	l := Library{
-		ID:        library.ID,
-		Name:      library.Name,
-		CreatedAt: library.CreatedAt,
-		UpdatedAt: library.UpdatedAt,
+		ID:          library.ID,
+		Name:        library.Name,
+		Logo:        library.Logo,
+		Address:     library.Address,
+		Phone:       library.Phone,
+		Email:       library.Email,
+		Description: library.Description,
 	}
 
-	err := s.db.WithContext(ctx).Create(&l).Error
+	err := s.db.WithContext(ctx).Model(&l).Clauses(clause.Returning{}).Create(&l).Error
 	if err != nil {
 		return usecase.Library{}, err
 	}
 
 	return usecase.Library{
-		ID:        l.ID,
-		Name:      l.Name,
-		CreatedAt: l.CreatedAt,
-		UpdatedAt: l.UpdatedAt,
+		ID:          l.ID,
+		Name:        l.Name,
+		Logo:        l.Logo,
+		Address:     l.Address,
+		Phone:       l.Phone,
+		Email:       l.Email,
+		Description: l.Description,
+		CreatedAt:   l.CreatedAt,
+		UpdatedAt:   l.UpdatedAt,
 	}, nil
 }
 
-func (s *service) UpdateLibrary(ctx context.Context, library usecase.Library) (usecase.Library, error) {
+func (s *service) UpdateLibrary(ctx context.Context, id uuid.UUID, library usecase.Library) (usecase.Library, error) {
 	l := Library{
-		ID:        library.ID,
-		Name:      library.Name,
-		CreatedAt: library.CreatedAt,
-		UpdatedAt: library.UpdatedAt,
+		Name:        library.Name,
+		Logo:        library.Logo,
+		Address:     library.Address,
+		Phone:       library.Phone,
+		Email:       library.Email,
+		Description: library.Description,
 	}
 
-	err := s.db.WithContext(ctx).Save(&l).Error
+	err := s.db.WithContext(ctx).Model(&l).Clauses(clause.Returning{}).Where("id = ?", id).Updates(&l).Error
 	if err != nil {
 		return usecase.Library{}, err
 	}
 
 	return usecase.Library{
-		ID:        l.ID,
-		Name:      l.Name,
-		CreatedAt: l.CreatedAt,
-		UpdatedAt: l.UpdatedAt,
+		ID:          l.ID,
+		Name:        l.Name,
+		Logo:        l.Logo,
+		Address:     l.Address,
+		Phone:       l.Phone,
+		Email:       l.Email,
+		Description: l.Description,
+		CreatedAt:   l.CreatedAt,
+		UpdatedAt:   l.UpdatedAt,
 	}, nil
 }
 
-func (s *service) DeleteLibrary(ctx context.Context, id string) error {
+func (s *service) DeleteLibrary(ctx context.Context, id uuid.UUID) error {
 	err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&Library{}).Error
 	if err != nil {
 		return err
@@ -144,10 +165,15 @@ func (lib Library) ConvertToUsecase() usecase.Library {
 		d = &lib.DeletedAt.Time
 	}
 	return usecase.Library{
-		ID:        lib.ID,
-		Name:      lib.Name,
-		CreatedAt: lib.CreatedAt,
-		UpdatedAt: lib.UpdatedAt,
-		DeleteAt:  d,
+		ID:          lib.ID,
+		Name:        lib.Name,
+		Logo:        lib.Logo,
+		Address:     lib.Address,
+		Phone:       lib.Phone,
+		Email:       lib.Email,
+		Description: lib.Description,
+		CreatedAt:   lib.CreatedAt,
+		UpdatedAt:   lib.UpdatedAt,
+		DeleteAt:    d,
 	}
 }

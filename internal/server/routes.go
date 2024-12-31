@@ -38,8 +38,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 	libraryGroup.GET("", s.ListLibraries)
 	libraryGroup.POST("", s.CreateLibrary)
 	libraryGroup.GET("/:id", s.GetLibraryByID)
-	libraryGroup.PUT("/:id", s.UpdateLibrary)
-	libraryGroup.DELETE("/:id", s.DeleteLibrary)
+	libraryGroup.PUT("/:id", s.UpdateLibrary, s.AuthMiddleware)
+	libraryGroup.DELETE("/:id", s.DeleteLibrary, s.AuthMiddleware)
 
 	var staffGroup = e.Group("/api/v1/staffs")
 	staffGroup.GET("", s.ListStaffs)

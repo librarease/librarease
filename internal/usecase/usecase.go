@@ -26,10 +26,10 @@ type Repository interface {
 
 	// library
 	ListLibraries(context.Context, ListLibrariesOption) ([]Library, int, error)
-	GetLibraryByID(context.Context, string) (Library, error)
+	GetLibraryByID(context.Context, uuid.UUID) (Library, error)
 	CreateLibrary(context.Context, Library) (Library, error)
-	UpdateLibrary(context.Context, Library) (Library, error)
-	DeleteLibrary(context.Context, string) error
+	UpdateLibrary(context.Context, uuid.UUID, Library) (Library, error)
+	DeleteLibrary(context.Context, uuid.UUID) error
 
 	// book
 	ListBooks(context.Context, ListBooksOption) ([]Book, int, error)
