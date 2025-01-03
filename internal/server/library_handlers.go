@@ -23,9 +23,10 @@ type Library struct {
 type ListLibrariesRequest struct {
 	Skip   int    `query:"skip"`
 	Limit  int    `query:"limit" validate:"required,gte=1,lte=100"`
-	Name   string `query:"name" validate:"omitempty"`
 	SortBy string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at name"`
 	SortIn string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
+
+	Name string `query:"name" validate:"omitempty"`
 }
 
 func (s *Server) ListLibraries(ctx echo.Context) error {
@@ -40,9 +41,9 @@ func (s *Server) ListLibraries(ctx echo.Context) error {
 	libraries, total, err := s.server.ListLibraries(ctx.Request().Context(), usecase.ListLibrariesOption{
 		Skip:   req.Skip,
 		Limit:  req.Limit,
-		Name:   req.Name,
 		SortBy: req.SortBy,
 		SortIn: req.SortIn,
+		Name:   req.Name,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

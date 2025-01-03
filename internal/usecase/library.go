@@ -110,9 +110,9 @@ func (u Usecase) UpdateLibrary(ctx context.Context, id uuid.UUID, library Librar
 	case "ADMIN":
 		// ALLlOW
 	case "USER":
-		staffs, _, err := u.ListStaffs(ctx, ListStaffsOption{
-			UserID:    userID.String(),
-			LibraryID: library.ID.String(),
+		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
+			UserID:     userID.String(),
+			LibraryIDs: uuid.UUIDs{library.ID},
 		})
 		if err != nil {
 			return Library{}, err

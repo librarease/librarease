@@ -27,8 +27,11 @@ type Subscription struct {
 }
 
 type ListSubscriptionsRequest struct {
-	Skip           int    `query:"skip"`
-	Limit          int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Skip   int    `query:"skip"`
+	Limit  int    `query:"limit" validate:"required,gte=1,lte=100"`
+	SortBy string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at name"`
+	SortIn string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
+
 	UserID         string `query:"user_id" validate:"omitempty,uuid"`
 	MembershipID   string `query:"membership_id" validate:"omitempty,uuid"`
 	LibraryID      string `query:"library_id" validate:"omitempty,uuid"`
@@ -56,6 +59,8 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 	subs, total, err := s.server.ListSubscriptions(ctx.Request().Context(), usecase.ListSubscriptionsOption{
 		Skip:           req.Skip,
 		Limit:          req.Limit,
+		SortBy:         req.SortBy,
+		SortIn:         req.SortIn,
 		UserID:         req.UserID,
 		MembershipID:   req.MembershipID,
 		LibraryIDs:     libIDs,

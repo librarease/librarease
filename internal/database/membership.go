@@ -47,11 +47,23 @@ func (s *service) ListMemberships(ctx context.Context, opt usecase.ListMembershi
 		db = db.Where("library_id IN ?", opt.LibraryIDs)
 	}
 
+	var (
+		orderIn = "DESC"
+		orderBy = "created_at"
+	)
+	if opt.SortBy != "" {
+		orderBy = opt.SortBy
+	}
+	if opt.SortIn != "" {
+		orderIn = opt.SortIn
+	}
+
 	err := db.
 		Preload("Library").
 		Count(&count).
 		Limit(opt.Limit).
 		Offset(opt.Skip).
+		Order(orderBy + " " + orderIn).
 		Find(&mems).
 		Error
 

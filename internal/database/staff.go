@@ -36,8 +36,8 @@ func (s *service) ListStaffs(ctx context.Context, opt usecase.ListStaffsOption) 
 
 	db := s.db.Model([]Staff{}).WithContext(ctx)
 
-	if opt.LibraryID != "" {
-		db = db.Where("library_id = ?", opt.LibraryID)
+	if len(opt.LibraryIDs) > 0 {
+		db = db.Where("library_id IN ?", opt.LibraryIDs)
 	}
 	if opt.UserID != "" {
 		db = db.Where("user_id = ?", opt.UserID)

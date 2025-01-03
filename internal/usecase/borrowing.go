@@ -67,7 +67,7 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 		// ALLOW ALL
 	case "USER":
 		fmt.Println("[DEBUG] global user")
-		staffs, _, err := u.ListStaffs(ctx, ListStaffsOption{
+		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
 			UserID: userID.String(),
 			// Using a limit of 500 for now, adjust as needed based on expected data size
 			Limit: 500,

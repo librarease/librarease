@@ -30,8 +30,11 @@ type Subscription struct {
 }
 
 type ListSubscriptionsOption struct {
-	Skip           int
-	Limit          int
+	Skip   int
+	Limit  int
+	SortBy string
+	SortIn string
+
 	UserID         string
 	MembershipID   string
 	LibraryIDs     uuid.UUIDs
@@ -59,7 +62,7 @@ func (u Usecase) ListSubscriptions(ctx context.Context, opt ListSubscriptionsOpt
 		// ALLOW ALL
 	case "USER":
 		fmt.Println("[DEBUG] global user")
-		staffs, _, err := u.ListStaffs(ctx, ListStaffsOption{
+		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
 			UserID: userID.String(),
 			// Using a limit of 500 for now, adjust as needed based on expected data size
 			Limit: 500,

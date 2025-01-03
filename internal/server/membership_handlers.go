@@ -24,8 +24,11 @@ type Membership struct {
 }
 
 type ListMembershipsRequest struct {
-	Skip      int    `query:"skip"`
-	Limit     int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Skip   int    `query:"skip"`
+	Limit  int    `query:"limit" validate:"required,gte=1,lte=100"`
+	SortBy string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at"`
+	SortIn string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
+
 	Name      string `query:"name" validate:"omitempty"`
 	LibraryID string `query:"library_id" validate:"omitempty,uuid"`
 }
@@ -46,8 +49,11 @@ func (s *Server) ListMemberships(ctx echo.Context) error {
 	}
 
 	memberships, total, err := s.server.ListMemberships(ctx.Request().Context(), usecase.ListMembershipsOption{
-		Skip:       req.Skip,
-		Limit:      req.Limit,
+		Skip:   req.Skip,
+		Limit:  req.Limit,
+		SortBy: req.SortBy,
+		SortIn: req.SortIn,
+
 		Name:       req.Name,
 		LibraryIDs: libIDs,
 	})

@@ -21,14 +21,15 @@ type Staff struct {
 }
 
 type ListStaffsRequest struct {
+	Skip   int    `query:"skip"`
+	Limit  int    `query:"limit" validate:"required,gte=1,lte=100"`
+	SortBy string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at"`
+	SortIn string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
+
 	LibraryID string `query:"library_id" validate:"omitempty,uuid"`
 	UserID    string `query:"user_id" validate:"omitempty,uuid"`
-	Skip      int    `query:"skip"`
-	Limit     int    `query:"limit" validate:"required,gte=1,lte=100"`
 	Name      string `query:"name" validate:"omitempty"`
 	Role      string `query:"role" validate:"omitempty,oneof=ADMIN STAFF"`
-	SortBy    string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at"`
-	SortIn    string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 }
 
 func (s *Server) ListStaffs(ctx echo.Context) error {
@@ -43,15 +44,21 @@ func (s *Server) ListStaffs(ctx echo.Context) error {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
+	var libIDs uuid.UUIDs
+	if req.LibraryID != "" {
+		id, _ := uuid.Parse(req.LibraryID)
+		libIDs = append(libIDs, id)
+	}
+
 	staffs, total, err := s.server.ListStaffs(ctx.Request().Context(), usecase.ListStaffsOption{
-		Skip:      req.Skip,
-		Limit:     req.Limit,
-		SortBy:    req.SortBy,
-		SortIn:    req.SortIn,
-		LibraryID: req.LibraryID,
-		UserID:    req.UserID,
-		Name:      req.Name,
-		StaffRole: usecase.StaffRole(req.Role),
+		Skip:       req.Skip,
+		Limit:      req.Limit,
+		SortBy:     req.SortBy,
+		SortIn:     req.SortIn,
+		LibraryIDs: libIDs,
+		UserID:     req.UserID,
+		Name:       req.Name,
+		StaffRole:  usecase.StaffRole(req.Role),
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

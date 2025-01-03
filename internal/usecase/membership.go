@@ -24,8 +24,11 @@ type Membership struct {
 }
 
 type ListMembershipsOption struct {
-	Skip       int
-	Limit      int
+	Skip   int
+	Limit  int
+	SortBy string
+	SortIn string
+
 	Name       string
 	LibraryIDs uuid.UUIDs
 }

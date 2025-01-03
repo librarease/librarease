@@ -60,6 +60,17 @@ func (s *service) ListSubscriptions(ctx context.Context, opt usecase.ListSubscri
 			Where("m.name ILIKE ?", "%"+opt.MembershipName+"%")
 	}
 
+	var (
+		orderIn = "DESC"
+		orderBy = "created_at"
+	)
+	if opt.SortBy != "" {
+		orderBy = opt.SortBy
+	}
+	if opt.SortIn != "" {
+		orderIn = opt.SortIn
+	}
+
 	err := db.
 		Preload("User").
 		Preload("Membership").
@@ -67,6 +78,7 @@ func (s *service) ListSubscriptions(ctx context.Context, opt usecase.ListSubscri
 		Count(&count).
 		Limit(opt.Limit).
 		Offset(opt.Skip).
+		Order(orderBy + " " + orderIn).
 		Find(&subs).
 		Error
 
