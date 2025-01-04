@@ -61,3 +61,14 @@ func (f *Firebase) VerifyIDToken(ctx context.Context, token string) (string, err
 	}
 	return t.UID, nil
 }
+
+func (f *Firebase) SetCustomClaims(ctx context.Context, uid string, claims usecase.CustomClaims) error {
+	return f.client.SetCustomUserClaims(ctx, uid, map[string]any{
+		"librarease": map[string]any{
+			"id":         claims.ID,
+			"role":       claims.Role,
+			"admin_libs": claims.AdminLibs,
+			"staff_libs": claims.StaffLibs,
+		},
+	})
+}

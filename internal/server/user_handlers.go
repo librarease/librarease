@@ -14,6 +14,7 @@ type User struct {
 	ID         string  `json:"id" param:"id"`
 	Name       string  `json:"name" validate:"required"`
 	Email      string  `json:"email,omitempty"`
+	Phone      string  `json:"phone,omitempty"`
 	CreatedAt  string  `json:"created_at,omitempty"`
 	UpdatedAt  string  `json:"updated_at,omitempty"`
 	GlobalRole string  `json:"global_role,omitempty"`
@@ -92,13 +93,12 @@ func (s *Server) GetUserByID(ctx echo.Context) error {
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
-	au, err := s.server.GetAuthUserByUID(ctx.Request().Context(), req.ID)
-	if err != nil {
-		return ctx.JSON(500, map[string]string{"error": err.Error()})
-	}
 
 	user := ConvertUserFrom(u)
-	user.GlobalRole = au.GlobalRole
+
+	if u.AuthUser != nil {
+		user.GlobalRole = u.AuthUser.GlobalRole
+	}
 
 	user.Staffs = make([]Staff, 0, len(u.Staffs))
 	for _, st := range u.Staffs {
@@ -161,22 +161,37 @@ func (s *Server) CreateUser(ctx echo.Context) error {
 	return ctx.JSON(200, Res{Data: ConvertUserFrom(u)})
 }
 
+type UpdateUserRequest struct {
+	ID         string `param:"id" validate:"required,uuid"`
+	Name       string `json:"name,omitempty"`
+	Phone      string `json:"phone,omitempty"`
+	GlobalRole string `json:"global_role" validate:"omitempty,oneof=SUPERADMIN ADMIN USER"`
+}
+
 func (s *Server) UpdateUser(ctx echo.Context) error {
-	var user User
-	if err := ctx.Bind(&user); err != nil {
+	var req UpdateUserRequest
+	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}
 
-	err := s.validator.Struct(user)
+	err := s.validator.Struct(req)
 	if err != nil {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
-	id, _ := uuid.Parse(user.ID)
+	id, _ := uuid.Parse(req.ID)
 
-	u, err := s.server.UpdateUser(ctx.Request().Context(), usecase.User{
-		ID:   id,
-		Name: user.Name,
+	var au *usecase.AuthUser
+	if req.GlobalRole != "" {
+		au = &usecase.AuthUser{
+			GlobalRole: req.GlobalRole,
+		}
+	}
+
+	u, err := s.server.UpdateUser(ctx.Request().Context(), id, usecase.User{
+		Name:     req.Name,
+		Phone:    req.Phone,
+		AuthUser: au,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -185,6 +200,8 @@ func (s *Server) UpdateUser(ctx echo.Context) error {
 	return ctx.JSON(200, Res{Data: User{
 		ID:        u.ID.String(),
 		Name:      u.Name,
+		Email:     u.Email,
+		Phone:     u.Phone,
 		CreatedAt: u.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
 	}})

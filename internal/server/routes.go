@@ -30,7 +30,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	userGroup.GET("", s.ListUsers)
 	userGroup.POST("", s.CreateUser)
 	userGroup.GET("/:id", s.GetUserByID)
-	userGroup.PUT("/:id", s.UpdateUser)
+	userGroup.PUT("/:id", s.UpdateUser, s.AuthMiddleware)
 	userGroup.DELETE("/:id", s.DeleteUser)
 	userGroup.GET("/me", s.GetMe, s.AuthMiddleware)
 
@@ -43,7 +43,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	var staffGroup = e.Group("/api/v1/staffs")
 	staffGroup.GET("", s.ListStaffs, s.AuthMiddleware)
-	staffGroup.POST("", s.CreateStaff)
+	staffGroup.POST("", s.CreateStaff, s.AuthMiddleware)
 	staffGroup.GET("/:id", s.GetStaffByID)
 	staffGroup.PUT("/:id", s.UpdateStaff)
 

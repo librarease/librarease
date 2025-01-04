@@ -32,7 +32,7 @@ type Service interface {
 	ListUsers(context.Context, usecase.ListUsersOption) ([]usecase.User, int, error)
 	GetUserByID(context.Context, string, usecase.GetUserByIDOption) (usecase.User, error)
 	CreateUser(context.Context, usecase.User) (usecase.User, error)
-	UpdateUser(context.Context, usecase.User) (usecase.User, error)
+	UpdateUser(context.Context, uuid.UUID, usecase.User) (usecase.User, error)
 	DeleteUser(context.Context, string) error
 	GetAuthUserByUID(context.Context, string) (usecase.AuthUser, error)
 	GetAuthUserByUserID(context.Context, string) (usecase.AuthUser, error)

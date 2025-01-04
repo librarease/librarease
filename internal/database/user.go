@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type User struct {
@@ -94,6 +95,10 @@ func (s *service) GetUserByID(ctx context.Context, id string, opt usecase.GetUse
 	}
 
 	uu := u.ConvertToUsecase()
+	if u.AuthUser != nil {
+		au := u.AuthUser.ConvertToUsecase()
+		uu.AuthUser = &au
+	}
 	if u.Staffs != nil {
 		for _, st := range u.Staffs {
 			ust := st.ConvertToUsecase()
@@ -121,15 +126,26 @@ func (s *service) CreateUser(ctx context.Context, user usecase.User) (usecase.Us
 	return u.ConvertToUsecase(), nil
 }
 
-func (s *service) UpdateUser(ctx context.Context, user usecase.User) (usecase.User, error) {
+func (s *service) UpdateUser(ctx context.Context, id uuid.UUID, user usecase.User) (usecase.User, error) {
 	u := User{
-		ID:   user.ID,
-		Name: user.Name,
+		Name:  user.Name,
+		Phone: user.Phone,
 	}
 
-	err := s.db.WithContext(ctx).Where("id = ?", u.ID).Updates(&u).Error
+	err := s.db.WithContext(ctx).Clauses(clause.Returning{}).Where("id = ?", id).Updates(&u).Error
 	if err != nil {
 		return usecase.User{}, err
+	}
+
+	if user.AuthUser != nil {
+		au := AuthUser{
+			UserID:     id,
+			GlobalRole: user.AuthUser.GlobalRole,
+		}
+		err := s.db.WithContext(ctx).Where("user_id = ?", id).Updates(&au).Error
+		if err != nil {
+			return usecase.User{}, err
+		}
 	}
 
 	return usecase.User{

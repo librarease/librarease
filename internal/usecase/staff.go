@@ -116,7 +116,49 @@ type ListStaffsOption struct {
 }
 
 func (u Usecase) CreateStaff(ctx context.Context, staff Staff) (Staff, error) {
-	return u.repo.CreateStaff(ctx, staff)
+
+	role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+	if !ok {
+		return Staff{}, fmt.Errorf("user role not found in context")
+	}
+	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return Staff{}, fmt.Errorf("user id not found in context")
+	}
+
+	switch role {
+	case "SUPERADMIN":
+		// ALLOW
+	case "ADMIN":
+		// ALLlOW
+	case "USER":
+		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
+			UserID:     userID.String(),
+			LibraryIDs: uuid.UUIDs{staff.LibraryID},
+		})
+		if err != nil {
+			return Staff{}, err
+		}
+		if len(staffs) == 0 {
+			// TODO: implement error
+			return Staff{}, fmt.Errorf("you are not staff of this library")
+		}
+
+		if staffs[0].Role != StaffRoleAdmin {
+			// TODO: implement error
+			return Staff{}, fmt.Errorf("you are not allowed to assign staff")
+		}
+	}
+	st, err := u.repo.CreateStaff(ctx, staff)
+	if err != nil {
+		return Staff{}, err
+	}
+	// refresh custom claims
+	err = u.refreshCustomClaims(ctx, st.UserID)
+	if err != nil {
+		return Staff{}, err
+	}
+	return st, nil
 }
 
 func (u Usecase) GetStaffByID(ctx context.Context, id string) (Staff, error) {

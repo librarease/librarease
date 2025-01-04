@@ -21,7 +21,7 @@ type Repository interface {
 	ListUsers(context.Context, ListUsersOption) ([]User, int, error)
 	GetUserByID(context.Context, string, GetUserByIDOption) (User, error)
 	CreateUser(context.Context, User) (User, error)
-	UpdateUser(context.Context, User) (User, error)
+	UpdateUser(context.Context, uuid.UUID, User) (User, error)
 	DeleteUser(context.Context, string) error
 
 	// library
@@ -71,6 +71,7 @@ type Repository interface {
 type IdentityProvider interface {
 	CreateUser(context.Context, RegisterUser) (string, error)
 	VerifyIDToken(context.Context, string) (string, error)
+	SetCustomClaims(context.Context, string, CustomClaims) error
 }
 
 type Usecase struct {
