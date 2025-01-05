@@ -75,5 +75,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 	var authGroup = e.Group("/api/v1/auth")
 	authGroup.POST("/register", s.RegisterUser)
 
+	var analysisGroup = e.Group("/api/v1/analysis")
+	analysisGroup.GET("", s.GetAnalysis)
+
 	return e
 }

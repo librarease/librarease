@@ -71,6 +71,8 @@ type Service interface {
 
 	RegisterUser(context.Context, usecase.RegisterUser) (usecase.User, error)
 	VerifyIDToken(context.Context, string) (string, error)
+
+	GetAnalysis(context.Context, usecase.GetAnalysisOption) (usecase.Analysis, error)
 }
 
 type Server struct {
