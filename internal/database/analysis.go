@@ -70,25 +70,16 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 	}
 
 	var book []usecase.BookAnalysis
-	err = s.db.WithContext(ctx).Raw(`
-    SELECT DISTINCT ON (month) 
-        subquery.month AS timestamp, 
-        subquery.title AS title, 
-        subquery.borrow_count AS count
-    FROM (
-        SELECT 
-            DATE_TRUNC('month', b.borrowed_at) AS month,
-            bk.title AS title,
-            COUNT(*) AS borrow_count
-        FROM borrowings b
-        JOIN books bk ON b.book_id = bk.id
-        WHERE b.borrowed_at BETWEEN ? AND ?
-          AND bk.library_id = ?
-        GROUP BY month, bk.title
-        ORDER BY month, COUNT(*) DESC
-    ) AS subquery
-    ORDER BY month, borrow_count DESC
-`, opt.From, opt.To, opt.LibraryID).Scan(&book).Error
+	err = s.db.WithContext(ctx).Table("borrowings b").
+		Joins("JOIN books bk ON b.book_id = bk.id").
+		Select("bk.title, COUNT(*) AS count").
+		Group("bk.title").
+		Order("count DESC").
+		Offset(opt.Skip).
+		Limit(opt.Limit).
+		Where("b.borrowed_at BETWEEN ? AND ?", opt.From, opt.To).
+		Where("bk.library_id = ?", opt.LibraryID).
+		Scan(&book).Error
 
 	if err != nil {
 		return usecase.Analysis{}, err

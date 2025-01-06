@@ -20,9 +20,8 @@ type RevenueAnalysis struct {
 
 // book borrowing count
 type BookAnalysis struct {
-	Timestamp time.Time
-	Count     int
-	Title     string
+	Count int
+	Title string
 }
 
 // membership purchasing count

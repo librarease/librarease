@@ -20,9 +20,8 @@ type RevenueAnalysis struct {
 }
 
 type BookAnalysis struct {
-	Timestamp string `json:"timestamp"`
-	Count     int    `json:"count"`
-	Title     string `json:"title"`
+	Count int    `json:"count"`
+	Title string `json:"title"`
 }
 
 type MembershipAnalysis struct {
@@ -102,9 +101,8 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 		defer wg.Done()
 		for _, v := range res.Book {
 			book = append(book, BookAnalysis{
-				Timestamp: v.Timestamp.Format(time.RFC3339),
-				Count:     v.Count,
-				Title:     v.Title,
+				Count: v.Count,
+				Title: v.Title,
 			})
 		}
 	}()
