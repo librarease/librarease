@@ -17,7 +17,7 @@ type Borrowing struct {
 	StaffID        uuid.UUID
 	BorrowedAt     time.Time
 	DueAt          time.Time
-	ReturnedAt     *time.Time
+	ReturningID    *uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time
@@ -25,25 +25,28 @@ type Borrowing struct {
 	Book         *Book
 	Subscription *Subscription
 	Staff        *Staff
+	Returning    *Returning
 }
 
 type ListBorrowingsOption struct {
-	Skip           int
-	Limit          int
-	BookID         string
-	SubscriptionID string
-	StaffID        string
+	Skip   int
+	Limit  int
+	SortBy string
+	SortIn string
 
-	MembershipID string
-	LibraryIDs   []string
-	UserID       string
-	BorrowedAt   time.Time
-	DueAt        time.Time
-	ReturnedAt   *time.Time
-	IsActive     bool
-	IsExpired    bool
-	SortBy       string
-	SortIn       string
+	BookIDs         uuid.UUIDs
+	SubscriptionIDs uuid.UUIDs
+	BorrowStaffIDs  uuid.UUIDs
+	ReturnStaffIDs  uuid.UUIDs
+	MembershipIDs   uuid.UUIDs
+	LibraryIDs      uuid.UUIDs
+	UserIDs         uuid.UUIDs
+	ReturningIDs    uuid.UUIDs
+	BorrowedAt      time.Time
+	DueAt           time.Time
+	ReturnedAt      *time.Time
+	IsActive        bool
+	IsExpired       bool
 }
 
 // TODO: separate client and admin borrowing list route
@@ -78,15 +81,15 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 		// user is not staff
 		if len(staffs) == 0 {
 			fmt.Println("[DEBUG] user is not staff, filtering by user id")
-			opt.UserID = userID.String()
+			opt.UserIDs = uuid.UUIDs{userID}
 			break
 		}
 
 		// user is staff
 		fmt.Println("[DEBUG] user is staff")
-		var staffLibIDs []string
+		var staffLibIDs uuid.UUIDs
 		for _, staff := range staffs {
-			staffLibIDs = append(staffLibIDs, staff.LibraryID.String())
+			staffLibIDs = append(staffLibIDs, staff.LibraryID)
 		}
 		// user is staff, filtering by library ids
 		if len(opt.LibraryIDs) == 0 {
@@ -97,7 +100,7 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 		}
 
 		fmt.Println("[DEBUG] filtering by library ids query")
-		var intersectLibIDs []string
+		var intersectLibIDs uuid.UUIDs
 		for _, id := range opt.LibraryIDs {
 			// filter out library ids that are not assigned to the staff
 			if slices.Contains(staffLibIDs, id) {
@@ -139,8 +142,8 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 
 	// 2. Check if the user has reached the maximum borrowing limit
 	_, activeCount, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
-		SubscriptionID: s.ID.String(),
-		IsActive:       true,
+		SubscriptionIDs: uuid.UUIDs{s.ID},
+		IsActive:        true,
 	})
 	if err != nil {
 		return Borrowing{}, err
@@ -152,7 +155,7 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 
 	// 3. Check if the book is available
 	_, count, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
-		BookID:   borrow.BookID.String(),
+		BookIDs:  uuid.UUIDs{borrow.BookID},
 		IsActive: true,
 	})
 	if err != nil {

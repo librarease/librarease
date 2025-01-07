@@ -69,6 +69,8 @@ type Service interface {
 	CreateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
 	UpdateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
 
+	ReturnBorrowing(context.Context, uuid.UUID, usecase.Returning) (usecase.Borrowing, error)
+
 	RegisterUser(context.Context, usecase.RegisterUser) (usecase.User, error)
 	VerifyIDToken(context.Context, string) (string, error)
 

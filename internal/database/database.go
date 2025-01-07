@@ -80,6 +80,7 @@ func New() *service {
 		Membership{},
 		Subscription{},
 		Borrowing{},
+		Returning{},
 	)
 	if err != nil {
 		log.Fatal(err)

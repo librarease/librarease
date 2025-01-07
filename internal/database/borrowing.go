@@ -19,10 +19,12 @@ type Borrowing struct {
 	Staff          *Staff        `gorm:"foreignKey:StaffID;references:ID"`
 	BorrowedAt     time.Time     `gorm:"column:borrowed_at;default:now()"`
 	DueAt          time.Time     `gorm:"column:due_at"`
-	ReturnedAt     *time.Time    `gorm:"column:returned_at"`
-	CreatedAt      time.Time     `gorm:"column:created_at"`
-	UpdatedAt      time.Time     `gorm:"column:updated_at"`
-	DeletedAt      *gorm.DeletedAt
+	// ReturnedAt     *time.Time    `gorm:"column:returned_at"`
+	ReturningID *uuid.UUID `gorm:"column:returning_id;type:uuid;"`
+	Returning   *Returning `gorm:"foreignKey:ReturningID;references:ID"`
+	CreatedAt   time.Time  `gorm:"column:created_at"`
+	UpdatedAt   time.Time  `gorm:"column:updated_at"`
+	DeletedAt   *gorm.DeletedAt
 }
 
 func (Borrowing) TableName() string {
@@ -37,16 +39,18 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		count    int64
 	)
 
-	db := s.db.Model([]Borrowing{}).WithContext(ctx)
+	db := s.db.Model([]Borrowing{}).WithContext(ctx).
+		// Joins("LEFT JOIN returnings r ON borrowings.returning_id = r.id")
+		Preload("Returning")
 
-	if opt.BookID != "" {
-		db = db.Where("book_id = ?", opt.BookID)
+	if len(opt.BookIDs) > 0 {
+		db = db.Where("book_id IN ?", opt.BookIDs)
 	}
-	if opt.SubscriptionID != "" {
-		db = db.Where("subscription_id = ?", opt.SubscriptionID)
+	if len(opt.SubscriptionIDs) > 0 {
+		db = db.Where("subscription_id IN ?", opt.SubscriptionIDs)
 	}
-	if opt.StaffID != "" {
-		db = db.Where("staff_id = ?", opt.StaffID)
+	if len(opt.BorrowStaffIDs) > 0 {
+		db = db.Where("staff_id IN ?", opt.BorrowStaffIDs)
 	}
 	if !opt.BorrowedAt.IsZero() {
 		db = db.Where("borrowed_at = ?", opt.BorrowedAt)
@@ -55,22 +59,22 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		db = db.Where("due_at = ?", opt.DueAt)
 	}
 	if opt.ReturnedAt != nil {
-		db = db.Where("returned_at = ?", opt.ReturnedAt)
+		db = db.Where("returnings.returned_at = ?", opt.ReturnedAt)
 	}
 	if opt.IsActive {
-		db = db.Where("returned_at IS NULL")
+		db = db.Where("returning_id IS NULL")
 	}
 	if opt.IsExpired {
-		db = db.Where("due_at < now() AND returned_at IS NULL")
+		db = db.Where("due_at < now() AND returning_id IS NULL")
 	}
-	if opt.MembershipID != "" {
-		db = db.Joins("Subscription").Where("membership_id = ?", opt.MembershipID)
+	if len(opt.MembershipIDs) > 0 {
+		db = db.Joins("Subscription").Where("membership_id IN ?", opt.MembershipIDs)
 	}
-	if opt.UserID != "" {
-		db = db.Joins("Subscription").Where("user_id = ?", opt.UserID)
+	if len(opt.UserIDs) > 0 {
+		db = db.Joins("Subscription").Where("user_id IN ?", opt.UserIDs)
 	}
 	if len(opt.LibraryIDs) > 0 {
-		db = db.Joins("Book").Where("library_id in ?", opt.LibraryIDs)
+		db = db.Joins("Book").Where("library_id IN ?", opt.LibraryIDs)
 		// db = db.Joins("JOIN subscriptions s ON borrowings.subscription_id = s.id").
 		// 	Joins("JOIN memberships m ON s.membership_id = m.id").
 		// 	Where("m.library_id = ?", opt.LibraryID)
@@ -107,6 +111,12 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 
 	for _, b := range borrows {
 		ub := b.ConvertToUsecase()
+
+		// NOTE: would need to check b.Returning != nil
+		if b.ReturningID != nil {
+			returning := b.Returning.ConvertToUsecase()
+			ub.Returning = &returning
+		}
 
 		if b.Book.ID != uuid.Nil {
 			book := b.Book.ConvertToUsecase()
@@ -149,6 +159,7 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.B
 	err := s.db.
 		Model(Borrowing{}).
 		WithContext(ctx).
+		Preload("Returning").
 		Preload("Book").
 		Preload("Staff").
 		Preload("Subscription").
@@ -163,6 +174,11 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.B
 	}
 
 	ub := b.ConvertToUsecase()
+
+	if b.ReturningID != nil {
+		returning := b.Returning.ConvertToUsecase()
+		ub.Returning = &returning
+	}
 
 	if b.Book.ID != uuid.Nil {
 		book := b.Book.ConvertToUsecase()
@@ -204,7 +220,8 @@ func (s *service) CreateBorrowing(ctx context.Context, b usecase.Borrowing) (use
 		StaffID:        b.StaffID,
 		BorrowedAt:     b.BorrowedAt,
 		DueAt:          b.DueAt,
-		ReturnedAt:     b.ReturnedAt,
+		// FIXME: accept returning id / create returning
+		// ReturnedAt:     b.ReturnedAt,
 	}
 
 	if err := s.db.WithContext(ctx).Create(&borrow).Error; err != nil {
@@ -222,7 +239,8 @@ func (s *service) UpdateBorrowing(ctx context.Context, b usecase.Borrowing) (use
 		StaffID:        b.StaffID,
 		BorrowedAt:     b.BorrowedAt,
 		DueAt:          b.DueAt,
-		ReturnedAt:     b.ReturnedAt,
+		// FIXME: accept returning id / create returning
+		// ReturnedAt:     b.ReturnedAt,
 	}
 
 	err := s.db.WithContext(ctx).Updates(&borrow).Error
@@ -246,7 +264,7 @@ func (b Borrowing) ConvertToUsecase() usecase.Borrowing {
 		StaffID:        b.StaffID,
 		BorrowedAt:     b.BorrowedAt,
 		DueAt:          b.DueAt,
-		ReturnedAt:     b.ReturnedAt,
+		ReturningID:    b.ReturningID,
 		CreatedAt:      b.CreatedAt,
 		UpdatedAt:      b.UpdatedAt,
 		DeletedAt:      d,

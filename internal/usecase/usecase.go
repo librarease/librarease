@@ -62,6 +62,9 @@ type Repository interface {
 	CreateBorrowing(context.Context, Borrowing) (Borrowing, error)
 	UpdateBorrowing(context.Context, Borrowing) (Borrowing, error)
 
+	// returning
+	ReturnBorrowing(context.Context, uuid.UUID, Returning) (Borrowing, error)
+
 	// auth user
 	CreateAuthUser(context.Context, AuthUser) (AuthUser, error)
 	GetAuthUserByUID(context.Context, string) (AuthUser, error)

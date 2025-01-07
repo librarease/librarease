@@ -14,7 +14,7 @@ type StaffRole string
 
 const (
 	StaffRoleAdmin StaffRole = "ADMIN"
-	StaffRoleUser  StaffRole = "USER"
+	StaffRoleStaff StaffRole = "STAFF"
 )
 
 type Staff struct {
