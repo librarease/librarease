@@ -27,13 +27,12 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 	err = s.db.WithContext(ctx).Table("borrowings b").
 		Joins("JOIN subscriptions s ON b.subscription_id = s.id").
 		Joins("JOIN memberships m ON s.membership_id = m.id").
-		Joins("JOIN returning r ON b.returning_id = r.id").
+		Joins("JOIN returnings r ON r.borrowing_id = b.id").
 		Select(`
 			DATE_TRUNC('month', r.returned_at) AS timestamp,
 			SUM((EXTRACT(DAY FROM r.returned_at - b.due_at)) * s.fine_per_day) AS fine,
-			SUM(r.fine) AS actual_fine,
+			SUM(r.fine) AS actual_fine
 		`).
-		Where("b.returning_id IS NOT NULL").
 		Where("r.returned_at > b.due_at").
 		Where("r.returned_at BETWEEN ? AND ?", opt.From, opt.To).
 		Where("m.library_id = ?", opt.LibraryID).
