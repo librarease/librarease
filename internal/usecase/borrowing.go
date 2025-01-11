@@ -3,9 +3,10 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"librarease/internal/config"
 	"slices"
 	"time"
+
+	"github.com/librarease/librarease/internal/config"
 
 	"github.com/google/uuid"
 )

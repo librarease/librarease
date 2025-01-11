@@ -12,9 +12,9 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/joho/godotenv/autoload"
 
-	"librarease/internal/database"
-	"librarease/internal/firebase"
-	"librarease/internal/usecase"
+	"github.com/librarease/librarease/internal/database"
+	"github.com/librarease/librarease/internal/firebase"
+	"github.com/librarease/librarease/internal/usecase"
 )
 
 // Service represents a service that interacts with a database.

@@ -2,9 +2,10 @@ package server
 
 import (
 	"fmt"
-	"librarease/internal/config"
-	"librarease/internal/usecase"
 	"time"
+
+	"github.com/librarease/librarease/internal/config"
+	"github.com/librarease/librarease/internal/usecase"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"

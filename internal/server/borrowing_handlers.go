@@ -1,8 +1,9 @@
 package server
 
 import (
-	"librarease/internal/usecase"
 	"time"
+
+	"github.com/librarease/librarease/internal/usecase"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"

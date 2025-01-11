@@ -1,4 +1,4 @@
-module librarease
+module github.com/librarease/librarease
 
 go 1.23.0
 

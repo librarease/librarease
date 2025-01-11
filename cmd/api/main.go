@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"librarease/internal/server"
+	"github.com/librarease/librarease/internal/server"
 )
 
 func gracefulShutdown(apiServer *http.Server, done chan bool) {

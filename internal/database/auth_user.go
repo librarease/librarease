@@ -3,8 +3,9 @@ package database
 import (
 	"context"
 	"fmt"
-	"librarease/internal/usecase"
 	"time"
+
+	"github.com/librarease/librarease/internal/usecase"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"

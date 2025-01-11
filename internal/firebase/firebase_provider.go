@@ -3,9 +3,10 @@ package firebase
 import (
 	"context"
 	"fmt"
-	"librarease/internal/usecase"
 	"log"
 	"os"
+
+	"github.com/librarease/librarease/internal/usecase"
 
 	fb "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"

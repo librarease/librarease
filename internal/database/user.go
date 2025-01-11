@@ -2,8 +2,9 @@ package database
 
 import (
 	"context"
-	"librarease/internal/usecase"
 	"time"
+
+	"github.com/librarease/librarease/internal/usecase"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"

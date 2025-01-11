@@ -2,8 +2,9 @@ package database
 
 import (
 	"context"
-	"librarease/internal/usecase"
 	"time"
+
+	"github.com/librarease/librarease/internal/usecase"
 )
 
 func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption) (usecase.Analysis, error) {

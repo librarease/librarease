@@ -3,8 +3,9 @@ package server
 import (
 	"context"
 	"fmt"
-	"librarease/internal/config"
 	"os"
+
+	"github.com/librarease/librarease/internal/config"
 
 	"github.com/labstack/echo/v4"
 )
