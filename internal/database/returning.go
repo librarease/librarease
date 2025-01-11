@@ -7,11 +7,12 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Returning struct {
 	ID          uuid.UUID  `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
-	BorrowingID uuid.UUID  `gorm:"column:borrowing_id;type:uuid;"`
+	BorrowingID uuid.UUID  `gorm:"column:borrowing_id;type:uuid;not null;index:"`
 	Borrowing   *Borrowing `gorm:"foreignKey:BorrowingID;references:ID"`
 	StaffID     uuid.UUID  `gorm:"column:staff_id;type:uuid;"`
 	Staff       *Staff     `gorm:"foreignKey:StaffID;references:ID"`
@@ -64,9 +65,6 @@ func (Returning) TableName() string {
 // }
 
 func (s *service) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r usecase.Returning) (usecase.Borrowing, error) {
-	db := s.db.WithContext(ctx)
-
-	var borrowing = Borrowing{}
 
 	var returning = Returning{
 		BorrowingID: borrowingID,
@@ -75,40 +73,27 @@ func (s *service) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r 
 		Fine:        r.Fine,
 	}
 
-	err := db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.
-			Where("id = ?", borrowingID).
-			Where("returning_id IS NULL").
-			First(&borrowing).
-			Error; err != nil {
-
-			return err
-		}
-
-		returning.BorrowingID = borrowingID
-
-		if err := tx.Create(&returning).Error; err != nil {
-			return err
-		}
-
-		borrowing.ReturningID = &returning.ID
-
-		if err := tx.Save(&borrowing).Error; err != nil {
-			return err
-		}
-
-		return nil
-	})
+	err := s.db.WithContext(ctx).
+		Clauses(clause.Returning{}).
+		Create(&returning).
+		Error
 
 	if err != nil {
 		return usecase.Borrowing{}, err
 	}
 
-	uborrow := borrowing.ConvertToUsecase()
-	ureturn := returning.ConvertToUsecase()
-	uborrow.Returning = &ureturn
+	var borrowing Borrowing
+	err = s.db.WithContext(ctx).
+		Model(&Borrowing{}).
+		First(&borrowing, "id = ?", borrowingID).
+		Preload("Returning").
+		Error
 
-	return uborrow, nil
+	if err != nil {
+		return usecase.Borrowing{}, err
+	}
+
+	return borrowing.ConvertToUsecase(), nil
 }
 
 // Convert core model to Usecase

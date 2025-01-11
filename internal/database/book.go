@@ -15,6 +15,7 @@ type Book struct {
 	Author     string          `gorm:"column:author;type:varchar(255)"`
 	Year       int             `gorm:"column:year;type:int"`
 	Code       string          `gorm:"column:code;type:varchar(255);uniqueIndex:idx_lib_code"`
+	Count      int             `gorm:"column:count;type:int;default:1"`
 	CreatedAt  time.Time       `gorm:"column:created_at"`
 	UpdatedAt  time.Time       `gorm:"column:updated_at"`
 	DeletedAt  *gorm.DeletedAt `gorm:"column:deleted_at"`
@@ -107,6 +108,7 @@ func (s *service) CreateBook(ctx context.Context, book usecase.Book) (usecase.Bo
 		Author:    book.Author,
 		Year:      book.Year,
 		Code:      book.Code,
+		Count:     book.Count,
 		LibraryID: book.LibraryID,
 	}
 
@@ -123,6 +125,7 @@ func (s *service) UpdateBook(ctx context.Context, book usecase.Book) (usecase.Bo
 		Author:    book.Author,
 		Year:      book.Year,
 		Code:      book.Code,
+		Count:     book.Count,
 		LibraryID: book.LibraryID,
 	}
 
@@ -145,6 +148,7 @@ func (b Book) ConvertToUsecase() usecase.Book {
 		Author:    b.Author,
 		Year:      b.Year,
 		Code:      b.Code,
+		Count:     b.Count,
 		LibraryID: b.LibraryID,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,

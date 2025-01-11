@@ -17,7 +17,6 @@ type Borrowing struct {
 	StaffID        uuid.UUID
 	BorrowedAt     time.Time
 	DueAt          time.Time
-	ReturningID    *uuid.UUID
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time
@@ -153,20 +152,7 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 		return Borrowing{}, fmt.Errorf("user %s has reached the active loan limit", s.UserID)
 	}
 
-	// 3. Check if the book is available
-	_, count, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
-		BookIDs:  uuid.UUIDs{borrow.BookID},
-		IsActive: true,
-	})
-	if err != nil {
-		return Borrowing{}, err
-	}
-	// TODO: ErrBookNotAvailable
-	if count > 0 {
-		return Borrowing{}, fmt.Errorf("book %s is not available", borrow.BookID)
-	}
-
-	// 4. Check if the book is in the same library
+	// 3. Check if the book is from the library
 	book, err := u.repo.GetBookByID(ctx, borrow.BookID)
 	if err != nil {
 		return Borrowing{}, err
@@ -175,9 +161,22 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	if err != nil {
 		return Borrowing{}, err
 	}
-	// TODO: ErrBookNotAvailable
+	// TODO: ErrBookNotInLibrary
 	if book.LibraryID != m.LibraryID {
 		return Borrowing{}, fmt.Errorf("book %s is not in library %s", book.ID, m.LibraryID)
+	}
+
+	// 4. Check if the book is available
+	_, count, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
+		BookIDs:  uuid.UUIDs{borrow.BookID},
+		IsActive: true,
+	})
+	if err != nil {
+		return Borrowing{}, err
+	}
+	// TODO: ErrBookNotAvailable
+	if count >= book.Count {
+		return Borrowing{}, fmt.Errorf("book %s is not available", borrow.BookID)
 	}
 
 	// 5. Check if staff exists

@@ -13,6 +13,7 @@ type Book struct {
 	Author    string
 	Year      int
 	Code      string
+	Count     int
 	LibraryID uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time

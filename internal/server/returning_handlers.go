@@ -9,17 +9,17 @@ import (
 )
 
 type Returning struct {
-	ID          string     `json:"id"`
-	BorrowingID string     `json:"borrowing_id"`
-	StaffID     string     `json:"staff_id"`
-	ReturnedAt  time.Time  `json:"returned_at"`
-	Fine        int        `json:"fine"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	DeletedAt   *time.Time `json:"deleted_at"`
+	ID          string    `json:"id"`
+	BorrowingID string    `json:"borrowing_id"`
+	StaffID     string    `json:"staff_id"`
+	ReturnedAt  time.Time `json:"returned_at"`
+	Fine        int       `json:"fine,omitempty"`
+	CreatedAt   string    `json:"created_at,omitempty"`
+	UpdatedAt   string    `json:"updated_at,omitempty"`
+	DeletedAt   *string   `json:"deleted_at,omitempty"`
 
-	Borrowing *Borrowing `json:"borrowing"`
-	Staff     *Staff     `json:"staff"`
+	Borrowing *Borrowing `json:"borrowing,omitempty"`
+	Staff     *Staff     `json:"staff,omitempty"`
 }
 
 type ReturnBorrowingRequest struct {
@@ -66,10 +66,18 @@ func (s *Server) ReturnBorrowing(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	var r *string
-	if borrow.ReturningID != nil {
-		tmp := borrow.ReturningID.String()
-		r = &tmp
+	var r *Returning
+	if borrow.Returning != nil {
+		r = &Returning{
+			ID:          borrow.Returning.ID.String(),
+			BorrowingID: borrow.Returning.BorrowingID.String(),
+			StaffID:     borrow.Returning.StaffID.String(),
+			ReturnedAt:  borrow.Returning.ReturnedAt,
+			Fine:        borrow.Returning.Fine,
+			CreatedAt:   borrow.Returning.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:   borrow.Returning.UpdatedAt.Format(time.RFC3339),
+			// DeletedAt:   borrow.Returning.DeletedAt,
+		}
 	}
 	return ctx.JSON(200, Res{Data: Borrowing{
 		ID:             borrow.ID.String(),
@@ -78,7 +86,7 @@ func (s *Server) ReturnBorrowing(ctx echo.Context) error {
 		StaffID:        borrow.StaffID.String(),
 		BorrowedAt:     borrow.BorrowedAt.Format(time.RFC3339),
 		DueAt:          borrow.DueAt.Format(time.RFC3339),
-		ReturningID:    r,
+		Returning:      r,
 		CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
 	}})

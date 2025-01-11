@@ -161,6 +161,7 @@ func (m Membership) ConvertToUsecase() usecase.Membership {
 		FinePerDay:      m.FinePerDay,
 		Price:           m.Price,
 		CreatedAt:       m.CreatedAt,
+		UpdatedAt:       m.UpdatedAt,
 		DeletedAt:       d,
 	}
 }

@@ -52,7 +52,7 @@ func (u Usecase) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r R
 	if err != nil {
 		return Borrowing{}, err
 	}
-	if borrow.ReturningID != nil {
+	if borrow.Returning != nil {
 		return Borrowing{}, fmt.Errorf("borrowing already returned")
 	}
 

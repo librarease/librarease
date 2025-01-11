@@ -14,6 +14,7 @@ type Book struct {
 	Author    string   `json:"author,omitempty"`
 	Year      int      `json:"year,omitempty"`
 	Code      string   `json:"code"`
+	Count     int      `json:"count,omitempty"`
 	LibraryID string   `json:"library_id,omitempty"`
 	CreatedAt string   `json:"created_at,omitempty"`
 	UpdatedAt string   `json:"updated_at,omitempty"`
@@ -70,6 +71,7 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 			Author:    b.Author,
 			Year:      b.Year,
 			Code:      b.Code,
+			Count:     b.Count,
 			LibraryID: b.LibraryID.String(),
 			CreatedAt: b.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
@@ -126,6 +128,7 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 		Author:    b.Author,
 		Year:      b.Year,
 		Code:      b.Code,
+		Count:     b.Count,
 		LibraryID: b.LibraryID.String(),
 		CreatedAt: b.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
@@ -151,6 +154,7 @@ type CreateBookRequest struct {
 	Author    string `json:"author" validate:"required"`
 	Year      int    `json:"year" validate:"required,gte=1500"`
 	Code      string `json:"code" validate:"required"`
+	Count     int    `json:"count" validate:"omitempty,gte=0"`
 	LibraryID string `json:"library_id" validate:"required,uuid"`
 }
 
@@ -169,6 +173,7 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		Author:    req.Author,
 		Year:      req.Year,
 		Code:      req.Code,
+		Count:     req.Count,
 		LibraryID: libID,
 	})
 
@@ -187,6 +192,7 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		Author:    b.Author,
 		Year:      b.Year,
 		Code:      b.Code,
+		Count:     b.Count,
 		LibraryID: b.LibraryID.String(),
 		CreatedAt: b.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
@@ -195,11 +201,13 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 }
 
 type UpdateBookRequest struct {
-	ID        string `param:"id" validate:"required,uuid"`
+	ID string `param:"id" validate:"required,uuid"`
+
 	Title     string `json:"title"`
 	Author    string `json:"author"`
 	Year      int    `json:"year" validate:"gte=1500"`
 	Code      string `json:"code"`
+	Count     int    `json:"count"`
 	LibraryID string `json:"library_id" validate:"omitempty,uuid"`
 }
 
@@ -220,6 +228,7 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		Author:    req.Author,
 		Year:      req.Year,
 		Code:      req.Code,
+		Count:     req.Count,
 		LibraryID: libID,
 	})
 
@@ -238,6 +247,7 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		Author:    b.Author,
 		Year:      b.Year,
 		Code:      b.Code,
+		Count:     b.Count,
 		LibraryID: b.LibraryID.String(),
 		CreatedAt: b.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),

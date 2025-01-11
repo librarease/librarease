@@ -15,7 +15,6 @@ type Borrowing struct {
 	StaffID        string  `json:"staff_id"`
 	BorrowedAt     string  `json:"borrowed_at"`
 	DueAt          string  `json:"due_at"`
-	ReturningID    *string `json:"returned_at"`
 	CreatedAt      string  `json:"created_at"`
 	UpdatedAt      string  `json:"updated_at"`
 	DeletedAt      *string `json:"deleted_at,omitempty"`
@@ -165,19 +164,22 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 			tmp := borrow.DeletedAt.Format(time.RFC3339)
 			d = &tmp
 		}
-		var returningID *string
-		if borrow.ReturningID != nil {
-			id := borrow.ReturningID.String()
-			returningID = &id
+		var returning *Returning
+		if borrow.Returning != nil {
+			r := Returning{
+				ID:         borrow.Returning.ID.String(),
+				ReturnedAt: borrow.Returning.ReturnedAt,
+			}
+			returning = &r
 		}
 		m := Borrowing{
 			ID:             borrow.ID.String(),
 			BookID:         borrow.BookID.String(),
 			SubscriptionID: borrow.SubscriptionID.String(),
 			StaffID:        borrow.StaffID.String(),
-			ReturningID:    returningID,
 			BorrowedAt:     borrow.BorrowedAt.Format(time.RFC3339),
 			DueAt:          borrow.DueAt.Format(time.RFC3339),
+			Returning:      returning,
 			CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
 			DeletedAt:      d,
@@ -185,13 +187,11 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 
 		if borrow.Returning != nil {
 			returning := Returning{
-				ID: borrow.Returning.ID.String(),
-				// BorrowingID: borrow.Returning.BorrowingID.String(),
-				StaffID:    borrow.Returning.StaffID.String(),
-				ReturnedAt: borrow.Returning.ReturnedAt,
-				Fine:       borrow.Returning.Fine,
-				// CreatedAt:   borrow.Returning.CreatedAt,
-				// UpdatedAt:   borrow.Returning.UpdatedAt,
+				ID:          borrow.Returning.ID.String(),
+				BorrowingID: borrow.Returning.BorrowingID.String(),
+				StaffID:     borrow.Returning.StaffID.String(),
+				ReturnedAt:  borrow.Returning.ReturnedAt,
+				Fine:        borrow.Returning.Fine,
 			}
 			if borrow.Returning.Staff != nil {
 				staff := Staff{
@@ -294,10 +294,25 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 		tmp := borrow.DeletedAt.Format(time.RFC3339)
 		d = &tmp
 	}
-	var r *string
-	if borrow.ReturningID != nil {
-		tmp := borrow.ReturningID.String()
-		r = &tmp
+	var r *Returning
+	if borrow.Returning != nil {
+		r = &Returning{
+			ID:          borrow.Returning.ID.String(),
+			BorrowingID: borrow.Returning.BorrowingID.String(),
+			StaffID:     borrow.Returning.StaffID.String(),
+			ReturnedAt:  borrow.Returning.ReturnedAt,
+			Fine:        borrow.Returning.Fine,
+			CreatedAt:   borrow.Returning.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:   borrow.Returning.UpdatedAt.Format(time.RFC3339),
+			// DeletedAt: d,
+		}
+		if borrow.Returning.Staff != nil {
+			staff := Staff{
+				ID:   borrow.Staff.ID.String(),
+				Name: borrow.Staff.Name,
+			}
+			r.Staff = &staff
+		}
 	}
 	m := Borrowing{
 		ID:             borrow.ID.String(),
@@ -306,7 +321,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 		StaffID:        borrow.StaffID.String(),
 		BorrowedAt:     borrow.BorrowedAt.Format(time.RFC3339),
 		DueAt:          borrow.DueAt.Format(time.RFC3339),
-		ReturningID:    r,
+		Returning:      r,
 		CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
 		DeletedAt:      d,
@@ -509,12 +524,6 @@ func (s *Server) UpdateBorrowing(ctx echo.Context) error {
 		dueAt = t
 	}
 
-	var returningID *uuid.UUID
-	if req.ReturningID != nil {
-		id, _ := uuid.Parse(*req.ReturningID)
-		returningID = &id
-	}
-
 	borrow, err := s.server.UpdateBorrowing(ctx.Request().Context(), usecase.Borrowing{
 		ID:             id,
 		BookID:         bookID,
@@ -522,17 +531,11 @@ func (s *Server) UpdateBorrowing(ctx echo.Context) error {
 		StaffID:        staffID,
 		BorrowedAt:     borrowedAt,
 		DueAt:          dueAt,
-		ReturningID:    returningID,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	var r *string
-	if borrow.ReturningID != nil {
-		tmp := borrow.ReturningID.String()
-		r = &tmp
-	}
 	return ctx.JSON(200, Res{Data: Borrowing{
 		ID:             borrow.ID.String(),
 		BookID:         borrow.BookID.String(),
@@ -540,7 +543,6 @@ func (s *Server) UpdateBorrowing(ctx echo.Context) error {
 		StaffID:        borrow.StaffID.String(),
 		BorrowedAt:     borrow.BorrowedAt.Format(time.RFC3339),
 		DueAt:          borrow.DueAt.Format(time.RFC3339),
-		ReturningID:    r,
 		CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
 	}})

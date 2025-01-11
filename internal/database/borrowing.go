@@ -19,12 +19,11 @@ type Borrowing struct {
 	Staff          *Staff        `gorm:"foreignKey:StaffID;references:ID"`
 	BorrowedAt     time.Time     `gorm:"column:borrowed_at;default:now()"`
 	DueAt          time.Time     `gorm:"column:due_at"`
-	// ReturnedAt     *time.Time    `gorm:"column:returned_at"`
-	ReturningID *uuid.UUID `gorm:"column:returning_id;type:uuid;"`
-	Returning   *Returning `gorm:"foreignKey:ReturningID;references:ID"`
-	CreatedAt   time.Time  `gorm:"column:created_at"`
-	UpdatedAt   time.Time  `gorm:"column:updated_at"`
-	DeletedAt   *gorm.DeletedAt
+	CreatedAt      time.Time     `gorm:"column:created_at"`
+	UpdatedAt      time.Time     `gorm:"column:updated_at"`
+	DeletedAt      *gorm.DeletedAt
+
+	Returning *Returning
 }
 
 func (Borrowing) TableName() string {
@@ -62,7 +61,8 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		db = db.Where("returnings.returned_at = ?", opt.ReturnedAt)
 	}
 	if opt.IsActive {
-		db = db.Where("returning_id IS NULL")
+		// Filter borrowings that do not have a corresponding entry in the returnings table
+		db = db.Where("NOT EXISTS (SELECT NULL FROM returnings r WHERE r.borrowing_id = borrowings.id)")
 	}
 	if opt.IsExpired {
 		db = db.Where("due_at < now() AND returning_id IS NULL")
@@ -112,8 +112,7 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 	for _, b := range borrows {
 		ub := b.ConvertToUsecase()
 
-		// NOTE: would need to check b.Returning != nil
-		if b.ReturningID != nil {
+		if b.Returning != nil {
 			returning := b.Returning.ConvertToUsecase()
 			ub.Returning = &returning
 		}
@@ -175,7 +174,7 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.B
 
 	ub := b.ConvertToUsecase()
 
-	if b.ReturningID != nil {
+	if b.Returning != nil {
 		returning := b.Returning.ConvertToUsecase()
 		ub.Returning = &returning
 	}
@@ -264,7 +263,6 @@ func (b Borrowing) ConvertToUsecase() usecase.Borrowing {
 		StaffID:        b.StaffID,
 		BorrowedAt:     b.BorrowedAt,
 		DueAt:          b.DueAt,
-		ReturningID:    b.ReturningID,
 		CreatedAt:      b.CreatedAt,
 		UpdatedAt:      b.UpdatedAt,
 		DeletedAt:      d,

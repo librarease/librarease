@@ -79,19 +79,9 @@ func New() *service {
 		Book{},
 		Membership{},
 		Subscription{},
-		Borrowing{},
 		Returning{},
+		Borrowing{},
 	)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = db.Exec(`
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_book_id_returned_at_null
-        ON borrowings (book_id)
-        WHERE returned_at IS NULL
-		AND deleted_at IS NULL;
-    `)
 	if err != nil {
 		log.Fatal(err)
 	}
