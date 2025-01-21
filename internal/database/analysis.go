@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/librarease/librarease/internal/usecase"
@@ -60,8 +61,8 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 		return usecase.Analysis{}, err
 	}
 	revenueMap := make(map[time.Time]*usecase.RevenueAnalysis)
-	for i := range revenue {
-		revenueMap[revenue[i].Timestamp] = &revenue[i]
+	for _, r := range revenue {
+		revenueMap[r.Timestamp] = &r
 	}
 
 	for _, sub := range subscriptionData {
@@ -71,6 +72,13 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 			revenue = append(revenue, sub)
 		}
 	}
+
+	slices.SortFunc(revenue, func(a, b usecase.RevenueAnalysis) int {
+		if a.Timestamp.Before(b.Timestamp) {
+			return -1
+		}
+		return 1
+	})
 
 	var book []usecase.BookAnalysis
 	err = s.db.WithContext(ctx).Table("borrowings b").
