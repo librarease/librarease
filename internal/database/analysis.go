@@ -11,8 +11,9 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 	var borrowing []usecase.BorrowingAnalysis
 	err := s.db.WithContext(ctx).Table("borrowings b").
 		Joins("JOIN books bk ON b.book_id = bk.id").
-		Select("DATE_TRUNC('month', b.borrowed_at) AS timestamp, COUNT(*) AS count").
+		Select("DATE_TRUNC('day', b.borrowed_at) AS timestamp, COUNT(*) AS count").
 		Group("timestamp").
+		Order("timestamp").
 		Offset(opt.Skip).
 		Limit(opt.Limit).
 		Order("timestamp").
@@ -29,7 +30,7 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 		Joins("JOIN memberships m ON s.membership_id = m.id").
 		Joins("JOIN returnings r ON r.borrowing_id = b.id").
 		Select(`
-			DATE_TRUNC('month', r.returned_at) AS timestamp,
+			DATE_TRUNC('day', r.returned_at) AS timestamp,
 			SUM((EXTRACT(DAY FROM r.returned_at - b.due_at)) * s.fine_per_day) AS fine,
 			SUM(r.fine) AS actual_fine
 		`).
@@ -47,7 +48,7 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 	var subscriptionData []usecase.RevenueAnalysis
 	err = s.db.WithContext(ctx).Table("subscriptions s").
 		Joins("JOIN memberships m ON s.membership_id = m.id").
-		Select("DATE_TRUNC('month', s.created_at) AS timestamp, COUNT(*) AS subscription").
+		Select("DATE_TRUNC('day', s.created_at) AS timestamp, COUNT(*) AS subscription").
 		Group("timestamp").
 		Order("timestamp").
 		Offset(opt.Skip).
