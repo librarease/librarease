@@ -15,6 +15,7 @@ type Membership struct {
 	LibraryID       string   `json:"library_id"`
 	Duration        int      `json:"duration,omitempty"`
 	ActiveLoanLimit int      `json:"active_loan_limit,omitempty"`
+	UsageLimit      int      `json:"usage_limit,omitempty"`
 	LoanPeriod      int      `json:"loan_period,omitempty"`
 	FinePerDay      int      `json:"fine_per_day,omitempty"`
 	Price           int      `json:"price,omitempty"`
@@ -74,6 +75,7 @@ func (s *Server) ListMemberships(ctx echo.Context) error {
 			LibraryID:       mem.LibraryID.String(),
 			Duration:        mem.Duration,
 			ActiveLoanLimit: mem.ActiveLoanLimit,
+			UsageLimit:      mem.UsageLimit,
 			LoanPeriod:      mem.LoanPeriod,
 			FinePerDay:      mem.FinePerDay,
 			Price:           mem.Price,
@@ -130,6 +132,7 @@ func (s *Server) GetMembershipByID(ctx echo.Context) error {
 		LibraryID:       mem.LibraryID.String(),
 		Duration:        mem.Duration,
 		ActiveLoanLimit: mem.ActiveLoanLimit,
+		UsageLimit:      mem.UsageLimit,
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
 		Price:           mem.Price,
@@ -153,6 +156,7 @@ type CreateMembershipRequest struct {
 	LibraryID       string `json:"library_id" validate:"required,uuid"`
 	Duration        int    `json:"duration" validate:"required,number"`
 	ActiveLoanLimit int    `json:"active_loan_limit" validate:"required,number"`
+	UsageLimit      int    `json:"usage_limit" validate:"required,number"`
 	LoanPeriod      int    `json:"loan_period" validate:"required,number"`
 	FinePerDay      int    `json:"fine_per_day" validate:"number"`
 	Price           int    `json:"price" validate:"number"`
@@ -173,6 +177,7 @@ func (s *Server) CreateMembership(ctx echo.Context) error {
 		LibraryID:       uid,
 		Duration:        req.Duration,
 		ActiveLoanLimit: req.ActiveLoanLimit,
+		UsageLimit:      req.UsageLimit,
 		LoanPeriod:      req.LoanPeriod,
 		FinePerDay:      req.FinePerDay,
 		Price:           req.Price,
@@ -186,6 +191,7 @@ func (s *Server) CreateMembership(ctx echo.Context) error {
 		LibraryID:       mem.LibraryID.String(),
 		Duration:        mem.Duration,
 		ActiveLoanLimit: mem.ActiveLoanLimit,
+		UsageLimit:      mem.UsageLimit,
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
 		Price:           mem.Price,
@@ -200,6 +206,7 @@ type UpdateMembershipRequest struct {
 	LibraryID       string `json:"library_id" validate:"omitempty,uuid"`
 	Duration        int    `json:"duration" validate:"number"`
 	ActiveLoanLimit int    `json:"active_loan_limit" validate:"number"`
+	UsageLimit      int    `json:"usage_limit" validate:"number"`
 	LoanPeriod      int    `json:"loan_period" validate:"number"`
 	FinePerDay      int    `json:"fine_per_day" validate:"number"`
 	Price           int    `json:"price" validate:"number"`
@@ -221,6 +228,7 @@ func (s *Server) UpdateMembership(ctx echo.Context) error {
 		// LibraryID:       uid,
 		Duration:        req.Duration,
 		ActiveLoanLimit: req.ActiveLoanLimit,
+		UsageLimit:      req.UsageLimit,
 		LoanPeriod:      req.LoanPeriod,
 		FinePerDay:      req.FinePerDay,
 		Price:           req.Price,
@@ -234,6 +242,7 @@ func (s *Server) UpdateMembership(ctx echo.Context) error {
 		LibraryID:       mem.LibraryID.String(),
 		Duration:        mem.Duration,
 		ActiveLoanLimit: mem.ActiveLoanLimit,
+		UsageLimit:      mem.UsageLimit,
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
 		Price:           mem.Price,

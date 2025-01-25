@@ -28,6 +28,7 @@ type Subscription struct {
 	FinePerDay      int       `gorm:"column:fine_per_day;type:int"`
 	LoanPeriod      int       `gorm:"column:loan_period;type:int"`
 	ActiveLoanLimit int       `gorm:"column:active_loan_limit;type:int"`
+	UsageLimit      int       `gorm:"column:usage_limit;type:int"`
 }
 
 func (Subscription) TableName() string {
@@ -119,6 +120,7 @@ func (s *service) CreateSubscription(ctx context.Context, sub usecase.Subscripti
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,
+		UsageLimit:      sub.UsageLimit,
 	}
 	err := s.db.
 		WithContext(ctx).
@@ -171,6 +173,7 @@ func (s *service) UpdateSubscription(ctx context.Context, sub usecase.Subscripti
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,
+		UsageLimit:      sub.UsageLimit,
 	}
 	err := s.db.
 		WithContext(ctx).
@@ -200,5 +203,6 @@ func (s Subscription) ConvertToUsecase() usecase.Subscription {
 		FinePerDay:      s.FinePerDay,
 		LoanPeriod:      s.LoanPeriod,
 		ActiveLoanLimit: s.ActiveLoanLimit,
+		UsageLimit:      s.UsageLimit,
 	}
 }

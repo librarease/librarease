@@ -13,6 +13,7 @@ type Membership struct {
 	LibraryID       uuid.UUID
 	Duration        int
 	ActiveLoanLimit int
+	UsageLimit      int
 	LoanPeriod      int
 	FinePerDay      int
 	Price           int

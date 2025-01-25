@@ -118,7 +118,7 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 			ub.Returning = &returning
 		}
 
-		if b.Book.ID != uuid.Nil {
+		if b.Book != nil {
 			book := b.Book.ConvertToUsecase()
 			ub.Book = &book
 		}
@@ -143,7 +143,7 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 			}
 
 		}
-		if b.Staff.ID != uuid.Nil {
+		if b.Staff != nil {
 			staff := b.Staff.ConvertToUsecase()
 			ub.Staff = &staff
 		}
@@ -180,7 +180,7 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.B
 		ub.Returning = &returning
 	}
 
-	if b.Book.ID != uuid.Nil {
+	if b.Book != nil {
 		book := b.Book.ConvertToUsecase()
 		ub.Book = &book
 	}
@@ -205,7 +205,7 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.B
 		}
 	}
 
-	if b.Staff.ID != uuid.Nil {
+	if b.Staff != nil {
 		staff := b.Staff.ConvertToUsecase()
 		ub.Staff = &staff
 	}

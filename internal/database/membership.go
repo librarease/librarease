@@ -17,6 +17,7 @@ type Membership struct {
 	Library         *Library        `gorm:"foreignKey:LibraryID;references:ID"`
 	Duration        int             `gorm:"column:duration;type:int"`
 	ActiveLoanLimit int             `gorm:"column:active_loan_limit;type:int"`
+	UsageLimit      int             `gorm:"column:usage_limit;type:int"`
 	LoanPeriod      int             `gorm:"column:loan_period;type:int"`
 	FinePerDay      int             `gorm:"column:fine_per_day;type:int"`
 	Price           int             `gorm:"column:price;type:int"`
@@ -110,6 +111,7 @@ func (s *service) CreateMembership(ctx context.Context, m usecase.Membership) (u
 		LibraryID:       m.LibraryID,
 		Duration:        m.Duration,
 		ActiveLoanLimit: m.ActiveLoanLimit,
+		UsageLimit:      m.UsageLimit,
 		LoanPeriod:      m.LoanPeriod,
 		FinePerDay:      m.FinePerDay,
 		Price:           m.Price,
@@ -129,6 +131,7 @@ func (s *service) UpdateMembership(ctx context.Context, m usecase.Membership) (u
 		LibraryID:       m.LibraryID,
 		Duration:        m.Duration,
 		ActiveLoanLimit: m.ActiveLoanLimit,
+		UsageLimit:      m.UsageLimit,
 		LoanPeriod:      m.LoanPeriod,
 		FinePerDay:      m.FinePerDay,
 		Price:           m.Price,
@@ -158,6 +161,7 @@ func (m Membership) ConvertToUsecase() usecase.Membership {
 		LibraryID:       m.LibraryID,
 		Duration:        m.Duration,
 		ActiveLoanLimit: m.ActiveLoanLimit,
+		UsageLimit:      m.UsageLimit,
 		LoanPeriod:      m.LoanPeriod,
 		FinePerDay:      m.FinePerDay,
 		Price:           m.Price,

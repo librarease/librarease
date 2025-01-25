@@ -14,7 +14,7 @@ type Staff struct {
 	Name      string   `json:"name"`
 	LibraryID string   `json:"library_id,omitempty"`
 	UserID    string   `json:"user_id,omitempty"`
-	Role      string   `json:"role"`
+	Role      string   `json:"role,omitempty"`
 	CreatedAt string   `json:"created_at,omitempty"`
 	UpdatedAt string   `json:"updated_at,omitempty"`
 	User      *User    `json:"user,omitempty"`

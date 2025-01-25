@@ -25,6 +25,7 @@ type Subscription struct {
 	FinePerDay      int
 	LoanPeriod      int
 	ActiveLoanLimit int
+	UsageLimit      int
 
 	User       *User
 	Membership *Membership
@@ -129,6 +130,7 @@ func (u Usecase) CreateSubscription(ctx context.Context, sub Subscription) (Subs
 	sub.LoanPeriod = m.LoanPeriod
 	sub.FinePerDay = m.FinePerDay
 	sub.ActiveLoanLimit = m.ActiveLoanLimit
+	sub.UsageLimit = m.UsageLimit
 
 	return u.repo.CreateSubscription(ctx, sub)
 }

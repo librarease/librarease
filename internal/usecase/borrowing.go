@@ -140,6 +140,18 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 		return Borrowing{}, fmt.Errorf("membership subscription %s expired", s.ID)
 	}
 
+	if s.UsageLimit > 0 {
+		_, count, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
+			SubscriptionIDs: uuid.UUIDs{s.ID},
+		})
+		if err != nil {
+			return Borrowing{}, err
+		}
+		if count >= s.UsageLimit {
+			return Borrowing{}, fmt.Errorf("subscription %s has reached the usage limit %d", s.ID, s.UsageLimit)
+		}
+	}
+
 	// 2. Check if the user has reached the maximum borrowing limit
 	_, activeCount, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
 		SubscriptionIDs: uuid.UUIDs{s.ID},

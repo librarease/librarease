@@ -25,6 +25,7 @@ type Subscription struct {
 	FinePerDay      int    `json:"fine_per_day,omitempty"`
 	LoanPeriod      int    `json:"loan_period,omitempty"`
 	ActiveLoanLimit int    `json:"active_loan_limit,omitempty"`
+	UsageLimit      int    `json:"usage_limit,omitempty"`
 }
 
 type ListSubscriptionsRequest struct {
@@ -91,6 +92,7 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 			FinePerDay:      sub.FinePerDay,
 			LoanPeriod:      sub.LoanPeriod,
 			ActiveLoanLimit: sub.ActiveLoanLimit,
+			UsageLimit:      sub.UsageLimit,
 		}
 		if sub.User != nil {
 			m.User = &User{
@@ -162,6 +164,7 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,
+		UsageLimit:      sub.UsageLimit,
 	}
 	if sub.User != nil {
 		m.User = &User{
@@ -176,6 +179,7 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 			LibraryID:       sub.Membership.LibraryID.String(),
 			Duration:        sub.Membership.Duration,
 			ActiveLoanLimit: sub.Membership.ActiveLoanLimit,
+			UsageLimit:      sub.Membership.UsageLimit,
 			LoanPeriod:      sub.Membership.LoanPeriod,
 			FinePerDay:      sub.Membership.FinePerDay,
 			Price:           sub.Membership.Price,
@@ -232,6 +236,7 @@ type UpdateSubscriptionRequest struct {
 	FinePerDay      int    `json:"fine_per_day" validate:"omitempty,number"`
 	LoanPeriod      int    `json:"loan_period" validate:"omitempty,number"`
 	ActiveLoanLimit int    `json:"active_loan_limit" validate:"omitempty,number"`
+	UsageLimit      int    `json:"usage_limit" validate:"omitempty,number"`
 }
 
 func (s *Server) UpdateSubscription(ctx echo.Context) error {
@@ -267,6 +272,7 @@ func (s *Server) UpdateSubscription(ctx echo.Context) error {
 		FinePerDay:      req.FinePerDay,
 		LoanPeriod:      req.LoanPeriod,
 		ActiveLoanLimit: req.ActiveLoanLimit,
+		UsageLimit:      req.UsageLimit,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -283,5 +289,6 @@ func (s *Server) UpdateSubscription(ctx echo.Context) error {
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,
+		UsageLimit:      sub.UsageLimit,
 	}})
 }
