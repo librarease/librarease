@@ -67,7 +67,7 @@ func (u Usecase) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r R
 		if r.ReturnedAt.After(borrow.DueAt) {
 
 			overdueHours := r.ReturnedAt.Sub(borrow.DueAt).Hours()
-			days := int(math.Ceil(overdueHours / 24))
+			days := int(math.Floor(overdueHours / 24))
 			fine := days * borrow.Subscription.FinePerDay
 			r.Fine = fine
 		}

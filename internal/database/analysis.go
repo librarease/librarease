@@ -25,15 +25,15 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 		return usecase.Analysis{}, err
 	}
 
-	var revenue []usecase.RevenueAnalysis
+	var fineData []usecase.RevenueAnalysis
 	err = s.db.WithContext(ctx).Table("borrowings b").
 		Joins("JOIN subscriptions s ON b.subscription_id = s.id").
 		Joins("JOIN memberships m ON s.membership_id = m.id").
 		Joins("JOIN returnings r ON r.borrowing_id = b.id").
 		Select(`
 			DATE_TRUNC('day', r.returned_at) AS timestamp,
-			SUM((EXTRACT(DAY FROM r.returned_at - b.due_at)) * s.fine_per_day) AS fine,
-			SUM(r.fine) AS actual_fine
+			-- SUM((EXTRACT(DAY FROM r.returned_at - b.due_at)) * s.fine_per_day) AS predicted_fine,
+			SUM(r.fine) AS fine
 		`).
 		Where("r.returned_at > b.due_at").
 		Where("r.returned_at BETWEEN ? AND ?", opt.From, opt.To).
@@ -42,14 +42,14 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 		Order("timestamp").
 		Offset(opt.Skip).
 		Limit(opt.Limit).
-		Scan(&revenue).Error
+		Scan(&fineData).Error
 	if err != nil {
 		return usecase.Analysis{}, err
 	}
 	var subscriptionData []usecase.RevenueAnalysis
 	err = s.db.WithContext(ctx).Table("subscriptions s").
 		Joins("JOIN memberships m ON s.membership_id = m.id").
-		Select("DATE_TRUNC('day', s.created_at) AS timestamp, COUNT(*) AS subscription").
+		Select("DATE_TRUNC('day', s.created_at) AS timestamp, SUM(s.amount) AS subscription").
 		Group("timestamp").
 		Order("timestamp").
 		Offset(opt.Skip).
@@ -60,17 +60,26 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 	if err != nil {
 		return usecase.Analysis{}, err
 	}
-	revenueMap := make(map[time.Time]*usecase.RevenueAnalysis)
-	for _, r := range revenue {
-		revenueMap[r.Timestamp] = &r
+	revenueMap := make(map[time.Time]usecase.RevenueAnalysis)
+	for _, r := range fineData {
+		revenueMap[r.Timestamp] = r
 	}
 
-	for _, sub := range subscriptionData {
-		if entry, exists := revenueMap[sub.Timestamp]; exists {
-			entry.Subscription = sub.Subscription
+	for _, r := range subscriptionData {
+		if v, exists := revenueMap[r.Timestamp]; exists {
+			v.Subscription = r.Subscription
+			revenueMap[r.Timestamp] = v
 		} else {
-			revenue = append(revenue, sub)
+			revenueMap[r.Timestamp] = usecase.RevenueAnalysis{
+				Timestamp:    r.Timestamp,
+				Subscription: r.Subscription,
+			}
 		}
+	}
+
+	revenue := make([]usecase.RevenueAnalysis, 0, len(revenueMap))
+	for _, r := range revenueMap {
+		revenue = append(revenue, r)
 	}
 
 	slices.SortFunc(revenue, func(a, b usecase.RevenueAnalysis) int {
