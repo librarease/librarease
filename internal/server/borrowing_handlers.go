@@ -347,6 +347,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 		staff := Staff{
 			ID:        borrow.Staff.ID.String(),
 			Name:      borrow.Staff.Name,
+			Role:      string(borrow.Staff.Role),
 			UserID:    borrow.Staff.UserID.String(),
 			LibraryID: borrow.Staff.LibraryID.String(),
 			CreatedAt: borrow.Staff.CreatedAt.Format(time.RFC3339),
@@ -382,6 +383,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			FinePerDay:      borrow.Subscription.FinePerDay,
 			LoanPeriod:      borrow.Subscription.LoanPeriod,
 			ActiveLoanLimit: borrow.Subscription.ActiveLoanLimit,
+			UsageLimit:      borrow.Subscription.UsageLimit,
 		}
 		if borrow.Subscription.User != nil {
 			sub.User = &User{
