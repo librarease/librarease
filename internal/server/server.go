@@ -75,6 +75,8 @@ type Service interface {
 	VerifyIDToken(context.Context, string) (string, error)
 
 	GetAnalysis(context.Context, usecase.GetAnalysisOption) (usecase.Analysis, error)
+
+	GetDocs(context.Context, usecase.GetDocsOption) (string, error)
 }
 
 type Server struct {

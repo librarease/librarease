@@ -1,0 +1,48 @@
+Terms & Conditions
+
+Effective Date: [Insert Date]
+
+1. Introduction
+Welcome to LibrarEase. These Terms & Conditions ("Terms") govern your access and use of our platform, which enables libraries to manage books, memberships, and borrowings. By accessing or using LibrarEase, you agree to comply with these Terms. If you do not agree, do not use the platform.
+
+2. User Accounts
+You must provide accurate and up-to-date information when registering.
+You are responsible for maintaining the security of your account and all activities under it.
+Unauthorized use of your account must be reported immediately.
+We reserve the right to suspend or terminate accounts that violate these Terms.
+
+3. Use of Services
+Libraries manage their own books, memberships, and borrowing policies.
+Users may browse and borrow books based on library-specific terms.
+Misuse of the platform, including fraudulent registrations, unauthorized access, or disruption of services, is strictly prohibited.
+
+4. Fees and Payments (if applicable)
+Certain features or services may require payment, which will be clearly communicated before use.
+We reserve the right to update pricing, with reasonable notice to users.
+
+5. Data Collection & Privacy
+We collect and store user data as described in our Privacy Policy.
+Libraries may access borrowing records of their own members.
+Users must comply with all applicable data protection laws when using the platform.
+
+6. Limitation of Liability
+We provide the platform "as is", without warranties of any kind.
+We are not responsible for:
+Disputes between users and libraries.
+Loss of data, service interruptions, or security breaches beyond our reasonable control.
+Compliance of individual libraries with their own terms.
+
+7. Termination & Suspension
+We may suspend or terminate accounts that violate these Terms or engage in illegal activity.
+Libraries found misusing the system may be restricted or removed.
+
+8. Dispute Resolution & Governing Law
+Any disputes will first be attempted to be resolved through direct negotiation.
+If unresolved, disputes will be subject to arbitration in [Your Country/State].
+These Terms are governed by the laws of [Your Country/State].
+
+9. Changes to Terms
+We may update these Terms periodically. Continued use of our platform constitutes acceptance of the updated Terms.
+
+10. Contact Information
+For questions, contact us at [your email].

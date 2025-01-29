@@ -1,0 +1,37 @@
+Privacy Policy
+Effective Date: [Insert Date]
+
+1. Introduction
+This Privacy Policy explains how LibrarEase collects, uses, and protects data from both library admins and library users.
+
+2. Information We Collect
+We collect:
+
+From Library Admins: Name, email, library details, books added, and borrowing records.
+From Library Users: Name, email, membership details, borrowing history, and interactions with the platform.
+System Data: Device logs, IP addresses, and platform usage analytics.
+3. How We Use Your Information
+To provide and improve library management services.
+To track and facilitate book borrowings and returns.
+To prevent fraud, security risks, and unauthorized access.
+To communicate important updates or policy changes.
+4. Data Sharing & Third Parties
+Library Admins can only access their own members’ borrowing records.
+We do not sell or rent user data.
+We may share data with third-party service providers for security, analytics, or legal compliance.
+5. Data Security & Retention
+We implement industry-standard security measures to protect user data.
+We retain data only as long as necessary for service operations or legal compliance.
+No system is 100% secure, and we cannot guarantee absolute protection against unauthorized access.
+6. User Rights & Choices
+Users can request access, correction, or deletion of their data.
+Library admins can modify their library’s settings and remove members when necessary.
+Certain data (e.g., borrowing records) may be retained for legal or security reasons.
+7. Changes to This Privacy Policy
+We may update this Privacy Policy periodically. Continued use of our platform constitutes acceptance of the updated policy.
+
+8. Governing Law & Dispute Resolution
+Privacy-related disputes will be resolved under the laws of [Your Country/State].
+If a dispute cannot be resolved informally, it will be handled through arbitration.
+9. Contact Information
+For privacy-related concerns, contact us at [your email].

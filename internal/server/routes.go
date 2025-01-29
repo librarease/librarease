@@ -26,6 +26,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	e.GET("/api/websocket", s.websocketHandler)
 
+	e.GET("/api/v1/terms", s.GetTerms)
+	e.GET("/api/v1/privacy", s.GetPrivacy)
+
 	var userGroup = e.Group("/api/v1/users")
 	userGroup.GET("", s.ListUsers)
 	userGroup.POST("", s.CreateUser)
