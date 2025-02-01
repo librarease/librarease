@@ -94,11 +94,24 @@ func NewServer() *http.Server {
 	// TODO: move initializations here
 	repo := database.New()
 	ip := firebase.New()
+
+	// AWS S3
+	// var (
+	// 	bucket   = os.Getenv(config.ENV_KEY_S3_BUCKET)
+	// 	tempPath = os.Getenv(config.ENV_KEY_S3_TEMP_PATH)
+	// )
+	// fsp := filestorage.NewS3Storage(bucket, tempPath)
+
+	// MinIO (S3 compatible)
 	var (
-		bucket   = os.Getenv(config.ENV_KEY_S3_BUCKET)
-		tempPath = os.Getenv(config.ENV_KEY_S3_TEMP_PATH)
+		bucket    = os.Getenv(config.ENV_KEY_MINIO_BUCKET)
+		temp      = os.Getenv(config.ENV_KEY_MINIO_TEMP_PATH)
+		public    = os.Getenv(config.ENV_KEY_MINIO_PUBLIC_PATH)
+		endpoint  = os.Getenv(config.ENV_KEY_MINIO_ENDPOINT)
+		accessKey = os.Getenv(config.ENV_KEY_MINIO_ACCESS_KEY)
+		secretKey = os.Getenv(config.ENV_KEY_MINIO_SECRET_KEY)
 	)
-	fsp := filestorage.New(bucket, tempPath)
+	fsp := filestorage.NewMinIOStorage(bucket, temp, public, endpoint, accessKey, secretKey)
 
 	sv := usecase.New(repo, ip, fsp)
 	v := validator.New()

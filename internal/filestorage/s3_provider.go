@@ -11,25 +11,25 @@ import (
 	consts "github.com/librarease/librarease/internal/config"
 )
 
-type FileStorage struct {
+type S3FileStorage struct {
 	client   *s3.Client
 	bucket   string
 	tempPath string
 }
 
-func New(bucket string, tempPath string) *FileStorage {
+func NewS3Storage(bucket string, tempPath string) *S3FileStorage {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		panic(err)
 	}
-	return &FileStorage{
+	return &S3FileStorage{
 		client:   s3.NewFromConfig(cfg),
 		bucket:   bucket,
 		tempPath: tempPath,
 	}
 }
 
-func (f *FileStorage) GetTempUploadURL(ctx context.Context, name string) (string, error) {
+func (f *S3FileStorage) GetTempUploadURL(ctx context.Context, name string) (string, error) {
 	var (
 		key           = path.Join(f.tempPath, name)
 		presignClient = s3.NewPresignClient(f.client)
@@ -47,7 +47,7 @@ func (f *FileStorage) GetTempUploadURL(ctx context.Context, name string) (string
 	return req.URL, nil
 }
 
-func (f *FileStorage) MoveTempFile(ctx context.Context, source string, dest string) error {
+func (f *S3FileStorage) MoveTempFile(ctx context.Context, source string, dest string) error {
 	var (
 		tempSource = f.bucket + "/" + f.tempPath + "/" + source
 		key        = dest + "/" + source
@@ -60,6 +60,6 @@ func (f *FileStorage) MoveTempFile(ctx context.Context, source string, dest stri
 	return err
 }
 
-func (f *FileStorage) GetPublicURL(_ context.Context) (string, error) {
+func (f *S3FileStorage) GetPublicURL(_ context.Context) (string, error) {
 	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", f.bucket, "ap-southeast-1", "public"), nil
 }
