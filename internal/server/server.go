@@ -12,7 +12,9 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/joho/godotenv/autoload"
 
+	"github.com/librarease/librarease/internal/config"
 	"github.com/librarease/librarease/internal/database"
+	"github.com/librarease/librarease/internal/filestorage"
 	"github.com/librarease/librarease/internal/firebase"
 	"github.com/librarease/librarease/internal/usecase"
 )
@@ -77,6 +79,8 @@ type Service interface {
 	GetAnalysis(context.Context, usecase.GetAnalysisOption) (usecase.Analysis, error)
 
 	GetDocs(context.Context, usecase.GetDocsOption) (string, error)
+
+	GetTempUploadURL(context.Context, string) (string, error)
 }
 
 type Server struct {
@@ -87,9 +91,16 @@ type Server struct {
 }
 
 func NewServer() *http.Server {
+	// TODO: move initializations here
 	repo := database.New()
-	fb := firebase.New()
-	sv := usecase.New(repo, fb)
+	ip := firebase.New()
+	var (
+		bucket   = os.Getenv(config.ENV_KEY_S3_BUCKET)
+		tempPath = os.Getenv(config.ENV_KEY_S3_TEMP_PATH)
+	)
+	fsp := filestorage.New(bucket, tempPath)
+
+	sv := usecase.New(repo, ip, fsp)
 	v := validator.New()
 
 	port, _ := strconv.Atoi(os.Getenv("PORT"))

@@ -82,5 +82,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 	var analysisGroup = e.Group("/api/v1/analysis")
 	analysisGroup.GET("", s.GetAnalysis)
 
+	var fileGroup = e.Group("/api/v1/files")
+	fileGroup.GET("/upload", s.GetTempUploadURL)
+
 	return e
 }

@@ -6,10 +6,11 @@ import (
 	"github.com/google/uuid"
 )
 
-func New(repo Repository, ip IdentityProvider) Usecase {
+func New(repo Repository, ip IdentityProvider, fsp FileStorageProvider) Usecase {
 	return Usecase{
-		repo:             repo,
-		identityProvider: ip,
+		repo:                repo,
+		identityProvider:    ip,
+		fileStorageProvider: fsp,
 	}
 }
 
@@ -80,9 +81,14 @@ type IdentityProvider interface {
 	SetCustomClaims(context.Context, string, CustomClaims) error
 }
 
+type FileStorageProvider interface {
+	GetTempUploadURL(context.Context, string) (string, error)
+}
+
 type Usecase struct {
-	repo             Repository
-	identityProvider IdentityProvider
+	repo                Repository
+	identityProvider    IdentityProvider
+	fileStorageProvider FileStorageProvider
 }
 
 func (u Usecase) Health() map[string]string {

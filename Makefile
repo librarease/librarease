@@ -62,4 +62,12 @@ watch:
             fi; \
         fi
 
+# Debug the application
+.PHONY: debug
+
+debug:
+	@echo "Debugging..."
+	@dlv debug cmd/api/main.go --headless --listen=:2345 --api-version=2 --log -- \
+        -env-file=.env
+
 .PHONY: all build run test clean watch docker-run docker-down itest
