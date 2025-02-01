@@ -21,6 +21,9 @@ type Library struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeleteAt    *time.Time
+
+	// UpdateLogo is used to update logo
+	UpdateLogo *string
 }
 type ListLibrariesOption struct {
 	Skip   int
@@ -38,11 +41,19 @@ func (u Usecase) ListLibraries(ctx context.Context, opt ListLibrariesOption) ([]
 	}
 
 	var userList []Library
+	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
+
 	for _, lib := range libs {
+
+		var logo string
+		if lib.Logo != "" {
+			logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, lib.ID, lib.Logo)
+		}
+
 		userList = append(userList, Library{
 			ID:          lib.ID,
 			Name:        lib.Name,
-			Logo:        lib.Logo,
+			Logo:        logo,
 			Address:     lib.Address,
 			Phone:       lib.Phone,
 			Email:       lib.Email,
@@ -63,10 +74,16 @@ func (u Usecase) GetLibraryByID(ctx context.Context, id uuid.UUID) (Library, err
 		return Library{}, err
 	}
 
+	var logo string
+	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
+	if lib.Logo != "" {
+		logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, lib.ID, lib.Logo)
+	}
+
 	return Library{
 		ID:          lib.ID,
 		Name:        lib.Name,
-		Logo:        lib.Logo,
+		Logo:        logo,
 		Address:     lib.Address,
 		Phone:       lib.Phone,
 		Email:       lib.Email,
@@ -83,10 +100,25 @@ func (u Usecase) CreateLibrary(ctx context.Context, library Library) (Library, e
 		return Library{}, err
 	}
 
+	var logo = library.Logo
+	if logo != "" {
+		var logoPath = fmt.Sprintf("public/libraries/%s/logo", lib.ID.String())
+		err = u.fileStorageProvider.MoveTempFile(ctx, logo, logoPath)
+		if err != nil {
+			fmt.Printf("failed to move file for lib %s: %v\n", err, lib.ID.String())
+			// don't save logo if failed to move file
+			logo = ""
+		}
+	}
+	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
+	if logo != "" {
+		logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, lib.ID, lib.Logo)
+	}
+
 	return Library{
 		ID:          lib.ID,
 		Name:        lib.Name,
-		Logo:        lib.Logo,
+		Logo:        logo,
 		Address:     lib.Address,
 		Phone:       lib.Phone,
 		Email:       lib.Email,
@@ -139,15 +171,32 @@ func (u Usecase) UpdateLibrary(ctx context.Context, id uuid.UUID, library Librar
 		// }
 
 	}
+
+	if library.UpdateLogo != nil {
+		logoPath := fmt.Sprintf("public/libraries/%s/logo", id)
+		err := u.fileStorageProvider.MoveTempFile(ctx, *library.UpdateLogo, logoPath)
+		if err != nil {
+			fmt.Printf("failed to move file for lib %s: %v\n", err, id)
+			return Library{}, err
+		}
+		library.Logo = *library.UpdateLogo
+	}
+
 	lib, err := u.repo.UpdateLibrary(ctx, id, library)
 	if err != nil {
 		return Library{}, err
 	}
 
+	var logo string
+	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
+	if lib.Logo != "" {
+		logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, lib.ID, lib.Logo)
+	}
+
 	return Library{
 		ID:          lib.ID,
 		Name:        lib.Name,
-		Logo:        lib.Logo,
+		Logo:        logo,
 		Address:     lib.Address,
 		Phone:       lib.Phone,
 		Email:       lib.Email,

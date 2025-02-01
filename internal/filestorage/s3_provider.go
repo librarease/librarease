@@ -2,6 +2,7 @@ package filestorage
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"time"
 
@@ -29,9 +30,10 @@ func New(bucket string, tempPath string) *FileStorage {
 }
 
 func (f *FileStorage) GetTempUploadURL(ctx context.Context, name string) (string, error) {
-	key := path.Join(f.tempPath, name)
-	presignClient := s3.NewPresignClient(f.client)
-
+	var (
+		key           = path.Join(f.tempPath, name)
+		presignClient = s3.NewPresignClient(f.client)
+	)
 	req, err := presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
 		Bucket: &f.bucket,
 		Key:    &key,
@@ -43,4 +45,21 @@ func (f *FileStorage) GetTempUploadURL(ctx context.Context, name string) (string
 	}
 
 	return req.URL, nil
+}
+
+func (f *FileStorage) MoveTempFile(ctx context.Context, source string, dest string) error {
+	var (
+		tempSource = f.bucket + "/" + f.tempPath + "/" + source
+		key        = dest + "/" + source
+	)
+	_, err := f.client.CopyObject(ctx, &s3.CopyObjectInput{
+		Bucket:     &f.bucket,
+		CopySource: &tempSource,
+		Key:        &key,
+	})
+	return err
+}
+
+func (f *FileStorage) GetPublicURL(_ context.Context) (string, error) {
+	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", f.bucket, "ap-southeast-1", "public"), nil
 }

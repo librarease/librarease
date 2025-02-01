@@ -147,13 +147,14 @@ func (s *Server) CreateLibrary(ctx echo.Context) error {
 }
 
 type UpdateLibraryRequest struct {
-	ID          string `json:"-" param:"id"`
-	Name        string `json:"name"`
-	Logo        string `json:"logo"`
-	Address     string `json:"address"`
-	Phone       string `json:"phone"`
-	Email       string `json:"email"`
-	Description string `json:"description"`
+	ID          string  `json:"-" param:"id"`
+	Name        string  `json:"name"`
+	Logo        string  `json:"logo"`
+	Address     string  `json:"address"`
+	Phone       string  `json:"phone"`
+	Email       string  `json:"email"`
+	Description string  `json:"description"`
+	UpdateLogo  *string `json:"update_logo,omitempty"`
 }
 
 func (s *Server) UpdateLibrary(ctx echo.Context) error {
@@ -176,6 +177,7 @@ func (s *Server) UpdateLibrary(ctx echo.Context) error {
 		Phone:       req.Phone,
 		Email:       req.Email,
 		Description: req.Description,
+		UpdateLogo:  req.UpdateLogo,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

@@ -83,6 +83,9 @@ type IdentityProvider interface {
 
 type FileStorageProvider interface {
 	GetTempUploadURL(context.Context, string) (string, error)
+	// MoveTempFile moves source in temp path to dest
+	MoveTempFile(ctx context.Context, source string, dest string) error
+	GetPublicURL(context.Context) (string, error)
 }
 
 type Usecase struct {
