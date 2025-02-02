@@ -335,6 +335,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			Title:     borrow.Book.Title,
 			Author:    borrow.Book.Author,
 			Year:      borrow.Book.Year,
+			Cover:     borrow.Book.Cover,
 			LibraryID: borrow.Book.LibraryID.String(),
 			CreatedAt: borrow.Book.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: borrow.Book.UpdatedAt.Format(time.RFC3339),

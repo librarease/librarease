@@ -124,7 +124,17 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 }
 
 func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID) (Borrowing, error) {
-	return u.repo.GetBorrowingByID(ctx, id)
+	borrow, err := u.repo.GetBorrowingByID(ctx, id)
+	if err != nil {
+		return Borrowing{}, err
+	}
+
+	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
+	if b := borrow.Book; b != nil && b.Cover != "" {
+		borrow.Book.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, b.ID, b.Cover)
+	}
+
+	return borrow, nil
 }
 
 func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowing, error) {
