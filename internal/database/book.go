@@ -112,6 +112,7 @@ func (s *service) CreateBook(ctx context.Context, book usecase.Book) (usecase.Bo
 		Year:      book.Year,
 		Code:      book.Code,
 		Count:     book.Count,
+		Cover:     book.Cover,
 		LibraryID: book.LibraryID,
 	}
 
@@ -129,6 +130,7 @@ func (s *service) UpdateBook(ctx context.Context, id uuid.UUID, book usecase.Boo
 		Year:      book.Year,
 		Code:      book.Code,
 		Count:     book.Count,
+		Cover:     book.Cover,
 		LibraryID: book.LibraryID,
 	}
 
