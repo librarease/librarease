@@ -16,6 +16,7 @@ type Book struct {
 	Year      int      `json:"year,omitempty"`
 	Code      string   `json:"code"`
 	Count     int      `json:"count,omitempty"`
+	Cover     string   `json:"cover,omitempty"`
 	LibraryID string   `json:"library_id,omitempty"`
 	CreatedAt string   `json:"created_at,omitempty"`
 	UpdatedAt string   `json:"updated_at,omitempty"`
@@ -73,6 +74,7 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 			Year:      b.Year,
 			Code:      b.Code,
 			Count:     b.Count,
+			Cover:     b.Cover,
 			LibraryID: b.LibraryID.String(),
 			CreatedAt: b.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
@@ -82,6 +84,7 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 			lib := Library{
 				ID:   b.Library.ID.String(),
 				Name: b.Library.Name,
+				Logo: b.Library.Logo,
 				// CreatedAt: b.Library.CreatedAt.Format(time.RFC3339),
 				// UpdatedAt: b.Library.UpdatedAt.Format(time.RFC3339),
 			}
@@ -130,6 +133,7 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 		Year:      b.Year,
 		Code:      b.Code,
 		Count:     b.Count,
+		Cover:     b.Cover,
 		LibraryID: b.LibraryID.String(),
 		CreatedAt: b.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
@@ -139,6 +143,7 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 		lib := Library{
 			ID:        b.Library.ID.String(),
 			Name:      b.Library.Name,
+			Logo:      b.Library.Logo,
 			CreatedAt: b.Library.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: b.Library.UpdatedAt.Format(time.RFC3339),
 		}
@@ -156,6 +161,7 @@ type CreateBookRequest struct {
 	Year      int    `json:"year" validate:"required,gte=1500"`
 	Code      string `json:"code" validate:"required"`
 	Count     int    `json:"count" validate:"omitempty,gte=0"`
+	Cover     string `json:"cover"`
 	LibraryID string `json:"library_id" validate:"required,uuid"`
 }
 
@@ -175,6 +181,7 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		Year:      req.Year,
 		Code:      req.Code,
 		Count:     req.Count,
+		Cover:     req.Cover,
 		LibraryID: libID,
 	})
 
@@ -194,6 +201,7 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		Year:      b.Year,
 		Code:      b.Code,
 		Count:     b.Count,
+		Cover:     b.Cover,
 		LibraryID: b.LibraryID.String(),
 		CreatedAt: b.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
@@ -204,12 +212,13 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 type UpdateBookRequest struct {
 	ID string `param:"id" validate:"required,uuid"`
 
-	Title     string `json:"title"`
-	Author    string `json:"author"`
-	Year      int    `json:"year" validate:"gte=1500"`
-	Code      string `json:"code"`
-	Count     int    `json:"count"`
-	LibraryID string `json:"library_id" validate:"omitempty,uuid"`
+	Title       string  `json:"title"`
+	Author      string  `json:"author"`
+	Year        int     `json:"year" validate:"omitempty,gte=1500"`
+	Code        string  `json:"code"`
+	Count       int     `json:"count"`
+	LibraryID   string  `json:"library_id" validate:"omitempty,uuid"`
+	UpdateCover *string `json:"update_cover" validate:"omitempty"`
 }
 
 func (s *Server) UpdateBook(ctx echo.Context) error {
@@ -223,14 +232,15 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 
 	id, _ := uuid.Parse(req.ID)
 	libID, _ := uuid.Parse(req.LibraryID)
-	b, err := s.server.UpdateBook(ctx.Request().Context(), usecase.Book{
-		ID:        id,
-		Title:     req.Title,
-		Author:    req.Author,
-		Year:      req.Year,
-		Code:      req.Code,
-		Count:     req.Count,
-		LibraryID: libID,
+	b, err := s.server.UpdateBook(ctx.Request().Context(), id, usecase.Book{
+		ID:          id,
+		Title:       req.Title,
+		Author:      req.Author,
+		Year:        req.Year,
+		Code:        req.Code,
+		Count:       req.Count,
+		LibraryID:   libID,
+		UpdateCover: req.UpdateCover,
 	})
 
 	if err != nil {
@@ -249,6 +259,7 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		Year:      b.Year,
 		Code:      b.Code,
 		Count:     b.Count,
+		Cover:     b.Cover,
 		LibraryID: b.LibraryID.String(),
 		CreatedAt: b.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),

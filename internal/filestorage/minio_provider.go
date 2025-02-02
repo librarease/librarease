@@ -45,10 +45,10 @@ func (f *MinIOStorage) GetTempUploadURL(ctx context.Context, name string) (strin
 	return u.String(), nil
 }
 
-func (f *MinIOStorage) MoveTempFile(ctx context.Context, source string, dest string) error {
+func (f *MinIOStorage) MoveTempFilePublic(ctx context.Context, source string, dest string) error {
 	var (
 		tempSource = f.tempPath + "/" + source
-		key        = dest + "/" + source
+		key        = f.publicPath + "/" + dest + "/" + source
 	)
 	copyDest := minio.CopyDestOptions{
 		Bucket: f.bucket,

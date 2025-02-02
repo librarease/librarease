@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Book struct {
@@ -17,6 +18,7 @@ type Book struct {
 	Year       int             `gorm:"column:year;type:int"`
 	Code       string          `gorm:"column:code;type:varchar(255);uniqueIndex:idx_lib_code"`
 	Count      int             `gorm:"column:count;type:int;default:1"`
+	Cover      string          `gorm:"column:cover;type:varchar(255)"`
 	CreatedAt  time.Time       `gorm:"column:created_at"`
 	UpdatedAt  time.Time       `gorm:"column:updated_at"`
 	DeletedAt  *gorm.DeletedAt `gorm:"column:deleted_at"`
@@ -120,7 +122,7 @@ func (s *service) CreateBook(ctx context.Context, book usecase.Book) (usecase.Bo
 	return b.ConvertToUsecase(), nil
 }
 
-func (s *service) UpdateBook(ctx context.Context, book usecase.Book) (usecase.Book, error) {
+func (s *service) UpdateBook(ctx context.Context, id uuid.UUID, book usecase.Book) (usecase.Book, error) {
 	b := Book{
 		Title:     book.Title,
 		Author:    book.Author,
@@ -130,7 +132,13 @@ func (s *service) UpdateBook(ctx context.Context, book usecase.Book) (usecase.Bo
 		LibraryID: book.LibraryID,
 	}
 
-	err := s.db.WithContext(ctx).Updates(&b).Error
+	err := s.db.
+		WithContext(ctx).
+		Model(&b).
+		Clauses(clause.Returning{}).
+		Where("id = ?", id).
+		Updates(&b).
+		Error
 	if err != nil {
 		return usecase.Book{}, err
 	}
@@ -150,6 +158,7 @@ func (b Book) ConvertToUsecase() usecase.Book {
 		Year:      b.Year,
 		Code:      b.Code,
 		Count:     b.Count,
+		Cover:     b.Cover,
 		LibraryID: b.LibraryID,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,

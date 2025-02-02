@@ -40,7 +40,7 @@ func (u Usecase) ListLibraries(ctx context.Context, opt ListLibrariesOption) ([]
 		return nil, 0, err
 	}
 
-	var userList []Library
+	var libraries []Library
 	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
 
 	for _, lib := range libs {
@@ -50,7 +50,7 @@ func (u Usecase) ListLibraries(ctx context.Context, opt ListLibrariesOption) ([]
 			logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, lib.ID, lib.Logo)
 		}
 
-		userList = append(userList, Library{
+		libraries = append(libraries, Library{
 			ID:          lib.ID,
 			Name:        lib.Name,
 			Logo:        logo,
@@ -64,7 +64,7 @@ func (u Usecase) ListLibraries(ctx context.Context, opt ListLibrariesOption) ([]
 		})
 	}
 
-	return userList, total, nil
+	return libraries, total, nil
 }
 
 func (u Usecase) GetLibraryByID(ctx context.Context, id uuid.UUID) (Library, error) {
@@ -102,10 +102,10 @@ func (u Usecase) CreateLibrary(ctx context.Context, library Library) (Library, e
 
 	var logo = library.Logo
 	if logo != "" {
-		var logoPath = fmt.Sprintf("public/libraries/%s/logo", lib.ID.String())
-		err = u.fileStorageProvider.MoveTempFile(ctx, logo, logoPath)
+		var logoPath = fmt.Sprintf("libraries/%s/logo", lib.ID.String())
+		err = u.fileStorageProvider.MoveTempFilePublic(ctx, logo, logoPath)
 		if err != nil {
-			fmt.Printf("failed to move file for lib %s: %v\n", err, lib.ID.String())
+			fmt.Printf("failed to move file for lib %s: %v\n", lib.ID, err)
 			// don't save logo if failed to move file
 			logo = ""
 		}
@@ -173,10 +173,10 @@ func (u Usecase) UpdateLibrary(ctx context.Context, id uuid.UUID, library Librar
 	}
 
 	if library.UpdateLogo != nil {
-		logoPath := fmt.Sprintf("public/libraries/%s/logo", id)
-		err := u.fileStorageProvider.MoveTempFile(ctx, *library.UpdateLogo, logoPath)
+		logoPath := fmt.Sprintf("libraries/%s/logo", id)
+		err := u.fileStorageProvider.MoveTempFilePublic(ctx, *library.UpdateLogo, logoPath)
 		if err != nil {
-			fmt.Printf("failed to move file for lib %s: %v\n", err, id)
+			fmt.Printf("failed to move file for lib %s: %v\n", id, err)
 			return Library{}, err
 		}
 		library.Logo = *library.UpdateLogo

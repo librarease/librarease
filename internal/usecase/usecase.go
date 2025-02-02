@@ -36,7 +36,7 @@ type Repository interface {
 	ListBooks(context.Context, ListBooksOption) ([]Book, int, error)
 	GetBookByID(context.Context, uuid.UUID) (Book, error)
 	CreateBook(context.Context, Book) (Book, error)
-	UpdateBook(context.Context, Book) (Book, error)
+	UpdateBook(context.Context, uuid.UUID, Book) (Book, error)
 
 	// staff
 	ListStaffs(context.Context, ListStaffsOption) ([]Staff, int, error)
@@ -83,8 +83,8 @@ type IdentityProvider interface {
 
 type FileStorageProvider interface {
 	GetTempUploadURL(context.Context, string) (string, error)
-	// MoveTempFile moves source in temp path to dest
-	MoveTempFile(ctx context.Context, source string, dest string) error
+	// MoveTempFilePublic moves source in temp+path to public+dest
+	MoveTempFilePublic(ctx context.Context, source string, dest string) error
 	GetPublicURL(context.Context) (string, error)
 }
 
