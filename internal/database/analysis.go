@@ -14,16 +14,16 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 		Joins("JOIN books bk ON b.book_id = bk.id").
 		Select("DATE_TRUNC('day', b.borrowed_at) AS timestamp, COUNT(*) AS count").
 		Group("timestamp").
-		Order("timestamp").
+		Order("timestamp DESC").
 		Offset(opt.Skip).
 		Limit(opt.Limit).
-		Order("timestamp").
 		Where("b.borrowed_at BETWEEN ? AND ?", opt.From, opt.To).
 		Where("bk.library_id = ?", opt.LibraryID).
 		Scan(&borrowing).Error
 	if err != nil {
 		return usecase.Analysis{}, err
 	}
+	slices.Reverse(borrowing)
 
 	var fineData []usecase.RevenueAnalysis
 	err = s.db.WithContext(ctx).Table("borrowings b").
@@ -39,7 +39,7 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 		Where("r.returned_at BETWEEN ? AND ?", opt.From, opt.To).
 		Where("m.library_id = ?", opt.LibraryID).
 		Group("timestamp").
-		Order("timestamp").
+		Order("timestamp DESC").
 		Offset(opt.Skip).
 		Limit(opt.Limit).
 		Scan(&fineData).Error
@@ -51,7 +51,7 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 		Joins("JOIN memberships m ON s.membership_id = m.id").
 		Select("DATE_TRUNC('day', s.created_at) AS timestamp, SUM(s.amount) AS subscription").
 		Group("timestamp").
-		Order("timestamp").
+		Order("timestamp DESC").
 		Offset(opt.Skip).
 		Limit(opt.Limit).
 		Where("s.created_at BETWEEN ? AND ?", opt.From, opt.To).
