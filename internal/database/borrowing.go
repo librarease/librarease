@@ -160,6 +160,7 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.B
 		Model(Borrowing{}).
 		WithContext(ctx).
 		Preload("Returning").
+		Preload("Returning.Staff").
 		Preload("Book").
 		Preload("Staff").
 		Preload("Subscription").
@@ -178,6 +179,11 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.B
 	if b.Returning != nil {
 		returning := b.Returning.ConvertToUsecase()
 		ub.Returning = &returning
+
+		if b.Returning.Staff != nil {
+			staff := b.Returning.Staff.ConvertToUsecase()
+			returning.Staff = &staff
+		}
 	}
 
 	if b.Book != nil {
