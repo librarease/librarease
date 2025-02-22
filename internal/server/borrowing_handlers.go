@@ -209,6 +209,7 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 				ID:    borrow.Book.ID.String(),
 				Code:  borrow.Book.Code,
 				Title: borrow.Book.Title,
+				Cover: borrow.Book.Cover,
 				// Author:    borrow.Book.Author,
 				// Year:      borrow.Book.Year,
 				// LibraryID: borrow.Book.LibraryID,

@@ -120,7 +120,18 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 		opt.LibraryIDs = intersectLibIDs
 	}
 
-	return u.repo.ListBorrowings(ctx, opt)
+	borrows, total, err := u.repo.ListBorrowings(ctx, opt)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
+	for i, borrow := range borrows {
+		if b := borrow.Book; b != nil && b.Cover != "" {
+			borrows[i].Book.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, b.ID, b.Cover)
+		}
+	}
+	return borrows, total, nil
 }
 
 func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID) (Borrowing, error) {
