@@ -65,6 +65,7 @@ type Repository interface {
 
 	// returning
 	ReturnBorrowing(context.Context, uuid.UUID, Returning) (Borrowing, error)
+	DeleteReturn(ctx context.Context, id uuid.UUID) error
 
 	// auth user
 	CreateAuthUser(context.Context, AuthUser) (AuthUser, error)

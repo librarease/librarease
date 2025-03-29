@@ -10,46 +10,17 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/joho/godotenv/autoload"
-	"gorm.io/driver/postgres"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 // implements server/Service interface
 type service struct {
-	db *gorm.DB
+	db    *gorm.DB
+	cache *redis.Client
 }
 
-var (
-	database = os.Getenv("DB_DATABASE")
-	password = os.Getenv("DB_PASSWORD")
-	username = os.Getenv("DB_USER")
-	port     = os.Getenv("DB_PORT")
-	host     = os.Getenv("DB_HOST")
-	// dbInstance *service
-)
-
-func New() *service {
-	// Reuse Connection
-	// if dbInstance != nil {
-	// 	return dbInstance
-	// }
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", username, password, host, port, database)
-	// db, err := sql.Open("pgx", connStr)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// dbInstance = &service{
-	// 	db: db,
-	// }
-	// return dbInstance
-	gormDB, err := gorm.Open(postgres.Open(connStr), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
-
-	if err != nil {
-		log.Fatal(err)
-	}
+func New(gormDB *gorm.DB, redis *redis.Client) *service {
 
 	db, err := gormDB.DB()
 	if err != nil {
@@ -86,7 +57,7 @@ func New() *service {
 		log.Fatal(err)
 	}
 
-	return &service{db: gormDB}
+	return &service{db: gormDB, cache: redis}
 }
 
 // Health checks the health of the database connection by pinging the database.
@@ -151,6 +122,6 @@ func (s *service) Close() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("Disconnected from database: %s", database)
+	log.Println("Disconnected from database")
 	return db.Close()
 }

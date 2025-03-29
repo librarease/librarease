@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/librarease/librarease/internal/usecase"
@@ -91,4 +92,26 @@ func (s *Server) ReturnBorrowing(ctx echo.Context) error {
 		CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
 	}})
+}
+
+type DeleteReturnRequest struct {
+	BorrowingID string `param:"id" validate:"required,uuid"`
+}
+
+func (s *Server) DeleteReturn(ctx echo.Context) error {
+	var req DeleteReturnRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+	borrowingID, _ := uuid.Parse(req.BorrowingID)
+
+	if err := s.server.DeleteReturn(ctx.Request().Context(), borrowingID); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.JSON(http.StatusNoContent, nil)
+
 }

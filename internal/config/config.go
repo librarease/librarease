@@ -1,5 +1,19 @@
 package config
 
+// Server constants.
+const (
+	ENV_KEY_PORT = "PORT"
+)
+
+// DB constants.
+const (
+	ENV_KEY_DB_HOST     = "DB_HOST"
+	ENV_KEY_DB_PORT     = "DB_PORT"
+	ENV_KEY_DB_DATABASE = "DB_DATABASE"
+	ENV_KEY_DB_USER     = "DB_USER"
+	ENV_KEY_DB_PASSWORD = "DB_PASSWORD"
+)
+
 // Header constants.
 const (
 	HEADER_KEY_X_UID       = "X-Uid"

@@ -114,3 +114,11 @@ func (r Returning) ConvertToUsecase() usecase.Returning {
 		DeletedAt:   d,
 	}
 }
+
+func (s service) DeleteReturn(ctx context.Context, id uuid.UUID) error {
+	return s.db.WithContext(ctx).
+		Delete(&Returning{
+			ID: id,
+		}).
+		Error
+}

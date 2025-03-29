@@ -126,3 +126,14 @@ func (u Usecase) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r R
 
 	return u.repo.ReturnBorrowing(ctx, borrowingID, r)
 }
+
+func (u Usecase) DeleteReturn(ctx context.Context, borrowingId uuid.UUID) error {
+	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingId)
+	if err != nil {
+		return err
+	}
+	if borrow.Returning == nil {
+		return fmt.Errorf("borrow has not returned yet: %s", borrowingId)
+	}
+	return u.repo.DeleteReturn(ctx, borrow.Returning.ID)
+}

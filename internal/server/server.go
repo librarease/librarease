@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -11,6 +12,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	_ "github.com/joho/godotenv/autoload"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"github.com/librarease/librarease/internal/config"
 	"github.com/librarease/librarease/internal/database"
@@ -72,6 +76,7 @@ type Service interface {
 	UpdateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
 
 	ReturnBorrowing(context.Context, uuid.UUID, usecase.Returning) (usecase.Borrowing, error)
+	DeleteReturn(context.Context, uuid.UUID) error
 
 	RegisterUser(context.Context, usecase.RegisterUser) (usecase.User, error)
 	VerifyIDToken(context.Context, string) (string, error)
@@ -91,8 +96,40 @@ type Server struct {
 }
 
 func NewServer() *http.Server {
-	// TODO: move initializations here
-	repo := database.New()
+
+	var (
+		dbname = os.Getenv(config.ENV_KEY_DB_DATABASE)
+		dbpass = os.Getenv(config.ENV_KEY_DB_PASSWORD)
+		dbuser = os.Getenv(config.ENV_KEY_DB_USER)
+		dbport = os.Getenv(config.ENV_KEY_DB_PORT)
+		dbhost = os.Getenv(config.ENV_KEY_DB_HOST)
+	)
+	// Reuse Connection
+	// if dbInstance != nil {
+	// 	return dbInstance
+	// }
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbuser, dbpass, dbhost, dbport, dbname)
+	// db, err := sql.Open("pgx", connStr)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// dbInstance = &service{
+	// 	db: db,
+	// }
+	// return dbInstance
+
+	gormDB, err := gorm.Open(postgres.Open(connStr), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	// rdb := redis.NewClient(&redis.Options{
+	// 	Addr:     "localhost:6379",
+	// 	Password: "", // no password set
+	// 	DB:       0,  // use default DB
+	// })
+	repo := database.New(gormDB, nil)
 	ip := firebase.New()
 
 	// AWS S3
@@ -116,7 +153,7 @@ func NewServer() *http.Server {
 	sv := usecase.New(repo, ip, fsp)
 	v := validator.New()
 
-	port, _ := strconv.Atoi(os.Getenv("PORT"))
+	port, _ := strconv.Atoi(os.Getenv(config.ENV_KEY_PORT))
 	NewServer := &Server{
 		port:      port,
 		server:    sv,
