@@ -15,7 +15,7 @@ type Returning struct {
 	BorrowingID string    `json:"borrowing_id"`
 	StaffID     string    `json:"staff_id"`
 	ReturnedAt  time.Time `json:"returned_at"`
-	Fine        int       `json:"fine,omitempty"`
+	Fine        int       `json:"fine"`
 	CreatedAt   string    `json:"created_at,omitempty"`
 	UpdatedAt   string    `json:"updated_at,omitempty"`
 	DeletedAt   *string   `json:"deleted_at,omitempty"`

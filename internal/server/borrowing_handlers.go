@@ -425,12 +425,11 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 }
 
 type CreateBorrowingRequest struct {
-	BookID         string  `json:"book_id" validate:"required,uuid"`
-	SubscriptionID string  `json:"subscription_id" validate:"required,uuid"`
-	StaffID        string  `json:"staff_id" validate:"required,uuid"`
-	BorrowedAt     string  `json:"borrowed_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
-	DueAt          string  `json:"due_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
-	ReturnedAt     *string `json:"returned_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	BookID         string `json:"book_id" validate:"required,uuid"`
+	SubscriptionID string `json:"subscription_id" validate:"required,uuid"`
+	StaffID        string `json:"staff_id" validate:"required,uuid"`
+	BorrowedAt     string `json:"borrowed_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	DueAt          string `json:"due_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 }
 
 func (s *Server) CreateBorrowing(ctx echo.Context) error {
