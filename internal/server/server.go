@@ -77,6 +77,7 @@ type Service interface {
 
 	ReturnBorrowing(context.Context, uuid.UUID, usecase.Returning) (usecase.Borrowing, error)
 	DeleteReturn(context.Context, uuid.UUID) error
+	UpdateReturn(context.Context, uuid.UUID, usecase.Returning) error
 
 	RegisterUser(context.Context, usecase.RegisterUser) (usecase.User, error)
 	VerifyIDToken(context.Context, string) (string, error)

@@ -122,3 +122,19 @@ func (s service) DeleteReturn(ctx context.Context, id uuid.UUID) error {
 		}).
 		Error
 }
+
+func (s service) UpdateReturn(ctx context.Context, id uuid.UUID, r usecase.Returning) error {
+	var returning = Returning{
+		ID:          id,
+		BorrowingID: r.BorrowingID,
+		StaffID:     r.StaffID,
+		ReturnedAt:  r.ReturnedAt,
+		Fine:        r.Fine,
+	}
+
+	return s.db.WithContext(ctx).
+		Model(&Returning{}).
+		Where("id = ?", id).
+		Updates(&returning).
+		Error
+}

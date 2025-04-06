@@ -487,13 +487,14 @@ func (s *Server) CreateBorrowing(ctx echo.Context) error {
 }
 
 type UpdateBorrowingRequest struct {
-	ID             string  `param:"id" validate:"required,uuid"`
-	BookID         string  `json:"book_id" validate:"omitempty,uuid"`
-	SubscriptionID string  `json:"subscription_id" validate:"omitempty,uuid"`
-	StaffID        string  `json:"staff_id" validate:"omitempty,uuid"`
-	BorrowedAt     string  `json:"borrowed_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
-	DueAt          string  `json:"due_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
-	ReturningID    *string `json:"returning_id" validate:"omitempty,uuid"`
+	ID             string     `param:"id" validate:"required,uuid"`
+	BookID         string     `json:"book_id" validate:"omitempty,uuid"`
+	SubscriptionID string     `json:"subscription_id" validate:"omitempty,uuid"`
+	StaffID        string     `json:"staff_id" validate:"omitempty,uuid"`
+	BorrowedAt     string     `json:"borrowed_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	DueAt          string     `json:"due_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	ReturningID    *string    `json:"returning_id" validate:"omitempty,uuid"`
+	Returning      *Returning `json:"returning,omitempty"`
 }
 
 func (s *Server) UpdateBorrowing(ctx echo.Context) error {
@@ -528,6 +529,14 @@ func (s *Server) UpdateBorrowing(ctx echo.Context) error {
 		dueAt = t
 	}
 
+	var r *usecase.Returning
+	if req.Returning != nil {
+		r = &usecase.Returning{
+			ReturnedAt: req.Returning.ReturnedAt,
+			Fine:       req.Returning.Fine,
+		}
+	}
+
 	borrow, err := s.server.UpdateBorrowing(ctx.Request().Context(), usecase.Borrowing{
 		ID:             id,
 		BookID:         bookID,
@@ -538,6 +547,15 @@ func (s *Server) UpdateBorrowing(ctx echo.Context) error {
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	if r != nil {
+		if err := s.server.UpdateReturn(ctx.Request().Context(), id, usecase.Returning{
+			ReturnedAt: r.ReturnedAt,
+			Fine:       r.Fine,
+		}); err != nil {
+			return ctx.JSON(500, map[string]string{"error": err.Error()})
+		}
 	}
 
 	return ctx.JSON(200, Res{Data: Borrowing{

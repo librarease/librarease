@@ -137,3 +137,31 @@ func (u Usecase) DeleteReturn(ctx context.Context, borrowingId uuid.UUID) error 
 	}
 	return u.repo.DeleteReturn(ctx, borrow.Returning.ID)
 }
+
+func (u Usecase) UpdateReturn(ctx context.Context, borrowingId uuid.UUID, r Returning) error {
+	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingId)
+	if err != nil {
+		return err
+	}
+	if borrow.Returning == nil {
+		return fmt.Errorf("borrow has not returned yet: %s", borrowingId)
+	}
+
+	if !r.ReturnedAt.IsZero() && r.ReturnedAt.Before(borrow.BorrowedAt) {
+		return fmt.Errorf("returned at date is before borrowed at date")
+	}
+
+	// calculate fine only if fine is negative (not provided)
+	// if r.Fine < 0 {
+	// 	r.Fine = 0
+	// 	if r.ReturnedAt.After(borrow.DueAt) {
+
+	// 		overdueHours := r.ReturnedAt.Sub(borrow.DueAt).Hours()
+	// 		days := int(math.Floor(overdueHours / 24))
+	// 		fine := days * borrow.Subscription.FinePerDay
+	// 		r.Fine = fine
+	// 	}
+	// }
+
+	return u.repo.UpdateReturn(ctx, borrow.Returning.ID, r)
+}
