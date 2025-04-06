@@ -23,7 +23,7 @@ type Borrowing struct {
 	Book         *Book         `json:"book"`
 	Subscription *Subscription `json:"subscription"`
 	Staff        *Staff        `json:"staff"`
-	Returning    *Returning    `json:"returning"`
+	Returning    *Returning    `json:"returning,omitempty"`
 }
 
 type ListBorrowingsOption struct {
