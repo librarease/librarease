@@ -112,6 +112,5 @@ func (s *Server) DeleteReturn(ctx echo.Context) error {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(http.StatusNoContent, nil)
-
+	return ctx.JSON(http.StatusOK, Res{Message: "successfully deleted return"})
 }
