@@ -145,7 +145,36 @@ func (s *service) GetSubscriptionByID(ctx context.Context, id uuid.UUID) (usecas
 	if err != nil {
 		return usecase.Subscription{}, err
 	}
+
+	var borrowingsCount *int
+	if err := s.db.
+		WithContext(ctx).
+		Table("subscriptions s").
+		Select("COUNT(b.id)").
+		Joins("JOIN borrowings b ON s.id = b.subscription_id AND b.deleted_at IS NULL").
+		Where("s.id = ?", id).
+		Scan(&borrowingsCount).
+		Error; err != nil {
+		return usecase.Subscription{}, err
+	}
+
+	var activeLoanCount *int
+	if err := s.db.
+		WithContext(ctx).
+		Table("subscriptions s").
+		Select("COUNT(b.id)").
+		Joins("JOIN borrowings b ON s.id = b.subscription_id").
+		Joins("LEFT JOIN returnings r ON b.id = r.borrowing_id AND r.deleted_at IS NULL").
+		Where("s.id = ?", id).
+		Where("r.id IS NULL").
+		Scan(&activeLoanCount).
+		Error; err != nil {
+		return usecase.Subscription{}, err
+	}
+
 	usub := sub.ConvertToUsecase()
+	usub.UsageCount = borrowingsCount
+	usub.ActiveLoanCount = activeLoanCount
 	if sub.User != nil {
 		user := sub.User.ConvertToUsecase()
 		usub.User = &user

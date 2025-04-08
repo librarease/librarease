@@ -26,6 +26,9 @@ type Subscription struct {
 	LoanPeriod      int    `json:"loan_period,omitempty"`
 	ActiveLoanLimit int    `json:"active_loan_limit,omitempty"`
 	UsageLimit      int    `json:"usage_limit,omitempty"`
+
+	UsageCount      *int `json:"usage_count,omitempty"`
+	ActiveLoanCount *int `json:"active_loan_count,omitempty"`
 }
 
 type ListSubscriptionsRequest struct {
@@ -165,6 +168,8 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,
 		UsageLimit:      sub.UsageLimit,
+		UsageCount:      sub.UsageCount,
+		ActiveLoanCount: sub.ActiveLoanCount,
 	}
 	if sub.User != nil {
 		m.User = &User{

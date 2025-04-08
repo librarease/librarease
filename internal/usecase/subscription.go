@@ -29,6 +29,9 @@ type Subscription struct {
 
 	User       *User
 	Membership *Membership
+
+	UsageCount      *int
+	ActiveLoanCount *int
 }
 
 type ListSubscriptionsOption struct {
