@@ -18,6 +18,7 @@ import (
 
 	"github.com/librarease/librarease/internal/config"
 	"github.com/librarease/librarease/internal/database"
+	"github.com/librarease/librarease/internal/email"
 	"github.com/librarease/librarease/internal/filestorage"
 	"github.com/librarease/librarease/internal/firebase"
 	"github.com/librarease/librarease/internal/usecase"
@@ -132,6 +133,12 @@ func NewServer() *http.Server {
 	// })
 	repo := database.New(gormDB, nil)
 	ip := firebase.New()
+	mp := email.NewEmailProvider(
+		os.Getenv(config.ENV_KEY_SMTP_HOST),
+		os.Getenv(config.ENV_KEY_SMTP_USERNAME),
+		os.Getenv(config.ENV_KEY_SMTP_PASSWORD),
+		os.Getenv(config.ENV_KEY_SMTP_PORT),
+	)
 
 	// AWS S3
 	// var (
@@ -151,7 +158,7 @@ func NewServer() *http.Server {
 	)
 	fsp := filestorage.NewMinIOStorage(bucket, temp, public, endpoint, accessKey, secretKey)
 
-	sv := usecase.New(repo, ip, fsp)
+	sv := usecase.New(repo, ip, fsp, mp)
 	v := validator.New()
 
 	port, _ := strconv.Atoi(os.Getenv(config.ENV_KEY_PORT))
