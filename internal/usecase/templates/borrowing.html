@@ -1,0 +1,28 @@
+{{ define "content" }}
+<div class="section">
+  <p>Dear {{ .UserName }},</p>
+  <p>You&apos;ve borrowed <strong>{{ .BookName }}</strong> from {{ .LibraryName }}.</p>
+</div>
+
+<div class="section details">
+  <p><strong>Book:</strong> {{ .BookName }}</p>
+  <p><strong>Borrowed:</strong> {{ .BorrowedAt }}</p>
+  <p><strong>Due:</strong> <span class="highlight">{{ .DueAt }}</span></p>
+  <p><strong>Membership:</strong> {{ .MembershipName }}</p>
+</div>
+
+<div class="section qr">
+  <p>Scan this when returning:</p>
+  <img src="{{ .QRCodeURL | safeURL }}" alt="QR Code" />
+  <p style="font-size: 12px;">Borrow ID: {{ .BorrowingID }}</p>
+</div>
+
+<div class="section">
+  <p style="font-size: 12px; color: #555;">* Return on time to avoid <strong>{{ .FinePerDay }} pts/day</strong> late
+    fees.
+  </p>
+  <div style="text-align: center;">
+    <a class="btn" href="{{ .URL }}/borrows/{{ .BorrowingID }}">View Details</a>
+  </div>
+</div>
+{{ end }}

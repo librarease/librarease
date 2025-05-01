@@ -236,6 +236,13 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	if err != nil {
 		return Borrowing{}, err
 	}
+
+	go func() {
+		if err := u.SendBorrowingEmail(context.Background(), bw.ID); err != nil {
+			fmt.Printf("borrowing: failed to send email: %v\n", err)
+		}
+	}()
+
 	return bw, nil
 }
 
