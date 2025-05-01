@@ -6,11 +6,17 @@ import (
 	"github.com/google/uuid"
 )
 
-func New(repo Repository, ip IdentityProvider, fsp FileStorageProvider) Usecase {
+func New(
+	repo Repository,
+	ip IdentityProvider,
+	fsp FileStorageProvider,
+	mp Mailer,
+) Usecase {
 	return Usecase{
 		repo:                repo,
 		identityProvider:    ip,
 		fileStorageProvider: fsp,
+		mailer:              mp,
 	}
 }
 
@@ -98,10 +104,15 @@ type FileStorageProvider interface {
 	GetPublicURL(context.Context) (string, error)
 }
 
+type Mailer interface {
+	SendEmail(context.Context, Email) error
+}
+
 type Usecase struct {
 	repo                Repository
 	identityProvider    IdentityProvider
 	fileStorageProvider FileStorageProvider
+	mailer              Mailer
 }
 
 func (u Usecase) Health() map[string]string {

@@ -20,6 +20,7 @@ import (
 
 	"github.com/librarease/librarease/internal/config"
 	"github.com/librarease/librarease/internal/database"
+	"github.com/librarease/librarease/internal/email"
 	"github.com/librarease/librarease/internal/filestorage"
 	"github.com/librarease/librarease/internal/firebase"
 	"github.com/librarease/librarease/internal/telemetry"
@@ -198,6 +199,12 @@ func NewApp() (*App, error) {
 		return nil, fmt.Errorf("failed to create database repository: %w", err)
 	}
 	ip := firebase.New()
+	mp := email.NewEmailProvider(
+		os.Getenv(config.ENV_KEY_SMTP_HOST),
+		os.Getenv(config.ENV_KEY_SMTP_USERNAME),
+		os.Getenv(config.ENV_KEY_SMTP_PASSWORD),
+		os.Getenv(config.ENV_KEY_SMTP_PORT),
+	)
 
 	// AWS S3
 	// var (
@@ -217,7 +224,7 @@ func NewApp() (*App, error) {
 	)
 	fsp := filestorage.NewMinIOStorage(bucket, temp, public, endpoint, accessKey, secretKey)
 
-	sv := usecase.New(repo, ip, fsp)
+	sv := usecase.New(repo, ip, fsp, mp)
 	v := validator.New()
 
 	port, _ := strconv.Atoi(os.Getenv(config.ENV_KEY_PORT))
