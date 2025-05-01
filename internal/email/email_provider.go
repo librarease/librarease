@@ -62,7 +62,7 @@ func (e *EmailProvider) SendEmail(_ context.Context, email usecase.Email) error 
 	msg.Cc(email.CC...)
 	msg.Bcc(email.BCC...)
 	msg.Subject(email.Subject)
-	msg.SetBodyString(mail.TypeTextPlain, email.Body)
+	msg.SetBodyString(mail.TypeTextHTML, email.Body)
 	for _, file := range email.Attachments {
 		if err := msg.AttachReader(
 			file.Name,
