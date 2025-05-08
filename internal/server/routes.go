@@ -88,5 +88,11 @@ func (s *Server) RegisterRoutes() http.Handler {
 	var fileGroup = e.Group("/api/v1/files")
 	fileGroup.GET("/upload", s.GetTempUploadURL)
 
+	var notificationGroup = e.Group("/api/v1/notifications")
+	notificationGroup.GET("", s.ListNotifications, s.AuthMiddleware)
+	notificationGroup.POST("/read", s.ReadAllNotifications, s.AuthMiddleware)
+	notificationGroup.POST("/:id/read", s.ReadNotification, s.AuthMiddleware)
+	notificationGroup.GET("/stream", s.StreamNotifications)
+
 	return e
 }

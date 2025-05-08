@@ -87,6 +87,11 @@ type Service interface {
 	GetDocs(context.Context, usecase.GetDocsOption) (string, error)
 
 	GetTempUploadURL(context.Context, string) (string, error)
+
+	ListNotifications(context.Context, usecase.ListNotificationsOption) ([]usecase.Notification, int, error)
+	ReadNotification(context.Context, uuid.UUID) error
+	ReadAllNotifications(context.Context) error
+	StreamNotifications(context.Context, uuid.UUID) (<-chan usecase.Notification, error)
 }
 
 type Server struct {
@@ -167,7 +172,7 @@ func NewServer() *http.Server {
 		Handler:      NewServer.RegisterRoutes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 0,
 	}
 
 	return server
