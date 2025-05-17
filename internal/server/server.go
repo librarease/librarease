@@ -2,8 +2,9 @@ package server
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	_ "github.com/joho/godotenv/autoload"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -20,6 +22,7 @@ import (
 	"github.com/librarease/librarease/internal/database"
 	"github.com/librarease/librarease/internal/filestorage"
 	"github.com/librarease/librarease/internal/firebase"
+	"github.com/librarease/librarease/internal/telemetry"
 	"github.com/librarease/librarease/internal/usecase"
 )
 
@@ -101,7 +104,48 @@ type Server struct {
 	validator *validator.Validate
 }
 
-func NewServer() *http.Server {
+type App struct {
+	httpServer  *http.Server
+	gormDB      *gorm.DB
+	sqlDB       *sql.DB
+	notifyConn  *pgx.Conn
+	otelCleanup func(context.Context) error
+}
+
+func (a *App) ListenAndServe() error {
+	if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("http server error: %w", err)
+	}
+	return nil
+}
+
+func (a *App) Addr() string {
+	return a.httpServer.Addr
+}
+
+func (a *App) Shutdown(ctx context.Context) error {
+	var errs []error
+
+	if err := a.notifyConn.Close(ctx); err != nil {
+		errs = append(errs, fmt.Errorf("notify connection close: %w", err))
+	}
+
+	if err := a.sqlDB.Close(); err != nil {
+		errs = append(errs, fmt.Errorf("sql db close: %w", err))
+	}
+
+	if err := a.httpServer.Shutdown(ctx); err != nil {
+		errs = append(errs, fmt.Errorf("http server shutdown: %w", err))
+	}
+
+	if err := a.otelCleanup(ctx); err != nil {
+		errs = append(errs, fmt.Errorf("telemetry cleanup: %w", err))
+	}
+
+	return errors.Join(errs...)
+}
+
+func NewApp() (*App, error) {
 
 	var (
 		dbname = os.Getenv(config.ENV_KEY_DB_DATABASE)
@@ -110,32 +154,48 @@ func NewServer() *http.Server {
 		dbport = os.Getenv(config.ENV_KEY_DB_PORT)
 		dbhost = os.Getenv(config.ENV_KEY_DB_HOST)
 	)
-	// Reuse Connection
-	// if dbInstance != nil {
-	// 	return dbInstance
-	// }
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbuser, dbpass, dbhost, dbport, dbname)
-	// db, err := sql.Open("pgx", connStr)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// dbInstance = &service{
-	// 	db: db,
-	// }
-	// return dbInstance
 
-	gormDB, err := gorm.Open(postgres.Open(connStr), &gorm.Config{
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbuser, dbpass, dbhost, dbport, dbname)
+	sqlDB, err := sql.Open("pgx", connStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database connection: %w", err)
+	}
+
+	var maxOpenConnections int
+	if m, err := strconv.Atoi(
+		os.Getenv("DB_MAX_OPEN_CONNECTIONS")); err == nil {
+		maxOpenConnections = m
+	}
+	sqlDB.SetMaxOpenConns(maxOpenConnections)
+
+	// Create GORM DB with the configured sql.DB
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{
+		Conn: sqlDB,
+	}), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("failed to open gorm database connection: %w", err)
 	}
+
+	// Create separate pgx.Conn for notifications
+	notifyConn, err := pgx.Connect(context.Background(), connStr)
+	if err != nil {
+		sqlDB.Close() // cleanup previous connection
+		return nil, fmt.Errorf("failed to connect to database for notification: %w", err)
+	}
+
 	// rdb := redis.NewClient(&redis.Options{
 	// 	Addr:     "localhost:6379",
 	// 	Password: "", // no password set
 	// 	DB:       0,  // use default DB
 	// })
-	repo := database.New(gormDB, nil)
+	repo, err := database.New(gormDB, notifyConn, nil)
+	if err != nil {
+		sqlDB.Close()
+		notifyConn.Close(context.Background())
+		return nil, fmt.Errorf("failed to create database repository: %w", err)
+	}
 	ip := firebase.New()
 
 	// AWS S3
@@ -160,20 +220,33 @@ func NewServer() *http.Server {
 	v := validator.New()
 
 	port, _ := strconv.Atoi(os.Getenv(config.ENV_KEY_PORT))
-	NewServer := &Server{
+	s := &Server{
 		port:      port,
 		server:    sv,
 		validator: v,
 	}
 
-	// Declare Server config
-	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", NewServer.port),
-		Handler:      NewServer.RegisterRoutes(),
+	// Set up OpenTelemetry.
+	otelShutdown, err := telemetry.SetupOTelSDK(context.Background())
+	if err != nil {
+		sqlDB.Close()
+		notifyConn.Close(context.Background())
+		return nil, fmt.Errorf("failed to set up OpenTelemetry: %w", err)
+	}
+
+	httpServer := &http.Server{
+		Addr:         fmt.Sprintf(":%d", s.port),
+		Handler:      s.RegisterRoutes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 0,
 	}
 
-	return server
+	return &App{
+		httpServer:  httpServer,
+		gormDB:      gormDB,
+		sqlDB:       sqlDB,
+		notifyConn:  notifyConn,
+		otelCleanup: otelShutdown,
+	}, nil
 }

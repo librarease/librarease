@@ -11,6 +11,7 @@ import (
 
 type Notification struct {
 	ID            uuid.UUID
+	UserID        uuid.UUID
 	Title         string
 	Message       string
 	CreatedAt     time.Time
@@ -18,6 +19,7 @@ type Notification struct {
 	ReadAt        *time.Time
 	ReferenceID   *uuid.UUID
 	ReferenceType string
+	DeletedAt     *time.Time
 }
 
 type ListNotificationsOption struct {
@@ -75,41 +77,41 @@ func (u Usecase) ReadAllNotifications(ctx context.Context) error {
 // https://brandur.org/notifier
 // https://www.finly.ch/engineering-blog/436253-building-a-real-time-notification-system-in-go-with-postgresql
 
+// StreamNotifications creates a notification stream for the specified user.
+// It filters notifications based on the userID and handles cleanup when the context is done.
 func (u Usecase) StreamNotifications(ctx context.Context, userID uuid.UUID) (<-chan Notification, error) {
-	// userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
-	// if !ok {
-	// 	return nil, fmt.Errorf("user id not found in context")
-	// }
-	// fmt.Printf("Stream notifications for user ID: %s\n", userID.String())
-	// TODO: implement stream notifications
+	inbound := make(chan Notification, 10)
+	if err := u.repo.SubscribeNotifications(ctx, inbound); err != nil {
+		close(inbound)
+		return nil, fmt.Errorf("subscribe to notifications: %w", err)
+	}
 
-	ticker := time.NewTicker(5 * time.Second)
-
-	c := make(chan Notification, 10)
-	// stop ticker when context is done
+	notifications := make(chan Notification, 10)
 	go func() {
-		defer close(c)
-		defer ticker.Stop()
+		defer close(notifications)
+		defer u.repo.UnsubscribeNotifications(ctx, inbound)
+		defer close(inbound)
 
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case t := <-ticker.C:
-				// Simulate sending a notification
-				c <- Notification{
-					ID:            uuid.New(),
-					Title:         userID.String(),
-					Message:       fmt.Sprintf("Notification at %s", t),
-					CreatedAt:     time.Now(),
-					UpdatedAt:     time.Now(),
-					ReadAt:        nil,
-					ReferenceID:   nil,
-					ReferenceType: "EXAMPLE",
+			case n, ok := <-inbound:
+				if !ok {
+					return
+				}
+				// Only forward notifications for the specified user
+				if n.UserID == userID {
+					// Non-blocking send to avoid slow consumers
+					select {
+					case notifications <- n:
+					default:
+						fmt.Printf("dropping notification for user %s: channel full\n", userID)
+					}
 				}
 			}
 		}
 	}()
 
-	return c, nil
+	return notifications, nil
 }

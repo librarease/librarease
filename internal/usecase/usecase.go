@@ -75,6 +75,10 @@ type Repository interface {
 
 	// analysis
 	GetAnalysis(context.Context, GetAnalysisOption) (Analysis, error)
+
+	// notification
+	SubscribeNotifications(context.Context, chan<- Notification) error
+	UnsubscribeNotifications(context.Context, chan<- Notification) error
 }
 
 type IdentityProvider interface {

@@ -2,68 +2,43 @@ package main
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log"
-	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/librarease/librarease/internal/server"
-	"github.com/librarease/librarease/internal/telemetry"
 )
 
-func gracefulShutdown(apiServer *http.Server, done chan bool) {
-	// Create context that listens for the interrupt signal from the OS.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	// Listen for the interrupt signal.
-	<-ctx.Done()
-
-	log.Println("shutting down gracefully, press Ctrl+C again to force")
-
-	// The context is used to inform the server it has 5 seconds to finish
-	// the request it is currently handling
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := apiServer.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown with error: %v", err)
-	}
-
-	log.Println("Server exiting")
-
-	// Notify the main goroutine that the shutdown is complete
-	done <- true
-}
-
 func main() {
-
-	server := server.NewServer()
-
-	// Create a done channel to signal when the shutdown is complete
-	done := make(chan bool, 1)
-
-	// Run graceful shutdown in a separate goroutine
-	go gracefulShutdown(server, done)
-
-	// Set up OpenTelemetry.
-	otelShutdown, err := telemetry.SetupOTelSDK(context.Background())
+	app, err := server.NewApp()
 	if err != nil {
-		return
+		log.Fatal(err)
 	}
-	// Handle shutdown properly so nothing leaks.
-	defer func() {
-		err = errors.Join(err, otelShutdown(context.Background()))
+
+	// Server startup
+	go func() {
+		log.Printf("Server starting on %s", app.Addr())
+		if err := app.ListenAndServe(); err != nil {
+			log.Printf("Server error: %v", err)
+		}
 	}()
 
-	err = server.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		panic(fmt.Sprintf("http server error: %s", err))
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := app.Shutdown(ctx); err != nil {
+		log.Printf("Shutdown error: %v", err)
+		os.Exit(1)
 	}
 
-	// Wait for the graceful shutdown to complete
-	<-done
-	log.Println("Graceful shutdown complete.")
+	log.Println("Server exited properly")
 }

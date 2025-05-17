@@ -2,12 +2,13 @@ package database
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/redis/go-redis/v9"
@@ -17,28 +18,25 @@ import (
 // implements server/Service interface
 type service struct {
 	db    *gorm.DB
+	noti  *notificationHub
 	cache *redis.Client
 }
 
-func New(gormDB *gorm.DB, redis *redis.Client) *service {
+//go:embed migrations/notification.sql
+var notificationSQL string
+
+func New(gormDB *gorm.DB, noti *pgx.Conn, redis *redis.Client) (*service, error) {
 
 	db, err := gormDB.DB()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-
-	var maxOpenConnections int
-	if m, err := strconv.Atoi(
-		os.Getenv("DB_MAX_OPEN_CONNECTIONS")); err == nil {
-		maxOpenConnections = m
-	}
-	db.SetMaxOpenConns(maxOpenConnections)
 
 	_, err = db.Exec(`
 		CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 	`)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// migrate the schema
@@ -52,12 +50,23 @@ func New(gormDB *gorm.DB, redis *redis.Client) *service {
 		Subscription{},
 		Returning{},
 		Borrowing{},
+		Notification{},
 	)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return &service{db: gormDB, cache: redis}
+	if _, err := db.Exec(notificationSQL); err != nil {
+		return nil, err
+	}
+
+	if _, err := noti.Exec(context.TODO(), "LISTEN \"new_notification\""); err != nil {
+		return nil, err
+	}
+
+	notiHub := NewNotificationHub(noti)
+
+	return &service{db: gormDB, noti: notiHub, cache: redis}, nil
 }
 
 // Health checks the health of the database connection by pinging the database.
