@@ -35,7 +35,7 @@ func (s *Server) ListNotifications(ctx echo.Context) error {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
-	notifications, total, err := s.server.ListNotifications(ctx.Request().Context(), usecase.ListNotificationsOption{
+	notifications, unread, total, err := s.server.ListNotifications(ctx.Request().Context(), usecase.ListNotificationsOption{
 		Skip:  req.Skip,
 		Limit: req.Limit,
 	})
@@ -73,9 +73,10 @@ func (s *Server) ListNotifications(ctx echo.Context) error {
 	return ctx.JSON(200, Res{
 		Data: list,
 		Meta: &Meta{
-			Total: total,
-			Skip:  req.Skip,
-			Limit: req.Limit,
+			Unread: &unread,
+			Total:  total,
+			Skip:   req.Skip,
+			Limit:  req.Limit,
 		},
 	})
 }

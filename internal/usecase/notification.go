@@ -23,53 +23,46 @@ type Notification struct {
 }
 
 type ListNotificationsOption struct {
-	Skip  int
-	Limit int
+	Skip   int
+	Limit  int
+	UserID uuid.UUID
 }
 
-func (u Usecase) ListNotifications(ctx context.Context, opt ListNotificationsOption) ([]Notification, int, error) {
-	// TODO: implement list notifications
+func (u Usecase) ListNotifications(ctx context.Context, opt ListNotificationsOption) ([]Notification, int, int, error) {
 	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
 	if !ok {
-		return nil, 0, fmt.Errorf("user id not found in context")
+		return nil, 0, 0, fmt.Errorf("user id not found in context")
 	}
-	fmt.Printf("List notifications for user ID: %s\n", userID.String())
-	// notifications, total, err := u.repo.ListNotifications(ctx, opt)
-	// if err != nil {
-	// 	return nil, 0, err
-	// }
+	notifications, unread, total, err := u.repo.ListNotifications(ctx, ListNotificationsOption{
+		Skip:   opt.Skip,
+		Limit:  opt.Limit,
+		UserID: userID,
+	})
+	if err != nil {
+		return nil, 0, 0, err
+	}
 
-	// publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
+	var list []Notification
+	for _, n := range notifications {
+		if n.ReferenceID != nil {
+			n.ReferenceID = &uuid.UUID{}
+		}
+		list = append(list, n)
+	}
 
-	// var list []Notification
-	// for _, n := range notifications {
-	// 	if n.ReferenceID != nil {
-	// 		n.ReferenceID = &uuid.UUID{}
-	// 	}
-	// 	list = append(list, n)
-	// }
-
-	// return list, total, err
-
-	return nil, 0, nil
+	return list, unread, total, err
 }
 
 func (u Usecase) ReadNotification(ctx context.Context, id uuid.UUID) error {
-	// TODO: implement read notification
-	fmt.Printf("Read notification with ID: %s\n", id.String())
-	// return u.repo.ReadNotification(ctx, id)
-	return nil
+	return u.repo.ReadNotification(ctx, id)
 }
 
 func (u Usecase) ReadAllNotifications(ctx context.Context) error {
-	// TODO: implement read all notifications
 	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
 	if !ok {
 		return fmt.Errorf("user id not found in context")
 	}
-	fmt.Printf("Read all notifications for user ID: %s\n", userID.String())
-	// return u.repo.ReadAllNotifications(ctx, userID)
-	return nil
+	return u.repo.ReadAllNotifications(ctx, userID)
 }
 
 // REF:

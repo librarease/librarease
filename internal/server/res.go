@@ -1,9 +1,10 @@
 package server
 
 type Meta struct {
-	Total int `json:"total"`
-	Skip  int `json:"skip"`
-	Limit int `json:"limit"`
+	Total  int  `json:"total"`
+	Skip   int  `json:"skip"`
+	Limit  int  `json:"limit"`
+	Unread *int `json:"unread,omitempty"`
 }
 
 type Res struct {

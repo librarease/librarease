@@ -91,7 +91,7 @@ type Service interface {
 
 	GetTempUploadURL(context.Context, string) (string, error)
 
-	ListNotifications(context.Context, usecase.ListNotificationsOption) ([]usecase.Notification, int, error)
+	ListNotifications(context.Context, usecase.ListNotificationsOption) ([]usecase.Notification, int, int, error)
 	ReadNotification(context.Context, uuid.UUID) error
 	ReadAllNotifications(context.Context) error
 	StreamNotifications(context.Context, uuid.UUID) (<-chan usecase.Notification, error)

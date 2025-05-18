@@ -131,3 +131,53 @@ func (s *service) UnsubscribeNotifications(ctx context.Context, ch chan<- usecas
 	s.noti.Unsubscribe(ch)
 	return nil
 }
+
+func (s *service) ListNotifications(ctx context.Context, opt usecase.ListNotificationsOption) ([]usecase.Notification, int, int, error) {
+
+	var (
+		notifications []Notification
+		total         int64
+	)
+
+	query := s.db.WithContext(ctx).Model(&Notification{}).
+		Where("user_id = ?", opt.UserID).
+		Order("created_at desc").
+		Limit(opt.Limit).
+		Offset(opt.Skip)
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, 0, err
+	}
+
+	if err := query.Find(&notifications).Error; err != nil {
+		return nil, 0, 0, err
+	}
+
+	var unreadCount int64
+	if err := s.db.WithContext(ctx).Model(&Notification{}).
+		Where("user_id = ? AND read_at IS NULL", opt.UserID).
+		Count(&unreadCount).Error; err != nil {
+		return nil, 0, 0, err
+	}
+
+	result := make([]usecase.Notification, len(notifications))
+	for i, n := range notifications {
+		result[i] = n.ConvertToUsecase()
+	}
+
+	return result, int(unreadCount), int(total), nil
+}
+
+func (s *service) ReadNotification(ctx context.Context, id uuid.UUID) error {
+	return s.db.WithContext(ctx).
+		Model(&Notification{}).
+		Where("id = ?", id).
+		Update("read_at", time.Now()).Error
+}
+
+func (s *service) ReadAllNotifications(ctx context.Context, userID uuid.UUID) error {
+	return s.db.WithContext(ctx).
+		Model(&Notification{}).
+		Where("user_id = ? AND read_at IS NULL", userID).
+		Update("read_at", time.Now()).Error
+}

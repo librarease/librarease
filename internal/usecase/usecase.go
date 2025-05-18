@@ -79,6 +79,9 @@ type Repository interface {
 	// notification
 	SubscribeNotifications(context.Context, chan<- Notification) error
 	UnsubscribeNotifications(context.Context, chan<- Notification) error
+	ListNotifications(context.Context, ListNotificationsOption) ([]Notification, int, int, error)
+	ReadNotification(context.Context, uuid.UUID) error
+	ReadAllNotifications(context.Context, uuid.UUID) error
 }
 
 type IdentityProvider interface {
