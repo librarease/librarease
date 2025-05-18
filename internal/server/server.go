@@ -45,6 +45,7 @@ type Service interface {
 	DeleteUser(context.Context, string) error
 	GetAuthUserByUID(context.Context, string) (usecase.AuthUser, error)
 	GetAuthUserByUserID(context.Context, string) (usecase.AuthUser, error)
+	GetMe(context.Context) (usecase.MeUser, error)
 
 	ListLibraries(context.Context, usecase.ListLibrariesOption) ([]usecase.Library, int, error)
 	GetLibraryByID(context.Context, uuid.UUID) (usecase.Library, error)

@@ -82,6 +82,7 @@ type Repository interface {
 	ListNotifications(context.Context, ListNotificationsOption) ([]Notification, int, int, error)
 	ReadNotification(context.Context, uuid.UUID) error
 	ReadAllNotifications(context.Context, uuid.UUID) error
+	CountUnreadNotifications(context.Context, uuid.UUID) (int, error)
 }
 
 type IdentityProvider interface {

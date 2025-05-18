@@ -155,3 +155,36 @@ func (u Usecase) DeleteUser(ctx context.Context, id string) error {
 
 	return nil
 }
+
+type MeUser struct {
+	User
+	UnreadNotificationsCount int
+}
+
+func (u Usecase) GetMe(ctx context.Context) (MeUser, error) {
+	// role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+	// if !ok {
+	// 	return MeUser{}, fmt.Errorf("user role not found in context")
+	// }
+	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return MeUser{}, fmt.Errorf("user id not found in context")
+	}
+
+	user, err := u.GetUserByID(ctx, userID.String(), GetUserByIDOption{
+		IncludeStaffs: true,
+	})
+	if err != nil {
+		return MeUser{}, err
+	}
+
+	unreadCount, err := u.repo.CountUnreadNotifications(ctx, userID)
+	if err != nil {
+		return MeUser{}, err
+	}
+
+	return MeUser{
+		User:                     user,
+		UnreadNotificationsCount: unreadCount,
+	}, nil
+}

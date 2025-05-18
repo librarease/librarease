@@ -1,10 +1,8 @@
 package server
 
 import (
-	"fmt"
 	"time"
 
-	"github.com/librarease/librarease/internal/config"
 	"github.com/librarease/librarease/internal/usecase"
 
 	"github.com/google/uuid"
@@ -20,6 +18,9 @@ type User struct {
 	UpdatedAt  string  `json:"updated_at,omitempty"`
 	GlobalRole string  `json:"global_role,omitempty"`
 	Staffs     []Staff `json:"staffs,omitempty"`
+
+	// for Me
+	UnreadNotificationsCount int `json:"unread_notifications_count,omitempty"`
 }
 
 type ListUserRequest struct {
@@ -228,26 +229,41 @@ func (s *Server) DeleteUser(ctx echo.Context) error {
 	return ctx.NoContent(204)
 }
 
+type GetMeRequest struct {
+	Include []string `query:"include"`
+}
+
 func (s *Server) GetMe(ctx echo.Context) error {
-
-	role, ok := ctx.Request().Context().Value(config.CTX_KEY_USER_ROLE).(string)
-	if !ok {
-		return fmt.Errorf("user role not found in context")
+	var req GetMeRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}
-	userID, ok := ctx.Request().Context().Value(config.CTX_KEY_USER_ID).(uuid.UUID)
-	if !ok {
-		return fmt.Errorf("user id not found in context")
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
-	u, err := s.server.GetUserByID(ctx.Request().Context(), userID.String(), usecase.GetUserByIDOption{
-		IncludeStaffs: true,
-	})
+	// var (
+	// 	includeStaffs                   bool
+	// 	includeUnreadNotificationsCount bool
+	// )
+
+	// for _, inc := range req.Include {
+	// 	switch inc {
+	// 	case "staffs":
+	// 		includeStaffs = true
+	// 	case "unread_notifications_count":
+	// 		includeUnreadNotificationsCount = true
+	// 	default:
+	// 		return ctx.JSON(422, map[string]string{"error": fmt.Sprintf("invalid include %s", inc)})
+	// 	}
+	// }
+
+	u, err := s.server.GetMe(ctx.Request().Context())
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
-	user := ConvertUserFrom(u)
-
-	user.GlobalRole = role
+	user := ConvertUserFrom(u.User)
+	user.UnreadNotificationsCount = u.UnreadNotificationsCount
 
 	user.Staffs = make([]Staff, 0, len(u.Staffs))
 	for _, st := range u.Staffs {

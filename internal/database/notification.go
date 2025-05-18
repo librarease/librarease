@@ -181,3 +181,14 @@ func (s *service) ReadAllNotifications(ctx context.Context, userID uuid.UUID) er
 		Where("user_id = ? AND read_at IS NULL", userID).
 		Update("read_at", time.Now()).Error
 }
+
+func (s *service) CountUnreadNotifications(ctx context.Context, userID uuid.UUID) (int, error) {
+	var count int64
+	if err := s.db.WithContext(ctx).
+		Model(&Notification{}).
+		Where("user_id = ? AND read_at IS NULL", userID).
+		Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
