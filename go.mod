@@ -12,6 +12,8 @@ require (
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/minio/minio-go/v7 v7.0.84
 	github.com/redis/go-redis/v9 v9.7.1
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	github.com/wneessen/go-mail v0.6.2
 	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.60.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.60.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.35.0
@@ -50,8 +52,6 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/rs/xid v1.6.0 // indirect
-	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
-	github.com/wneessen/go-mail v0.6.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 )
