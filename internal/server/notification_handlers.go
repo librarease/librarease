@@ -138,11 +138,18 @@ func (s *Server) StreamNotifications(ctx echo.Context) error {
 
 	var noti *Notification
 
+	// to prevent pending when no notification on connection
+	w.Write([]byte("\n\n"))
+	w.Flush()
+
 	for {
 		select {
 		case <-ctx.Request().Context().Done():
 			return nil
-		case msg := <-ch:
+		case msg, ok := <-ch:
+			if !ok {
+				return nil
+			}
 			if msg.ID == uuid.Nil {
 				continue
 			}

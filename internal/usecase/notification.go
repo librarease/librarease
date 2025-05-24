@@ -83,7 +83,8 @@ func (u Usecase) StreamNotifications(ctx context.Context, userID uuid.UUID) (<-c
 	go func() {
 		defer close(notifications)
 		defer u.repo.UnsubscribeNotifications(ctx, inbound)
-		defer close(inbound)
+		// NOTE: inbound will be closed by notificationHub
+		// defer close(inbound)
 
 		for {
 			select {

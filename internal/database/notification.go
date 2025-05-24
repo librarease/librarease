@@ -69,6 +69,14 @@ func NewNotificationHub(conn *pgx.Conn) *notificationHub {
 
 func (h *notificationHub) listen() {
 	ctx := context.Background()
+
+	defer func() {
+		for subscribers := range h.subscribers {
+			close(subscribers)
+			delete(h.subscribers, subscribers)
+		}
+	}()
+
 	for {
 		n, err := h.conn.WaitForNotification(ctx)
 		if err != nil {
