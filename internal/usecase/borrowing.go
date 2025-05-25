@@ -241,6 +241,20 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 		if err := u.SendBorrowingEmail(context.Background(), bw.ID); err != nil {
 			fmt.Printf("borrowing: failed to send email: %v\n", err)
 		}
+
+		if err := u.CreateNotification(context.Background(), Notification{
+			Title: "Book Borrowed",
+			Message: fmt.Sprintf("You have successfully borrowed %s from %s. Please return it by %s. Happy reading!"+
+				book.Title,
+				book.Library.Name,
+				bw.DueAt.Format("2006-01-02 03:04 PM")),
+			UserID:        s.UserID,
+			ReferenceType: "BORROWING",
+			ReferenceID:   &bw.ID,
+		}); err != nil {
+			fmt.Printf("borrowing: failed to create notification: %v\n", err)
+		}
+
 	}()
 
 	return bw, nil

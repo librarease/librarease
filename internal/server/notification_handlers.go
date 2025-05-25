@@ -133,14 +133,14 @@ func (s *Server) StreamNotifications(ctx echo.Context) error {
 
 	w := ctx.Response()
 	w.Header().Set(echo.HeaderContentType, "text/event-stream")
-	w.Header().Set(echo.HeaderCacheControl, "no-cache")
+	w.Header().Set(echo.HeaderCacheControl, "no-cache, no-store, no-transform")
 	w.Header().Set(echo.HeaderConnection, "keep-alive")
 
 	var noti *Notification
 
 	// to prevent pending when no notification on connection
-	w.Write([]byte("\n\n"))
-	w.Flush()
+	// w.Write([]byte("\n\n"))
+	// w.Flush()
 
 	for {
 		select {
@@ -148,10 +148,18 @@ func (s *Server) StreamNotifications(ctx echo.Context) error {
 			return nil
 		case msg, ok := <-ch:
 			if !ok {
+				fmt.Printf("[DEBUG] notification stream closed\n")
 				return nil
 			}
+			fmt.Printf("[DEBUG] received notification: %v\n", msg)
 			if msg.ID == uuid.Nil {
 				continue
+			}
+
+			var referenceID *string
+			if msg.ReferenceID != nil {
+				id := msg.ReferenceID.String()
+				referenceID = &id
 			}
 
 			noti = &Notification{
@@ -160,6 +168,7 @@ func (s *Server) StreamNotifications(ctx echo.Context) error {
 				Message:       msg.Message,
 				CreatedAt:     msg.CreatedAt.Format(time.RFC3339),
 				UpdatedAt:     msg.UpdatedAt.Format(time.RFC3339),
+				ReferenceID:   referenceID,
 				ReferenceType: msg.ReferenceType,
 			}
 			if msg.ReadAt != nil {
