@@ -109,3 +109,7 @@ func (u Usecase) StreamNotifications(ctx context.Context, userID uuid.UUID) (<-c
 
 	return notifications, nil
 }
+
+func (u Usecase) CreateNotification(ctx context.Context, n Notification) error {
+	return u.repo.CreateNotification(ctx, n)
+}

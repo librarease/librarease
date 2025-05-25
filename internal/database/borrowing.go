@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Borrowing struct {
@@ -230,7 +231,11 @@ func (s *service) CreateBorrowing(ctx context.Context, b usecase.Borrowing) (use
 		// ReturnedAt:     b.ReturnedAt,
 	}
 
-	if err := s.db.WithContext(ctx).Create(&borrow).Error; err != nil {
+	if err := s.db.
+		WithContext(ctx).
+		Clauses(clause.Returning{}).
+		Create(&borrow).Error; err != nil {
+
 		return usecase.Borrowing{}, err
 	}
 

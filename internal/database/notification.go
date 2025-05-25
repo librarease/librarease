@@ -200,3 +200,18 @@ func (s *service) CountUnreadNotifications(ctx context.Context, userID uuid.UUID
 	}
 	return int(count), nil
 }
+
+func (s *service) CreateNotification(ctx context.Context, n usecase.Notification) error {
+	notification := Notification{
+		UserID:        n.UserID,
+		Title:         n.Title,
+		Message:       n.Message,
+		ReadAt:        n.ReadAt,
+		ReferenceID:   n.ReferenceID,
+		ReferenceType: n.ReferenceType,
+	}
+
+	return s.db.
+		WithContext(ctx).
+		Create(&notification).Error
+}
