@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -28,7 +27,7 @@ func (s *Server) websocketHandler(c echo.Context) error {
 	socket, err := websocket.Accept(w, r, nil)
 
 	if err != nil {
-		log.Printf("could not open websocket: %v", err)
+		fmt.Printf("could not open websocket: %v\n", err)
 		_, _ = w.Write([]byte("could not open websocket"))
 		w.WriteHeader(http.StatusInternalServerError)
 		return nil

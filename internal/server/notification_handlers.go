@@ -139,8 +139,8 @@ func (s *Server) StreamNotifications(ctx echo.Context) error {
 	var noti *Notification
 
 	// to prevent pending when no notification on connection
-	// w.Write([]byte("\n\n"))
-	// w.Flush()
+	w.Write([]byte("\n\n"))
+	w.Flush()
 
 	for {
 		select {
@@ -151,7 +151,6 @@ func (s *Server) StreamNotifications(ctx echo.Context) error {
 				fmt.Printf("[DEBUG] notification stream closed\n")
 				return nil
 			}
-			fmt.Printf("[DEBUG] received notification: %v\n", msg)
 			if msg.ID == uuid.Nil {
 				continue
 			}

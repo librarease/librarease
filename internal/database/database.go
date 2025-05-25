@@ -131,6 +131,6 @@ func (s *service) Close() error {
 	if err != nil {
 		return err
 	}
-	log.Println("Disconnected from database")
+	fmt.Println("Disconnected from database")
 	return db.Close()
 }
