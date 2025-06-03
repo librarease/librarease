@@ -412,6 +412,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 				m.Library = &Library{
 					ID:        borrow.Subscription.Membership.Library.ID.String(),
 					Name:      borrow.Subscription.Membership.Library.Name,
+					Logo:      borrow.Subscription.Membership.Library.Logo,
 					CreatedAt: borrow.Subscription.Membership.Library.CreatedAt.Format(time.RFC3339),
 					UpdatedAt: borrow.Subscription.Membership.Library.UpdatedAt.Format(time.RFC3339),
 				}

@@ -145,6 +145,17 @@ func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID) (Borrowing,
 		borrow.Book.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, b.ID, b.Cover)
 	}
 
+	if borrow.Subscription != nil &&
+		borrow.Subscription.Membership != nil &&
+		borrow.Subscription.Membership.Library != nil &&
+		borrow.Subscription.Membership.Library.Logo != "" {
+		borrow.Subscription.Membership.Library.Logo = fmt.Sprintf("%s/libraries/%s/logo/%s",
+			publicURL,
+			borrow.Subscription.Membership.Library.ID,
+			borrow.Subscription.Membership.Library.Logo,
+		)
+	}
+
 	return borrow, nil
 }
 

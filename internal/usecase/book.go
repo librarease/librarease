@@ -92,6 +92,10 @@ func (u Usecase) GetBookByID(ctx context.Context, id uuid.UUID) (Book, error) {
 		book.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, book.ID, book.Cover)
 	}
 
+	if book.Library != nil && book.Library.Logo != "" {
+		book.Library.Logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, book.Library.ID, book.Library.Logo)
+	}
+
 	return book, nil
 }
 
