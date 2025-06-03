@@ -13,7 +13,7 @@ import (
 func NewMinIOStorage(bucket, tempPath, publicPath, endpoint, accessKeyID, secretAccessKey string) *MinIOStorage {
 	m, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
-		Secure: false,
+		Secure: true,
 	})
 	if err != nil {
 		panic(err)
