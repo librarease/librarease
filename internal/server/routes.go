@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
+	"golang.org/x/time/rate"
 )
 
 func (s *Server) RegisterRoutes() http.Handler {
@@ -15,12 +16,16 @@ func (s *Server) RegisterRoutes() http.Handler {
 	e.Use(otelecho.Middleware("librarease"))
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"https://*", "http://*"},
+		AllowOrigins:     []string{"https://*.librarease.org"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowHeaders:     []string{"Accept", "Content-Type"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
+
+	e.Use(middleware.Secure())
+
+	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(64))))
 
 	e.GET("/api", s.HelloWorldHandler)
 
