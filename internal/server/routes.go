@@ -28,6 +28,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(64))))
 
 	e.GET("/api", s.HelloWorldHandler)
+	e.GET("/api/favicon.ico", func(c echo.Context) error {
+		return c.File("favicon.ico")
+	})
 
 	e.GET("/api/health", s.healthHandler)
 

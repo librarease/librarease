@@ -35,7 +35,8 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 			-- SUM((EXTRACT(DAY FROM r.returned_at - b.due_at)) * s.fine_per_day) AS predicted_fine,
 			SUM(r.fine) AS fine
 		`).
-		Where("r.returned_at > b.due_at").
+		// Where("r.returned_at > b.due_at").
+		Where("r.fine > 0").
 		Where("r.returned_at BETWEEN ? AND ?", opt.From, opt.To).
 		Where("m.library_id = ?", opt.LibraryID).
 		Group("timestamp").
