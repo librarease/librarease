@@ -61,15 +61,17 @@ func (s *service) ListUsers(ctx context.Context, opt usecase.ListUsersOption) ([
 		orderIn = opt.SortIn
 	}
 
-	err := db.
-		Count(&count).
+	if err := db.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := db.
 		Offset(opt.Skip).
 		Limit(opt.Limit).
 		Order(orderBy + " " + orderIn).
 		Find(&users).
-		Error
+		Error; err != nil {
 
-	if err != nil {
 		return nil, 0, err
 	}
 

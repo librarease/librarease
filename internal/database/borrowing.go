@@ -93,21 +93,23 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		orderIn = opt.SortIn
 	}
 
-	err := db.
+	if err := db.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := db.
 		Preload("Book").
 		Preload("Staff").
 		Preload("Subscription").
 		Preload("Subscription.User").
 		Preload("Subscription.Membership").
 		Preload("Subscription.Membership.Library").
-		Count(&count).
 		Limit(opt.Limit).
 		Offset(opt.Skip).
 		Order(orderBy + " " + orderIn).
 		Find(&borrows).
-		Error
+		Error; err != nil {
 
-	if err != nil {
 		return nil, 0, err
 	}
 

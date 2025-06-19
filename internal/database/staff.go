@@ -61,17 +61,19 @@ func (s *service) ListStaffs(ctx context.Context, opt usecase.ListStaffsOption) 
 		orderIn = opt.SortIn
 	}
 
-	err := db.
+	if err := db.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := db.
 		Preload("Library").
 		Preload("User").
-		Count(&count).
 		Limit(opt.Limit).
 		Offset(opt.Skip).
 		Order(orderBy + " " + orderIn).
 		Find(&staffs).
-		Error
+		Error; err != nil {
 
-	if err != nil {
 		return nil, 0, err
 	}
 

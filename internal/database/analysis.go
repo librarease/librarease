@@ -80,6 +80,17 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 		}
 	}
 
+	// Fill missing days with zero revenue
+	for d := opt.From.Truncate(24 * time.Hour); !d.After(opt.To); d = d.Add(24 * time.Hour) {
+		if _, exists := revenueMap[d]; !exists {
+			revenueMap[d] = usecase.RevenueAnalysis{
+				Timestamp:    d,
+				Subscription: 0,
+				Fine:         0,
+			}
+		}
+	}
+
 	revenue := make([]usecase.RevenueAnalysis, 0, len(revenueMap))
 	for _, r := range revenueMap {
 		revenue = append(revenue, r)
@@ -121,6 +132,17 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 	if err != nil {
 		return usecase.Analysis{}, err
 	}
+
+	// After filling revenue slice and sorting:
+	start := opt.Skip
+	end := start + opt.Limit
+	if start > len(revenue) {
+		start = len(revenue)
+	}
+	if end > len(revenue) {
+		end = len(revenue)
+	}
+	revenue = revenue[start:end]
 
 	return usecase.Analysis{
 		Borrowing:  borrowing,
