@@ -15,8 +15,6 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 		Select("DATE_TRUNC('day', b.borrowed_at) AS timestamp, COUNT(*) AS count").
 		Group("DATE_TRUNC('day', b.borrowed_at)").
 		Order("DATE_TRUNC('day', b.borrowed_at) DESC").
-		Offset(opt.Skip).
-		Limit(opt.Limit).
 		Where("b.borrowed_at BETWEEN ? AND ?", opt.From, opt.To).
 		Where("bk.library_id = ?", opt.LibraryID).
 		Scan(&borrowing).Error
@@ -32,18 +30,13 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 		Joins("JOIN returnings r ON r.borrowing_id = b.id").
 		Select(`
 			DATE_TRUNC('day', r.returned_at) AS timestamp,
-			-- SUM((EXTRACT(DAY FROM r.returned_at - b.due_at)) * s.fine_per_day) AS predicted_fine,
 			SUM(r.fine) AS fine
 		`).
-		// Where("r.returned_at > b.due_at").
 		Where("r.deleted_at IS NULL").
-		Where("r.fine > 0").
 		Where("r.returned_at BETWEEN ? AND ?", opt.From, opt.To).
 		Where("m.library_id = ?", opt.LibraryID).
 		Group("DATE_TRUNC('day', r.returned_at)").
 		Order("DATE_TRUNC('day', r.returned_at) DESC").
-		Offset(opt.Skip).
-		Limit(opt.Limit).
 		Scan(&fineData).Error
 	if err != nil {
 		return usecase.Analysis{}, err
@@ -55,8 +48,6 @@ func (s *service) GetAnalysis(ctx context.Context, opt usecase.GetAnalysisOption
 		Select("DATE_TRUNC('day', s.created_at) AS timestamp, SUM(s.amount) AS subscription").
 		Group("DATE_TRUNC('day', s.created_at)").
 		Order("DATE_TRUNC('day', s.created_at) DESC").
-		Offset(opt.Skip).
-		Limit(opt.Limit).
 		Where("s.created_at BETWEEN ? AND ?", opt.From, opt.To).
 		Where("m.library_id = ?", opt.LibraryID).
 		Scan(&subscriptionData).Error
