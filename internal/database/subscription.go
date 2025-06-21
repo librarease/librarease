@@ -45,7 +45,7 @@ func (s *service) ListSubscriptions(ctx context.Context, opt usecase.ListSubscri
 	db := s.db.Model([]Subscription{}).WithContext(ctx)
 
 	if opt.ID != "" {
-		db = db.Where("subscriptions.id = ?", opt.ID)
+		db = db.Where("subscriptions.id::text ILIKE ?", "%"+opt.ID+"%")
 	}
 
 	if opt.UserID != "" {

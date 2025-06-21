@@ -37,7 +37,7 @@ type ListSubscriptionsRequest struct {
 	SortBy string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at name"`
 	SortIn string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 
-	ID             string `query:"id" validate:"omitempty,uuid"`
+	ID             string `query:"id" validate:"omitempty"`
 	UserID         string `query:"user_id" validate:"omitempty,uuid"`
 	MembershipID   string `query:"membership_id" validate:"omitempty,uuid"`
 	LibraryID      string `query:"library_id" validate:"omitempty,uuid"`

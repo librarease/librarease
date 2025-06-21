@@ -40,6 +40,10 @@ func (s *service) ListBooks(ctx context.Context, opt usecase.ListBooksOption) ([
 
 	db := s.db.Model([]Book{}).WithContext(ctx)
 
+	if opt.ID != "" {
+		db = db.Where("books.id::text ILIKE ?", "%"+opt.ID+"%")
+	}
+
 	if opt.LibraryIDs != nil {
 		db = db.Where("library_id IN ?", opt.LibraryIDs)
 	}

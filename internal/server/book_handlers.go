@@ -25,6 +25,7 @@ type Book struct {
 }
 
 type ListBooksRequest struct {
+	ID        string `query:"id" validate:"omitempty"`
 	LibraryID string `query:"library_id" validate:"omitempty,uuid"`
 	Skip      int    `query:"skip"`
 	Limit     int    `query:"limit" validate:"required,gte=1,lte=100"`
@@ -51,6 +52,7 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 	list, total, err := s.server.ListBooks(ctx.Request().Context(), usecase.ListBooksOption{
 		Skip:       req.Skip,
 		Limit:      req.Limit,
+		ID:         req.ID,
 		LibraryIDs: libIDs,
 		Title:      req.Title,
 		SortBy:     req.SortBy,

@@ -30,6 +30,7 @@ type Book struct {
 type ListBooksOption struct {
 	Skip       int
 	Limit      int
+	ID         string
 	LibraryIDs uuid.UUIDs
 	IDs        uuid.UUIDs
 	Title      string
