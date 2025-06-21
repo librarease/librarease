@@ -40,6 +40,7 @@ type ListSubscriptionsOption struct {
 	SortBy string
 	SortIn string
 
+	ID             string
 	UserID         string
 	MembershipID   string
 	LibraryIDs     uuid.UUIDs

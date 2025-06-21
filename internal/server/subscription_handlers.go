@@ -37,6 +37,7 @@ type ListSubscriptionsRequest struct {
 	SortBy string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at name"`
 	SortIn string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 
+	ID             string `query:"id" validate:"omitempty,uuid"`
 	UserID         string `query:"user_id" validate:"omitempty,uuid"`
 	MembershipID   string `query:"membership_id" validate:"omitempty,uuid"`
 	LibraryID      string `query:"library_id" validate:"omitempty,uuid"`
@@ -62,6 +63,7 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 	}
 
 	subs, total, err := s.server.ListSubscriptions(ctx.Request().Context(), usecase.ListSubscriptionsOption{
+		ID:             req.ID,
 		Skip:           req.Skip,
 		Limit:          req.Limit,
 		SortBy:         req.SortBy,
