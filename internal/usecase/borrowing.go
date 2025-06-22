@@ -256,7 +256,7 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 
 		if err := u.CreateNotification(context.Background(), Notification{
 			Title: "Book Borrowed",
-			Message: fmt.Sprintf("You have successfully borrowed %s from %s. Please return it by %s. Happy reading!"+
+			Message: fmt.Sprintf("You have successfully borrowed %s from %s. Please return it by %s. Happy reading!",
 				book.Title,
 				book.Library.Name,
 				bw.DueAt.Format("2006-01-02 03:04 PM")),

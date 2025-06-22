@@ -137,7 +137,29 @@ func (u Usecase) CreateSubscription(ctx context.Context, sub Subscription) (Subs
 	sub.ActiveLoanLimit = m.ActiveLoanLimit
 	sub.UsageLimit = m.UsageLimit
 
-	return u.repo.CreateSubscription(ctx, sub)
+	s, err := u.repo.CreateSubscription(ctx, sub)
+	if err != nil {
+		return Subscription{}, err
+	}
+
+	go func() {
+		// if err := u.SendBorrowingEmail(context.Background(), bw.ID); err != nil {
+		// 	fmt.Printf("borrowing: failed to send email: %v\n", err)
+		// }
+
+		if err := u.CreateNotification(context.Background(), Notification{
+			Title:         "Membership Activated",
+			Message:       fmt.Sprintf("Your membership \"%s\" is now active.", m.Name),
+			UserID:        s.UserID,
+			ReferenceType: "SUBSCRIPTION",
+			ReferenceID:   &s.ID,
+		}); err != nil {
+			fmt.Printf("borrowing: failed to create notification: %v\n", err)
+		}
+
+	}()
+
+	return s, nil
 }
 
 func (u Usecase) GetSubscriptionByID(ctx context.Context, id uuid.UUID) (Subscription, error) {
