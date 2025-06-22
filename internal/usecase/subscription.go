@@ -46,6 +46,7 @@ type ListSubscriptionsOption struct {
 	LibraryIDs     uuid.UUIDs
 	MembershipName string
 	IsActive       bool
+	IsExpired      bool
 }
 
 func (u Usecase) ListSubscriptions(ctx context.Context, opt ListSubscriptionsOption) ([]Subscription, int, error) {

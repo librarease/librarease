@@ -16,6 +16,7 @@ type Borrowing struct {
 	StaffID        string  `json:"staff_id"`
 	BorrowedAt     string  `json:"borrowed_at"`
 	DueAt          string  `json:"due_at"`
+	Status         string  `json:"status"`
 	CreatedAt      string  `json:"created_at"`
 	UpdatedAt      string  `json:"updated_at"`
 	DeletedAt      *string `json:"deleted_at,omitempty"`
@@ -41,7 +42,8 @@ type ListBorrowingsOption struct {
 	BorrowedAt     string `query:"borrowed_at" validate:"omitempty"`
 	DueAt          string `query:"due_at" validate:"omitempty"`
 	IsActive       bool   `query:"is_active"`
-	IsExpired      bool   `query:"is_expired"`
+	IsOverdue      bool   `query:"is_overdue"`
+	IsReturned     bool   `query:"is_returned"`
 
 	BorrowStaffID string  `query:"borrow_staff_id" validate:"omitempty,uuid"`
 	ReturnStaffID string  `query:"return_staff_id" validate:"omitempty,uuid"`
@@ -151,7 +153,8 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 		DueAt:           dueAt,
 		ReturnedAt:      returnedAt,
 		IsActive:        req.IsActive,
-		IsExpired:       req.IsExpired,
+		IsOverdue:       req.IsOverdue,
+		IsReturned:      req.IsReturned,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

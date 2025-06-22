@@ -43,6 +43,7 @@ type ListSubscriptionsRequest struct {
 	LibraryID      string `query:"library_id" validate:"omitempty,uuid"`
 	MembershipName string `query:"membership_name" validate:"omitempty"`
 	IsActive       bool   `query:"is_active"`
+	IsExpired      bool   `query:"is_expired"`
 }
 
 func (s *Server) ListSubscriptions(ctx echo.Context) error {
@@ -73,6 +74,7 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 		LibraryIDs:     libIDs,
 		MembershipName: req.MembershipName,
 		IsActive:       req.IsActive,
+		IsExpired:      req.IsExpired,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

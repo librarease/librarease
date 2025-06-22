@@ -64,10 +64,13 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 	}
 	if opt.IsActive {
 		// Filter borrowings that do not have a corresponding entry in the returnings table
-		db = db.Where("NOT EXISTS (SELECT NULL FROM returnings r WHERE r.borrowing_id = borrowings.id)")
+		db = db.Where("NOT EXISTS (SELECT NULL FROM returnings r WHERE r.borrowing_id = borrowings.id AND r.deleted_at IS NULL)")
 	}
-	if opt.IsExpired {
-		db = db.Where("due_at < now() AND returning_id IS NULL")
+	if opt.IsOverdue {
+		db = db.Where("due_at < now() AND NOT EXISTS (SELECT NULL FROM returnings r WHERE r.borrowing_id = borrowings.id AND r.deleted_at IS NULL)")
+	}
+	if opt.IsReturned {
+		db = db.Where("EXISTS (SELECT NULL FROM returnings r WHERE r.borrowing_id = borrowings.id AND r.deleted_at IS NULL)")
 	}
 	if len(opt.MembershipIDs) > 0 {
 		db = db.Joins("Subscription").Where("membership_id IN ?", opt.MembershipIDs)

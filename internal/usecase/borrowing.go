@@ -46,7 +46,8 @@ type ListBorrowingsOption struct {
 	DueAt           time.Time
 	ReturnedAt      *time.Time
 	IsActive        bool
-	IsExpired       bool
+	IsOverdue       bool
+	IsReturned      bool
 }
 
 // TODO: separate client and admin borrowing list route
