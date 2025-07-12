@@ -51,7 +51,7 @@ type ListBorrowingsOption struct {
 }
 
 func (s *Server) ListBorrowings(ctx echo.Context) error {
-	var req ListBorrowingsOption
+	var req = ListBorrowingsOption{Limit: 20}
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}

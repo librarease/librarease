@@ -33,7 +33,7 @@ type ListUserRequest struct {
 }
 
 func (s *Server) ListUsers(ctx echo.Context) error {
-	var req ListUserRequest
+	var req = ListUserRequest{Limit: 20}
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}

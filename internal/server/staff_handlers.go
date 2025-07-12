@@ -35,7 +35,7 @@ type ListStaffsRequest struct {
 
 func (s *Server) ListStaffs(ctx echo.Context) error {
 
-	var req ListStaffsRequest
+	var req = ListStaffsRequest{Limit: 20}
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}

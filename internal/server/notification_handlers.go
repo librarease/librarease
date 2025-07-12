@@ -27,7 +27,7 @@ type ListNotificationRequest struct {
 }
 
 func (s *Server) ListNotifications(ctx echo.Context) error {
-	var req ListNotificationRequest
+	var req = ListNotificationRequest{Limit: 20}
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}

@@ -47,7 +47,7 @@ type ListSubscriptionsRequest struct {
 }
 
 func (s *Server) ListSubscriptions(ctx echo.Context) error {
-	var req ListSubscriptionsRequest
+	var req = ListSubscriptionsRequest{Limit: 20}
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}

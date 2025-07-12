@@ -31,7 +31,7 @@ type ListLibrariesRequest struct {
 }
 
 func (s *Server) ListLibraries(ctx echo.Context) error {
-	var req ListLibrariesRequest
+	var req = ListLibrariesRequest{Limit: 20}
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}
