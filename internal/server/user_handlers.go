@@ -30,6 +30,7 @@ type ListUserRequest struct {
 	SortIn     string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 	Name       string `query:"name" validate:"omitempty"`
 	GlobalRole string `query:"global_role" validate:"omitempty,oneof=SUPERADMIN ADMIN USER"`
+	LibraryID  string `query:"library_id" validate:"omitempty,uuid"`
 }
 
 func (s *Server) ListUsers(ctx echo.Context) error {
@@ -41,6 +42,8 @@ func (s *Server) ListUsers(ctx echo.Context) error {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
+	libID, _ := uuid.Parse(req.LibraryID)
+
 	users, total, err := s.server.ListUsers(ctx.Request().Context(), usecase.ListUsersOption{
 		Skip:       req.Skip,
 		Limit:      req.Limit,
@@ -48,6 +51,7 @@ func (s *Server) ListUsers(ctx echo.Context) error {
 		GlobalRole: usecase.GlobalRole(req.GlobalRole),
 		SortBy:     req.SortBy,
 		SortIn:     req.SortIn,
+		LibraryID:  libID,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})

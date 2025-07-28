@@ -41,6 +41,7 @@ type ListUsersOption struct {
 	Phone      string
 	IDs        uuid.UUIDs
 	GlobalRole GlobalRole
+	LibraryID  uuid.UUID
 }
 
 func (u Usecase) ListUsers(ctx context.Context, opt ListUsersOption) ([]User, int, error) {

@@ -61,7 +61,20 @@ func (s *service) ListUsers(ctx context.Context, opt usecase.ListUsersOption) ([
 		orderIn = opt.SortIn
 	}
 
-	if err := db.Count(&count).Error; err != nil {
+	if opt.LibraryID != uuid.Nil {
+		db = db.Joins("JOIN subscriptions ON subscriptions.user_id = users.id").
+			Joins("JOIN memberships ON memberships.id = subscriptions.membership_id").
+			Where("memberships.library_id = ?", opt.LibraryID).
+			Distinct()
+	}
+
+	// Fix count for distinct users
+	countDb := db
+	if opt.LibraryID != uuid.Nil {
+		countDb = db.Session(&gorm.Session{}) // clone db
+		countDb = countDb.Distinct("users.id")
+	}
+	if err := countDb.Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
 
