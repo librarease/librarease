@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"time"
 
 	"github.com/librarease/librarease/internal/usecase"
@@ -291,6 +292,15 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 	id, _ := uuid.Parse(req.ID)
 	borrow, err := s.server.GetBorrowingByID(ctx.Request().Context(), id)
 	if err != nil {
+		var notFoundErr usecase.ErrNotFound
+		if errors.As(err, &notFoundErr) {
+			return ctx.JSON(404, map[string]any{
+				"error":   notFoundErr.Error(),
+				"code":    notFoundErr.Code,
+				"message": notFoundErr.Message,
+			})
+		}
+
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 

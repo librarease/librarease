@@ -135,6 +135,16 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 	return borrows, total, nil
 }
 
+type ErrNotFound struct {
+	ID      uuid.UUID
+	Code    string
+	Message string
+}
+
+func (e ErrNotFound) Error() string {
+	return e.Message
+}
+
 func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID) (Borrowing, error) {
 	borrow, err := u.repo.GetBorrowingByID(ctx, id)
 	if err != nil {

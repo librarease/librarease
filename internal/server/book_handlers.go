@@ -10,28 +10,35 @@ import (
 )
 
 type Book struct {
-	ID        string   `json:"id"`
-	Title     string   `json:"title"`
-	Author    string   `json:"author,omitempty"`
-	Year      int      `json:"year,omitempty"`
-	Code      string   `json:"code"`
-	Count     int      `json:"count,omitempty"`
-	Cover     string   `json:"cover,omitempty"`
-	LibraryID string   `json:"library_id,omitempty"`
-	CreatedAt string   `json:"created_at,omitempty"`
-	UpdatedAt string   `json:"updated_at,omitempty"`
-	DeletedAt *string  `json:"deleted_at,omitempty"`
-	Library   *Library `json:"library,omitempty"`
+	ID        string     `json:"id"`
+	Title     string     `json:"title"`
+	Author    string     `json:"author,omitempty"`
+	Year      int        `json:"year,omitempty"`
+	Code      string     `json:"code"`
+	Count     int        `json:"count,omitempty"`
+	Cover     string     `json:"cover,omitempty"`
+	LibraryID string     `json:"library_id,omitempty"`
+	CreatedAt string     `json:"created_at,omitempty"`
+	UpdatedAt string     `json:"updated_at,omitempty"`
+	DeletedAt *string    `json:"deleted_at,omitempty"`
+	Library   *Library   `json:"library,omitempty"`
+	Stats     *BookStats `json:"stats,omitempty"`
+}
+
+type BookStats struct {
+	BorrowCount int  `json:"borrow_count"`
+	IsAvailable bool `json:"is_available"`
 }
 
 type ListBooksRequest struct {
-	ID        string `query:"id" validate:"omitempty"`
-	LibraryID string `query:"library_id" validate:"omitempty,uuid"`
-	Skip      int    `query:"skip"`
-	Limit     int    `query:"limit" validate:"required,gte=1,lte=100"`
-	Title     string `query:"title" validate:"omitempty"`
-	SortBy    string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at title author year code"`
-	SortIn    string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
+	ID           string `query:"id" validate:"omitempty"`
+	LibraryID    string `query:"library_id" validate:"omitempty,uuid"`
+	Skip         int    `query:"skip"`
+	Limit        int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Title        string `query:"title" validate:"omitempty"`
+	SortBy       string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at title author year code"`
+	SortIn       string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
+	IncludeStats bool   `query:"include_stats"`
 }
 
 func (s *Server) ListBooks(ctx echo.Context) error {
@@ -50,13 +57,14 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 	}
 
 	list, total, err := s.server.ListBooks(ctx.Request().Context(), usecase.ListBooksOption{
-		Skip:       req.Skip,
-		Limit:      req.Limit,
-		ID:         req.ID,
-		LibraryIDs: libIDs,
-		Title:      req.Title,
-		SortBy:     req.SortBy,
-		SortIn:     req.SortIn,
+		Skip:         req.Skip,
+		Limit:        req.Limit,
+		ID:           req.ID,
+		LibraryIDs:   libIDs,
+		Title:        req.Title,
+		SortBy:       req.SortBy,
+		SortIn:       req.SortIn,
+		IncludeStats: req.IncludeStats,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -82,6 +90,15 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 			UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
 			DeletedAt: d,
 		}
+
+		// Include stats if they are available
+		if b.Stats != nil {
+			book.Stats = &BookStats{
+				BorrowCount: b.Stats.BorrowCount,
+				IsAvailable: b.Stats.IsAvailable,
+			}
+		}
+
 		if b.Library != nil {
 			lib := Library{
 				ID:   b.Library.ID.String(),
@@ -150,6 +167,12 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 			UpdatedAt: b.Library.UpdatedAt.Format(time.RFC3339),
 		}
 		book.Library = &lib
+	}
+	if b.Stats != nil {
+		book.Stats = &BookStats{
+			BorrowCount: b.Stats.BorrowCount,
+			IsAvailable: b.Stats.IsAvailable,
+		}
 	}
 
 	return ctx.JSON(200, Res{

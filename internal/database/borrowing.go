@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/librarease/librarease/internal/usecase"
@@ -177,6 +179,13 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.B
 		First(&b).
 		Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return usecase.Borrowing{}, usecase.ErrNotFound{
+				ID:      id,
+				Code:    "borrowing_not_found",
+				Message: fmt.Sprintf("borrowing with id %s not found", id),
+			}
+		}
 		return usecase.Borrowing{}, err
 	}
 

@@ -9,6 +9,11 @@ import (
 	"github.com/librarease/librarease/internal/config"
 )
 
+type BookStats struct {
+	BorrowCount int
+	IsAvailable bool
+}
+
 type Book struct {
 	ID        uuid.UUID
 	Title     string
@@ -22,20 +27,22 @@ type Book struct {
 	UpdatedAt time.Time
 	DeletedAt *time.Time
 	Library   *Library
+	Stats     *BookStats
 
 	// UpdateCover is used to update cover
 	UpdateCover *string
 }
 
 type ListBooksOption struct {
-	Skip       int
-	Limit      int
-	ID         string
-	LibraryIDs uuid.UUIDs
-	IDs        uuid.UUIDs
-	Title      string
-	SortBy     string
-	SortIn     string
+	Skip         int
+	Limit        int
+	ID           string
+	LibraryIDs   uuid.UUIDs
+	IDs          uuid.UUIDs
+	Title        string
+	SortBy       string
+	SortIn       string
+	IncludeStats bool
 }
 
 func (u Usecase) ListBooks(ctx context.Context, opt ListBooksOption) ([]Book, int, error) {
