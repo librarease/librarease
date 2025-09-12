@@ -93,7 +93,9 @@ func (s *Server) GetUserByID(ctx echo.Context) error {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
-	u, err := s.server.GetUserByID(ctx.Request().Context(), req.ID, usecase.GetUserByIDOption{
+	id, _ := uuid.Parse(req.ID)
+
+	u, err := s.server.GetUserByID(ctx.Request().Context(), id, usecase.GetUserByIDOption{
 		IncludeStaffs: req.IncludeStaffs,
 	})
 	if err != nil {
@@ -214,7 +216,7 @@ func (s *Server) UpdateUser(ctx echo.Context) error {
 }
 
 type DeleteUserRequest struct {
-	ID string `param:"id" validate:"required"`
+	ID string `param:"id" validate:"required,uuid"`
 }
 
 func (s *Server) DeleteUser(ctx echo.Context) error {
@@ -225,7 +227,10 @@ func (s *Server) DeleteUser(ctx echo.Context) error {
 	if err := s.validator.Struct(req); err != nil {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
-	err := s.server.DeleteUser(ctx.Request().Context(), req.ID)
+
+	id, _ := uuid.Parse(req.ID)
+
+	err := s.server.DeleteUser(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}

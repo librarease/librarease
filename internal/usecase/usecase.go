@@ -11,12 +11,14 @@ func New(
 	ip IdentityProvider,
 	fsp FileStorageProvider,
 	mp Mailer,
+	dp Dispatcher,
 ) Usecase {
 	return Usecase{
 		repo:                repo,
 		identityProvider:    ip,
 		fileStorageProvider: fsp,
 		mailer:              mp,
+		dispatcher:          dp,
 	}
 }
 
@@ -26,10 +28,10 @@ type Repository interface {
 
 	// user
 	ListUsers(context.Context, ListUsersOption) ([]User, int, error)
-	GetUserByID(context.Context, string, GetUserByIDOption) (User, error)
+	GetUserByID(context.Context, uuid.UUID, GetUserByIDOption) (User, error)
 	CreateUser(context.Context, User) (User, error)
 	UpdateUser(context.Context, uuid.UUID, User) (User, error)
-	DeleteUser(context.Context, string) error
+	DeleteUser(context.Context, uuid.UUID) error
 
 	// library
 	ListLibraries(context.Context, ListLibrariesOption) ([]Library, int, error)
@@ -89,7 +91,11 @@ type Repository interface {
 	ReadNotification(context.Context, uuid.UUID) error
 	ReadAllNotifications(context.Context, uuid.UUID) error
 	CountUnreadNotifications(context.Context, uuid.UUID) (int, error)
-	CreateNotification(context.Context, Notification) error
+	CreateNotification(context.Context, Notification) (Notification, error)
+
+	// push token
+	SavePushToken(context.Context, uuid.UUID, string, PushProvider) error
+	ListPushTokens(context.Context, ListPushTokensOption) ([]PushToken, int, error)
 }
 
 type IdentityProvider interface {
@@ -109,11 +115,16 @@ type Mailer interface {
 	SendEmail(context.Context, Email) error
 }
 
+type Dispatcher interface {
+	Send(context.Context, []PushToken, Notification) error
+}
+
 type Usecase struct {
 	repo                Repository
 	identityProvider    IdentityProvider
 	fileStorageProvider FileStorageProvider
 	mailer              Mailer
+	dispatcher          Dispatcher
 }
 
 func (u Usecase) Health() map[string]string {

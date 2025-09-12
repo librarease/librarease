@@ -10,6 +10,7 @@ import (
 
 	fb "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
+	"firebase.google.com/go/v4/messaging"
 	_ "github.com/joho/godotenv/autoload"
 	"google.golang.org/api/option"
 )
@@ -28,12 +29,17 @@ func New() *Firebase {
 	if err != nil {
 		log.Fatalf("error getting Auth client: %v\n", err)
 	}
+	message, err := app.Messaging(ctx)
+	if err != nil {
+		log.Fatalf("error getting Messaging client: %v\n", err)
+	}
 
-	return &Firebase{client}
+	return &Firebase{auth: client, message: message}
 }
 
 type Firebase struct {
-	client *auth.Client
+	auth    *auth.Client
+	message *messaging.Client
 }
 
 func (f *Firebase) CreateUser(ctx context.Context, ru usecase.RegisterUser) (string, error) {
@@ -45,7 +51,7 @@ func (f *Firebase) CreateUser(ctx context.Context, ru usecase.RegisterUser) (str
 	u.DisplayName(ru.Name)
 	u.Disabled(false)
 
-	user, err := f.client.CreateUser(ctx, u)
+	user, err := f.auth.CreateUser(ctx, u)
 	if err != nil {
 		return "", err
 	}
@@ -56,7 +62,7 @@ func (f *Firebase) CreateUser(ctx context.Context, ru usecase.RegisterUser) (str
 
 // used by middleware
 func (f *Firebase) VerifyIDToken(ctx context.Context, token string) (string, error) {
-	t, err := f.client.VerifyIDToken(ctx, token)
+	t, err := f.auth.VerifyIDToken(ctx, token)
 	if err != nil {
 		return "", err
 	}
@@ -64,7 +70,7 @@ func (f *Firebase) VerifyIDToken(ctx context.Context, token string) (string, err
 }
 
 func (f *Firebase) SetCustomClaims(ctx context.Context, uid string, claims usecase.CustomClaims) error {
-	return f.client.SetCustomUserClaims(ctx, uid, map[string]any{
+	return f.auth.SetCustomUserClaims(ctx, uid, map[string]any{
 		"librarease": map[string]any{
 			"id":         claims.ID,
 			"role":       claims.Role,
@@ -72,4 +78,37 @@ func (f *Firebase) SetCustomClaims(ctx context.Context, uid string, claims useca
 			"staff_libs": claims.StaffLibs,
 		},
 	})
+}
+
+func (s *Firebase) Provider() usecase.PushProvider {
+	return usecase.FCM
+}
+
+func (s *Firebase) Send(ctx context.Context, tokens []usecase.PushToken, noti usecase.Notification) error {
+
+	var fcmTokens []string
+	for _, t := range tokens {
+		if t.Provider == usecase.FCM {
+			fcmTokens = append(fcmTokens, t.Token)
+		}
+	}
+	if len(fcmTokens) == 0 {
+		return nil
+	}
+
+	message := &messaging.MulticastMessage{
+		Tokens: fcmTokens,
+		Notification: &messaging.Notification{
+			Title: noti.Title,
+			Body:  noti.Message,
+		},
+		// Data: noti.Data,
+	}
+
+	bres, err := s.message.SendEachForMulticast(ctx, message)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Successfully sent %d messages: %+v\n", bres.SuccessCount, *bres)
+	return nil
 }

@@ -260,9 +260,9 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	}
 
 	go func() {
-		if err := u.SendBorrowingEmail(context.Background(), bw.ID); err != nil {
-			fmt.Printf("borrowing: failed to send email: %v\n", err)
-		}
+		// if err := u.SendBorrowingEmail(context.Background(), bw.ID); err != nil {
+		// 	fmt.Printf("borrowing: failed to send email: %v\n", err)
+		// }
 
 		if err := u.CreateNotification(context.Background(), Notification{
 			Title: "Book Borrowed",

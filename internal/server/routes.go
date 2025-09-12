@@ -46,6 +46,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	userGroup.PUT("/:id", s.UpdateUser, s.AuthMiddleware)
 	userGroup.DELETE("/:id", s.DeleteUser)
 	userGroup.GET("/me", s.GetMe, s.AuthMiddleware)
+	userGroup.POST("/me/push-token", s.SavePushToken, s.AuthMiddleware)
 
 	var libraryGroup = e.Group("/api/v1/libraries")
 	libraryGroup.GET("", s.ListLibraries)
@@ -98,6 +99,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	var notificationGroup = e.Group("/api/v1/notifications")
 	notificationGroup.GET("", s.ListNotifications, s.AuthMiddleware)
+	notificationGroup.POST("", s.CreateNotification, s.AuthMiddleware)
 	notificationGroup.POST("/read", s.ReadAllNotifications, s.AuthMiddleware)
 	notificationGroup.POST("/:id/read", s.ReadNotification, s.AuthMiddleware)
 	notificationGroup.GET("/stream", s.StreamNotifications)

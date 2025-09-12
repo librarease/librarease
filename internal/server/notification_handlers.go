@@ -191,3 +191,36 @@ func (s *Server) StreamNotifications(ctx echo.Context) error {
 		}
 	}
 }
+
+type CreateNotificationRequest struct {
+	UserID        string  `json:"user_id" validate:"required,uuid"`
+	Title         string  `json:"title" validate:"required"`
+	Message       string  `json:"message" validate:"required"`
+	ReferenceID   *string `json:"reference_id,omitempty"`
+	ReferenceType *string `json:"reference_type,omitempty"`
+}
+
+func (s *Server) CreateNotification(ctx echo.Context) error {
+	var req CreateNotificationRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	userID, _ := uuid.Parse(req.UserID)
+
+	notification := usecase.Notification{
+		Title:   req.Title,
+		Message: req.Message,
+		UserID:  userID,
+	}
+
+	err := s.server.CreateNotification(ctx.Request().Context(), notification)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.NoContent(204)
+}

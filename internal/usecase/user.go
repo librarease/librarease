@@ -27,8 +27,9 @@ type User struct {
 	UpdatedAt time.Time
 	DeleteAt  *time.Time
 
-	Staffs   []Staff
-	AuthUser *AuthUser
+	Staffs     []Staff
+	AuthUser   *AuthUser
+	PushTokens []PushToken
 }
 
 type ListUsersOption struct {
@@ -42,6 +43,8 @@ type ListUsersOption struct {
 	IDs        uuid.UUIDs
 	GlobalRole GlobalRole
 	LibraryID  uuid.UUID
+
+	IncludePushTokens bool
 }
 
 func (u Usecase) ListUsers(ctx context.Context, opt ListUsersOption) ([]User, int, error) {
@@ -52,7 +55,7 @@ func (u Usecase) ListUsers(ctx context.Context, opt ListUsersOption) ([]User, in
 
 	var userList []User
 	for _, user := range users {
-		userList = append(userList, User{
+		uu := User{
 			ID:        user.ID,
 			Name:      user.Name,
 			Email:     user.Email,
@@ -60,17 +63,30 @@ func (u Usecase) ListUsers(ctx context.Context, opt ListUsersOption) ([]User, in
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
 			DeleteAt:  user.DeleteAt,
-		})
+		}
+		for _, pt := range user.PushTokens {
+			uu.PushTokens = append(uu.PushTokens, PushToken{
+				ID:        pt.ID,
+				UserID:    pt.UserID,
+				Token:     pt.Token,
+				Provider:  pt.Provider,
+				LastSeen:  pt.LastSeen,
+				CreatedAt: pt.CreatedAt,
+				UpdatedAt: pt.UpdatedAt,
+			})
+		}
+		userList = append(userList, uu)
 	}
 
 	return userList, total, nil
 }
 
 type GetUserByIDOption struct {
-	IncludeStaffs bool
+	IncludeStaffs     bool
+	IncludePushTokens bool
 }
 
-func (u Usecase) GetUserByID(ctx context.Context, id string, opt GetUserByIDOption) (User, error) {
+func (u Usecase) GetUserByID(ctx context.Context, id uuid.UUID, opt GetUserByIDOption) (User, error) {
 	return u.repo.GetUserByID(ctx, id, opt)
 }
 
@@ -144,17 +160,8 @@ func (u Usecase) UpdateUser(ctx context.Context, id uuid.UUID, user User) (User,
 	}, nil
 }
 
-func (u Usecase) DeleteUser(ctx context.Context, id string) error {
-	err := uuid.Validate(id)
-	if err != nil {
-		return err
-	}
-	err = u.repo.DeleteUser(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (u Usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	return u.repo.DeleteUser(ctx, id)
 }
 
 type MeUser struct {
@@ -172,7 +179,7 @@ func (u Usecase) GetMe(ctx context.Context) (MeUser, error) {
 		return MeUser{}, fmt.Errorf("user id not found in context")
 	}
 
-	user, err := u.GetUserByID(ctx, userID.String(), GetUserByIDOption{
+	user, err := u.GetUserByID(ctx, userID, GetUserByIDOption{
 		IncludeStaffs: true,
 	})
 	if err != nil {

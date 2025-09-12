@@ -22,6 +22,10 @@ type Notification struct {
 	DeletedAt     *time.Time
 }
 
+type NotificationDispatcher interface {
+	Send(context.Context, []PushToken, Notification) error
+}
+
 type ListNotificationsOption struct {
 	Skip   int
 	Limit  int
@@ -111,5 +115,17 @@ func (u Usecase) StreamNotifications(ctx context.Context, userID uuid.UUID) (<-c
 }
 
 func (u Usecase) CreateNotification(ctx context.Context, n Notification) error {
-	return u.repo.CreateNotification(ctx, n)
+	noti, err := u.repo.CreateNotification(ctx, n)
+	if err != nil {
+		return err
+	}
+
+	tokens, _, err := u.repo.ListPushTokens(ctx, ListPushTokensOption{
+		UserIDs: uuid.UUIDs{n.UserID},
+	})
+	if err != nil {
+		return err
+	}
+
+	return u.dispatcher.Send(ctx, tokens, noti)
 }

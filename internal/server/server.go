@@ -23,6 +23,7 @@ import (
 	"github.com/librarease/librarease/internal/email"
 	"github.com/librarease/librarease/internal/filestorage"
 	"github.com/librarease/librarease/internal/firebase"
+	"github.com/librarease/librarease/internal/push"
 	"github.com/librarease/librarease/internal/telemetry"
 	"github.com/librarease/librarease/internal/usecase"
 )
@@ -40,10 +41,10 @@ type Service interface {
 	// ListUsers returns a list of users.
 	// FIXME: user model, input params
 	ListUsers(context.Context, usecase.ListUsersOption) ([]usecase.User, int, error)
-	GetUserByID(context.Context, string, usecase.GetUserByIDOption) (usecase.User, error)
+	GetUserByID(context.Context, uuid.UUID, usecase.GetUserByIDOption) (usecase.User, error)
 	CreateUser(context.Context, usecase.User) (usecase.User, error)
 	UpdateUser(context.Context, uuid.UUID, usecase.User) (usecase.User, error)
-	DeleteUser(context.Context, string) error
+	DeleteUser(context.Context, uuid.UUID) error
 	GetAuthUserByUID(context.Context, string) (usecase.AuthUser, error)
 	GetAuthUserByUserID(context.Context, string) (usecase.AuthUser, error)
 	GetMe(context.Context) (usecase.MeUser, error)
@@ -97,6 +98,9 @@ type Service interface {
 	ReadNotification(context.Context, uuid.UUID) error
 	ReadAllNotifications(context.Context) error
 	StreamNotifications(context.Context, uuid.UUID) (<-chan usecase.Notification, error)
+	CreateNotification(context.Context, usecase.Notification) error
+
+	SavePushToken(context.Context, string, usecase.PushProvider) error
 }
 
 type Server struct {
@@ -198,7 +202,7 @@ func NewApp() (*App, error) {
 		notifyConn.Close(context.Background())
 		return nil, fmt.Errorf("failed to create database repository: %w", err)
 	}
-	ip := firebase.New()
+	fb := firebase.New()
 	mp := email.NewEmailProvider(
 		os.Getenv(config.ENV_KEY_SMTP_HOST),
 		os.Getenv(config.ENV_KEY_SMTP_USERNAME),
@@ -224,7 +228,9 @@ func NewApp() (*App, error) {
 	)
 	fsp := filestorage.NewMinIOStorage(bucket, temp, public, endpoint, accessKey, secretKey)
 
-	sv := usecase.New(repo, ip, fsp, mp)
+	dp := push.NewPushDispatcher(fb)
+
+	sv := usecase.New(repo, fb, fsp, mp, dp)
 	v := validator.New()
 
 	port, _ := strconv.Atoi(os.Getenv(config.ENV_KEY_PORT))

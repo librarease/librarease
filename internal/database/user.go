@@ -23,6 +23,7 @@ type User struct {
 	Staffs        []Staff
 	Subscriptions []Subscription
 	AuthUser      *AuthUser
+	PushTokens    []PushToken
 }
 
 func (User) TableName() string {
@@ -44,6 +45,10 @@ func (s *service) ListUsers(ctx context.Context, opt usecase.ListUsersOption) ([
 
 	if opt.IDs != nil {
 		db = db.Where("id IN ?", opt.IDs)
+	}
+
+	if opt.IncludePushTokens {
+		db = db.Preload("PushTokens")
 	}
 
 	if opt.GlobalRole != "" {
@@ -89,13 +94,17 @@ func (s *service) ListUsers(ctx context.Context, opt usecase.ListUsersOption) ([
 	}
 
 	for _, u := range users {
-		uusers = append(uusers, u.ConvertToUsecase())
+		uu := u.ConvertToUsecase()
+		for _, pt := range u.PushTokens {
+			uu.PushTokens = append(uu.PushTokens, pt.ConvertToUsecase())
+		}
+		uusers = append(uusers, uu)
 	}
 
 	return uusers, int(count), nil
 }
 
-func (s *service) GetUserByID(ctx context.Context, id string, opt usecase.GetUserByIDOption) (usecase.User, error) {
+func (s *service) GetUserByID(ctx context.Context, id uuid.UUID, opt usecase.GetUserByIDOption) (usecase.User, error) {
 	var u User
 
 	db := s.db.WithContext(ctx).Model(&User{})
@@ -104,6 +113,10 @@ func (s *service) GetUserByID(ctx context.Context, id string, opt usecase.GetUse
 		db.Preload("Staffs.Library")
 	}
 	db.Preload("AuthUser")
+
+	if opt.IncludePushTokens {
+		db.Preload("PushTokens")
+	}
 
 	err := db.Where("id = ?", id).First(&u).Error
 	if err != nil {
@@ -115,16 +128,18 @@ func (s *service) GetUserByID(ctx context.Context, id string, opt usecase.GetUse
 		au := u.AuthUser.ConvertToUsecase()
 		uu.AuthUser = &au
 	}
-	if u.Staffs != nil {
-		for _, st := range u.Staffs {
-			ust := st.ConvertToUsecase()
-			if st.Library != nil {
-				l := st.Library.ConvertToUsecase()
-				ust.Library = &l
-			}
-			uu.Staffs = append(uu.Staffs, ust)
+	for _, st := range u.Staffs {
+		ust := st.ConvertToUsecase()
+		if st.Library != nil {
+			l := st.Library.ConvertToUsecase()
+			ust.Library = &l
 		}
+		uu.Staffs = append(uu.Staffs, ust)
 	}
+	for _, pt := range u.PushTokens {
+		uu.PushTokens = append(uu.PushTokens, pt.ConvertToUsecase())
+	}
+
 	return uu, nil
 }
 
@@ -174,13 +189,8 @@ func (s *service) UpdateUser(ctx context.Context, id uuid.UUID, user usecase.Use
 	}, nil
 }
 
-func (s *service) DeleteUser(ctx context.Context, id string) error {
-	err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&User{}).Error
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (s *service) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	return s.db.WithContext(ctx).Where("id = ?", id).Delete(&User{}).Error
 }
 
 // Convert core model to Usecase

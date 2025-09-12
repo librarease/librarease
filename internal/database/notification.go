@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/librarease/librarease/internal/usecase"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Notification struct {
@@ -201,7 +202,7 @@ func (s *service) CountUnreadNotifications(ctx context.Context, userID uuid.UUID
 	return int(count), nil
 }
 
-func (s *service) CreateNotification(ctx context.Context, n usecase.Notification) error {
+func (s *service) CreateNotification(ctx context.Context, n usecase.Notification) (usecase.Notification, error) {
 	notification := Notification{
 		UserID:        n.UserID,
 		Title:         n.Title,
@@ -211,7 +212,14 @@ func (s *service) CreateNotification(ctx context.Context, n usecase.Notification
 		ReferenceType: n.ReferenceType,
 	}
 
-	return s.db.
+	if err := s.db.
 		WithContext(ctx).
-		Create(&notification).Error
+		Create(&notification).
+		Clauses(clause.Returning{}).
+		Error; err != nil {
+
+		return usecase.Notification{}, err
+	}
+
+	return notification.ConvertToUsecase(), nil
 }

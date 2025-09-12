@@ -87,7 +87,7 @@ func (u Usecase) VerifyIDToken(ctx context.Context, token string) (string, error
 
 // helper function to set custom claims
 func (u Usecase) refreshCustomClaims(ctx context.Context, id uuid.UUID) error {
-	user, err := u.repo.GetUserByID(ctx, id.String(), GetUserByIDOption{
+	user, err := u.repo.GetUserByID(ctx, id, GetUserByIDOption{
 		IncludeStaffs: true,
 	})
 	if err != nil {

@@ -124,7 +124,24 @@ func (u Usecase) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r R
 		return Borrowing{}, fmt.Errorf("staff %s is not from the library", r.StaffID)
 	}
 
-	return u.repo.ReturnBorrowing(ctx, borrowingID, r)
+	rb, err := u.repo.ReturnBorrowing(ctx, borrowingID, r)
+	if err != nil {
+		return Borrowing{}, err
+	}
+
+	go func() {
+		if err := u.CreateNotification(context.Background(), Notification{
+			Title:         "Book Returned",
+			Message:       fmt.Sprintf("Book %s has been returned", borrow.Book.Title),
+			UserID:        borrow.Subscription.UserID,
+			ReferenceID:   &borrowingID,
+			ReferenceType: "BORROWING",
+		}); err != nil {
+			fmt.Printf("returning: failed to create notification: %v\n", err)
+		}
+	}()
+
+	return rb, nil
 }
 
 func (u Usecase) DeleteReturn(ctx context.Context, borrowingId uuid.UUID) error {
@@ -135,7 +152,23 @@ func (u Usecase) DeleteReturn(ctx context.Context, borrowingId uuid.UUID) error 
 	if borrow.Returning == nil {
 		return fmt.Errorf("borrow has not returned yet: %s", borrowingId)
 	}
-	return u.repo.DeleteReturn(ctx, borrow.Returning.ID)
+	if err := u.repo.DeleteReturn(ctx, borrow.Returning.ID); err != nil {
+		return err
+	}
+
+	go func() {
+		if err := u.CreateNotification(context.Background(), Notification{
+			Title:         "Undo Book Return",
+			Message:       fmt.Sprintf("Return of book %s has been undone", borrow.Book.Title),
+			UserID:        borrow.Subscription.UserID,
+			ReferenceID:   &borrowingId,
+			ReferenceType: "BORROWING",
+		}); err != nil {
+			fmt.Printf("returning: failed to create notification: %v\n", err)
+		}
+	}()
+
+	return nil
 }
 
 func (u Usecase) UpdateReturn(ctx context.Context, borrowingId uuid.UUID, r Returning) error {
