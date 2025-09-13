@@ -1,0 +1,491 @@
+package server
+
+import (
+	"net/http"
+	"strconv"
+
+	"github.com/librarease/librarease/internal/usecase"
+
+	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
+)
+
+// Collection request/response structures
+type CreateCollectionRequest struct {
+	LibraryID uuid.UUID `json:"library_id" validate:"required"`
+	Title     string    `json:"title" validate:"required"`
+}
+
+type UpdateCollectionRequest struct {
+	LibraryID uuid.UUID `json:"library_id" validate:"required"`
+	Title     string    `json:"title" validate:"required"`
+}
+
+type CollectionResponse struct {
+	ID        string   `json:"id"`
+	LibraryID string   `json:"library_id"`
+	Title     string   `json:"title"`
+	CreatedAt string   `json:"created_at"`
+	UpdatedAt string   `json:"updated_at"`
+	Library   *Library `json:"library,omitempty"`
+}
+
+type Collection struct {
+	ID        string   `json:"id"`
+	LibraryID string   `json:"library_id"`
+	Title     string   `json:"title"`
+	CreatedAt string   `json:"created_at"`
+	UpdatedAt string   `json:"updated_at"`
+	Library   *Library `json:"library,omitempty"`
+}
+
+type ListCollectionsResponse struct {
+	Collections []CollectionResponse `json:"collections"`
+	Total       int                  `json:"total"`
+}
+
+// Collection Book request/response structures
+type CreateCollectionBookRequest struct {
+	BookID uuid.UUID `json:"book_id" validate:"required"`
+}
+
+type CollectionBookResponse struct {
+	ID           string      `json:"id"`
+	CollectionID string      `json:"collection_id"`
+	BookID       string      `json:"book_id"`
+	CreatedAt    string      `json:"created_at"`
+	UpdatedAt    string      `json:"updated_at"`
+	Collection   *Collection `json:"collection,omitempty"`
+	Book         *Book       `json:"book,omitempty"`
+}
+
+type ListCollectionBooksResponse struct {
+	CollectionBooks []CollectionBookResponse `json:"collection_books"`
+	Total           int                      `json:"total"`
+}
+
+// Collection Follower request/response structures
+type CreateCollectionFollowerRequest struct {
+	UserID uuid.UUID `json:"user_id" validate:"required"`
+}
+
+type CollectionFollowerResponse struct {
+	ID           string      `json:"id"`
+	CollectionID string      `json:"collection_id"`
+	UserID       string      `json:"user_id"`
+	CreatedAt    string      `json:"created_at"`
+	UpdatedAt    string      `json:"updated_at"`
+	Collection   *Collection `json:"collection,omitempty"`
+	User         *User       `json:"user,omitempty"`
+}
+
+type ListCollectionFollowersResponse struct {
+	CollectionFollowers []CollectionFollowerResponse `json:"collection_followers"`
+	Total               int                          `json:"total"`
+}
+
+// Collection handlers
+
+// ListCollections handles GET /collections
+func (s *Server) ListCollections(ctx echo.Context) error {
+	var opt usecase.ListCollectionsOption
+
+	if libraryIDStr := ctx.QueryParam("library_id"); libraryIDStr != "" {
+		if libraryID, err := uuid.Parse(libraryIDStr); err == nil {
+			opt.LibraryID = libraryID
+		}
+	}
+
+	opt.Title = ctx.QueryParam("title")
+
+	if limitStr := ctx.QueryParam("limit"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil {
+			opt.Limit = limit
+		}
+	}
+
+	if offsetStr := ctx.QueryParam("offset"); offsetStr != "" {
+		if offset, err := strconv.Atoi(offsetStr); err == nil {
+			opt.Offset = offset
+		}
+	}
+
+	opt.IncludeLibrary = ctx.QueryParam("include_library") == "true"
+	opt.IncludeBooks = ctx.QueryParam("include_books") == "true"
+	opt.IncludeFollowers = ctx.QueryParam("include_followers") == "true"
+
+	collections, total, err := s.server.ListCollections(ctx.Request().Context(), opt)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	var response []CollectionResponse
+	for _, c := range collections {
+		cr := CollectionResponse{
+			ID:        c.ID.String(),
+			LibraryID: c.LibraryID.String(),
+			Title:     c.Title,
+			CreatedAt: c.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt: c.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+
+		if c.Library != nil {
+			cr.Library = &Library{
+				ID:        c.Library.ID.String(),
+				Name:      c.Library.Name,
+				Address:   c.Library.Address,
+				Phone:     c.Library.Phone,
+				CreatedAt: c.Library.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+				UpdatedAt: c.Library.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			}
+		}
+
+		response = append(response, cr)
+	}
+
+	return ctx.JSON(http.StatusOK, ListCollectionsResponse{
+		Collections: response,
+		Total:       total,
+	})
+}
+
+// GetCollectionByID handles GET /collections/:id
+func (s *Server) GetCollectionByID(ctx echo.Context) error {
+	idStr := ctx.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id format"})
+	}
+
+	collection, err := s.server.GetCollectionByID(ctx.Request().Context(), id)
+	if err != nil {
+		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "collection not found"})
+	}
+
+	response := CollectionResponse{
+		ID:        collection.ID.String(),
+		LibraryID: collection.LibraryID.String(),
+		Title:     collection.Title,
+		CreatedAt: collection.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt: collection.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	if collection.Library != nil {
+		response.Library = &Library{
+			ID:        collection.Library.ID.String(),
+			Name:      collection.Library.Name,
+			Address:   collection.Library.Address,
+			Phone:     collection.Library.Phone,
+			CreatedAt: collection.Library.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt: collection.Library.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+	}
+
+	return ctx.JSON(http.StatusOK, response)
+}
+
+// CreateCollection handles POST /collections
+func (s *Server) CreateCollection(ctx echo.Context) error {
+	var req CreateCollectionRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+	}
+
+	collection := usecase.Collection{
+		LibraryID: req.LibraryID,
+		Title:     req.Title,
+	}
+
+	created, err := s.server.CreateCollection(ctx.Request().Context(), collection)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	response := CollectionResponse{
+		ID:        created.ID.String(),
+		LibraryID: created.LibraryID.String(),
+		Title:     created.Title,
+		CreatedAt: created.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt: created.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	return ctx.JSON(http.StatusCreated, response)
+}
+
+// UpdateCollection handles PUT /collections/:id
+func (s *Server) UpdateCollection(ctx echo.Context) error {
+	idStr := ctx.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id format"})
+	}
+
+	var req UpdateCollectionRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+	}
+
+	collection := usecase.Collection{
+		LibraryID: req.LibraryID,
+		Title:     req.Title,
+	}
+
+	updated, err := s.server.UpdateCollection(ctx.Request().Context(), id, collection)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	response := CollectionResponse{
+		ID:        updated.ID.String(),
+		LibraryID: updated.LibraryID.String(),
+		Title:     updated.Title,
+		CreatedAt: updated.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt: updated.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	return ctx.JSON(http.StatusOK, response)
+}
+
+// DeleteCollection handles DELETE /collections/:id
+func (s *Server) DeleteCollection(ctx echo.Context) error {
+	idStr := ctx.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id format"})
+	}
+
+	err = s.server.DeleteCollection(ctx.Request().Context(), id)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]string{"message": "collection deleted successfully"})
+}
+
+// Collection Book handlers
+
+// ListCollectionBooks handles GET /collections/:collection_id/books
+func (s *Server) ListCollectionBooks(ctx echo.Context) error {
+	collectionIDStr := ctx.Param("collection_id")
+	collectionID, err := uuid.Parse(collectionIDStr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid collection_id format"})
+	}
+
+	var opt usecase.ListCollectionBooksOption
+	opt.CollectionID = collectionID
+
+	if bookIDStr := ctx.QueryParam("book_id"); bookIDStr != "" {
+		if bookID, err := uuid.Parse(bookIDStr); err == nil {
+			opt.BookID = bookID
+		}
+	}
+
+	if limitStr := ctx.QueryParam("limit"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil {
+			opt.Limit = limit
+		}
+	}
+
+	if offsetStr := ctx.QueryParam("offset"); offsetStr != "" {
+		if offset, err := strconv.Atoi(offsetStr); err == nil {
+			opt.Offset = offset
+		}
+	}
+
+	opt.IncludeCollection = ctx.QueryParam("include_collection") == "true"
+	opt.IncludeBook = ctx.QueryParam("include_book") == "true"
+
+	collectionBooks, total, err := s.server.ListCollectionBooks(ctx.Request().Context(), opt)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	var response []CollectionBookResponse
+	for _, cb := range collectionBooks {
+		cbr := CollectionBookResponse{
+			ID:           cb.ID.String(),
+			CollectionID: cb.CollectionID.String(),
+			BookID:       cb.BookID.String(),
+			CreatedAt:    cb.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:    cb.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+
+		response = append(response, cbr)
+	}
+
+	return ctx.JSON(http.StatusOK, ListCollectionBooksResponse{
+		CollectionBooks: response,
+		Total:           total,
+	})
+}
+
+// CreateCollectionBook handles POST /collections/:collection_id/books
+func (s *Server) CreateCollectionBook(ctx echo.Context) error {
+	collectionIDStr := ctx.Param("collection_id")
+	collectionID, err := uuid.Parse(collectionIDStr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid collection_id format"})
+	}
+
+	var req CreateCollectionBookRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+	}
+
+	collectionBook := usecase.CollectionBook{
+		CollectionID: collectionID,
+		BookID:       req.BookID,
+	}
+
+	created, err := s.server.CreateCollectionBook(ctx.Request().Context(), collectionBook)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	response := CollectionBookResponse{
+		ID:           created.ID.String(),
+		CollectionID: created.CollectionID.String(),
+		BookID:       created.BookID.String(),
+		CreatedAt:    created.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:    created.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	return ctx.JSON(http.StatusCreated, response)
+}
+
+// DeleteCollectionBook handles DELETE /collections/:collection_id/books/:id
+func (s *Server) DeleteCollectionBook(ctx echo.Context) error {
+	idStr := ctx.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id format"})
+	}
+
+	err = s.server.DeleteCollectionBook(ctx.Request().Context(), id)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]string{"message": "book removed from collection successfully"})
+}
+
+// Collection Follower handlers
+
+// ListCollectionFollowers handles GET /collections/:collection_id/followers
+func (s *Server) ListCollectionFollowers(ctx echo.Context) error {
+	collectionIDStr := ctx.Param("collection_id")
+	collectionID, err := uuid.Parse(collectionIDStr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid collection_id format"})
+	}
+
+	var opt usecase.ListCollectionFollowersOption
+	opt.CollectionID = collectionID
+
+	if userIDStr := ctx.QueryParam("user_id"); userIDStr != "" {
+		if userID, err := uuid.Parse(userIDStr); err == nil {
+			opt.UserID = userID
+		}
+	}
+
+	if limitStr := ctx.QueryParam("limit"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil {
+			opt.Limit = limit
+		}
+	}
+
+	if offsetStr := ctx.QueryParam("offset"); offsetStr != "" {
+		if offset, err := strconv.Atoi(offsetStr); err == nil {
+			opt.Offset = offset
+		}
+	}
+
+	opt.IncludeCollection = ctx.QueryParam("include_collection") == "true"
+	opt.IncludeUser = ctx.QueryParam("include_user") == "true"
+
+	collectionFollowers, total, err := s.server.ListCollectionFollowers(ctx.Request().Context(), opt)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	var response []CollectionFollowerResponse
+	for _, cf := range collectionFollowers {
+		cfr := CollectionFollowerResponse{
+			ID:           cf.ID.String(),
+			CollectionID: cf.CollectionID.String(),
+			UserID:       cf.UserID.String(),
+			CreatedAt:    cf.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:    cf.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+
+		response = append(response, cfr)
+	}
+
+	return ctx.JSON(http.StatusOK, ListCollectionFollowersResponse{
+		CollectionFollowers: response,
+		Total:               total,
+	})
+}
+
+// CreateCollectionFollower handles POST /collections/:collection_id/followers
+func (s *Server) CreateCollectionFollower(ctx echo.Context) error {
+	collectionIDStr := ctx.Param("collection_id")
+	collectionID, err := uuid.Parse(collectionIDStr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid collection_id format"})
+	}
+
+	var req CreateCollectionFollowerRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+	}
+
+	collectionFollower := usecase.CollectionFollower{
+		CollectionID: collectionID,
+		UserID:       req.UserID,
+	}
+
+	created, err := s.server.CreateCollectionFollower(ctx.Request().Context(), collectionFollower)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	response := CollectionFollowerResponse{
+		ID:           created.ID.String(),
+		CollectionID: created.CollectionID.String(),
+		UserID:       created.UserID.String(),
+		CreatedAt:    created.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:    created.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	return ctx.JSON(http.StatusCreated, response)
+}
+
+// DeleteCollectionFollower handles DELETE /collections/:collection_id/followers/:id
+func (s *Server) DeleteCollectionFollower(ctx echo.Context) error {
+	idStr := ctx.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid id format"})
+	}
+
+	err = s.server.DeleteCollectionFollower(ctx.Request().Context(), id)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]string{"message": "follower removed from collection successfully"})
+}

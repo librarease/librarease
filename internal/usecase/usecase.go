@@ -97,6 +97,29 @@ type Repository interface {
 	SavePushToken(context.Context, uuid.UUID, string, PushProvider) error
 	ListPushTokens(context.Context, ListPushTokensOption) ([]PushToken, int, error)
 	DeletePushToken(context.Context, uuid.UUID) error
+
+	// watchlist
+	ListWatchlists(context.Context, ListWatchlistsOption) ([]Watchlist, int, error)
+	// GetWatchlistByID(context.Context, uuid.UUID) (Watchlist, error)
+	CreateWatchlist(context.Context, Watchlist) (Watchlist, error)
+	DeleteWatchlist(context.Context, Watchlist) error
+
+	// collection
+	// ListCollections(context.Context, ListCollectionsOption) ([]Collection, int, error)
+	// GetCollectionByID(context.Context, uuid.UUID) (Collection, error)
+	// CreateCollection(context.Context, Collection) (Collection, error)
+	// UpdateCollection(context.Context, uuid.UUID, Collection) (Collection, error)
+	// DeleteCollection(context.Context, uuid.UUID) error
+
+	// collection books
+	// ListCollectionBooks(context.Context, ListCollectionBooksOption) ([]CollectionBook, int, error)
+	// CreateCollectionBook(context.Context, CollectionBook) (CollectionBook, error)
+	// DeleteCollectionBook(context.Context, uuid.UUID) error
+
+	// collection followers
+	// ListCollectionFollowers(context.Context, ListCollectionFollowersOption) ([]CollectionFollower, int, error)
+	// CreateCollectionFollower(context.Context, CollectionFollower) (CollectionFollower, error)
+	// DeleteCollectionFollower(context.Context, uuid.UUID) error
 }
 
 type IdentityProvider interface {

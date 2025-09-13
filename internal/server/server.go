@@ -61,7 +61,7 @@ type Service interface {
 	UpdateStaff(context.Context, usecase.Staff) (usecase.Staff, error)
 
 	ListBooks(context.Context, usecase.ListBooksOption) ([]usecase.Book, int, error)
-	GetBookByID(context.Context, uuid.UUID) (usecase.Book, error)
+	GetBookByID(context.Context, uuid.UUID, usecase.GetBookByIDOption) (usecase.Book, error)
 	CreateBook(context.Context, usecase.Book) (usecase.Book, error)
 	UpdateBook(context.Context, uuid.UUID, usecase.Book) (usecase.Book, error)
 
@@ -101,6 +101,27 @@ type Service interface {
 	CreateNotification(context.Context, usecase.Notification) error
 
 	SavePushToken(context.Context, string, usecase.PushProvider) error
+
+	// watchlist
+	CreateWatchlist(context.Context, usecase.Watchlist) (usecase.Watchlist, error)
+	DeleteWatchlist(context.Context, usecase.Watchlist) error
+
+	// collection
+	// ListCollections(context.Context, usecase.ListCollectionsOption) ([]usecase.Collection, int, error)
+	// GetCollectionByID(context.Context, uuid.UUID) (usecase.Collection, error)
+	// CreateCollection(context.Context, usecase.Collection) (usecase.Collection, error)
+	// UpdateCollection(context.Context, uuid.UUID, usecase.Collection) (usecase.Collection, error)
+	// DeleteCollection(context.Context, uuid.UUID) error
+
+	// collection books
+	// ListCollectionBooks(context.Context, usecase.ListCollectionBooksOption) ([]usecase.CollectionBook, int, error)
+	// CreateCollectionBook(context.Context, usecase.CollectionBook) (usecase.CollectionBook, error)
+	// DeleteCollectionBook(context.Context, uuid.UUID) error
+
+	// collection followers
+	// ListCollectionFollowers(context.Context, usecase.ListCollectionFollowersOption) ([]usecase.CollectionFollower, int, error)
+	// CreateCollectionFollower(context.Context, usecase.CollectionFollower) (usecase.CollectionFollower, error)
+	// DeleteCollectionFollower(context.Context, uuid.UUID) error
 }
 
 type Server struct {

@@ -3,6 +3,8 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,6 +33,12 @@ type Book struct {
 
 	// UpdateCover is used to update cover
 	UpdateCover *string
+
+	// For watchlist
+	Watchlists []Watchlist
+
+	// For collection
+	Collections []CollectionBook
 }
 
 type ListBooksOption struct {
@@ -43,6 +51,13 @@ type ListBooksOption struct {
 	SortBy       string
 	SortIn       string
 	IncludeStats bool
+
+	// For watchlist
+	IncludeWatchlists bool
+	WatchlistUserID   uuid.UUID
+
+	// For collection
+	CollectionID uuid.UUID
 }
 
 func (u Usecase) ListBooks(ctx context.Context, opt ListBooksOption) ([]Book, int, error) {
@@ -89,20 +104,51 @@ func (u Usecase) CreateBook(ctx context.Context, book Book) (Book, error) {
 	return book, err
 }
 
-func (u Usecase) GetBookByID(ctx context.Context, id uuid.UUID) (Book, error) {
+type GetBookByIDOption struct {
+	IncludeWatchlists bool
+	WatchlistUserID   uuid.UUID
+}
+
+func (u Usecase) GetBookByID(ctx context.Context, id uuid.UUID, opt GetBookByIDOption) (Book, error) {
+
 	book, err := u.repo.GetBookByID(ctx, id)
 	if err != nil {
 		return Book{}, err
 	}
 
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
-	if book.Cover != "" {
-		book.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, book.ID, book.Cover)
-	}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
-	if book.Library != nil && book.Library.Logo != "" {
-		book.Library.Logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, book.Library.ID, book.Library.Logo)
-	}
+	wg.Go(func() {
+		publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
+
+		mu.Lock()
+		if book.Cover != "" {
+			book.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, book.ID, book.Cover)
+		}
+		if book.Library != nil && book.Library.Logo != "" {
+			book.Library.Logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, book.Library.ID, book.Library.Logo)
+		}
+		mu.Unlock()
+	})
+
+	wg.Go(func() {
+		if opt.IncludeWatchlists && opt.WatchlistUserID != uuid.Nil {
+			list, _, err := u.repo.ListWatchlists(ctx, ListWatchlistsOption{
+				BookID: book.ID,
+				UserID: opt.WatchlistUserID,
+			})
+			if err != nil {
+				log.Printf("err_GetBookByID_ListWatchlists: %v\n", err)
+				return
+			}
+			mu.Lock()
+			book.Watchlists = list
+			mu.Unlock()
+		}
+	})
+
+	wg.Wait()
 
 	return book, nil
 }

@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"slices"
 	"time"
@@ -138,6 +139,27 @@ func (u Usecase) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r R
 			ReferenceType: "BORROWING",
 		}); err != nil {
 			fmt.Printf("returning: failed to create notification: %v\n", err)
+		}
+	}()
+
+	go func() {
+		list, _, err := u.repo.ListWatchlists(context.Background(), ListWatchlistsOption{
+			BookID: borrow.BookID,
+		})
+		if err != nil {
+			log.Printf("err_ReturnBorrowing_ListWatchlists: %v\n", err)
+			return
+		}
+		for _, w := range list {
+			if err := u.CreateNotification(context.Background(), Notification{
+				Title:         "Book Available",
+				Message:       fmt.Sprintf("Book %s is now available", borrow.Book.Title),
+				UserID:        w.UserID,
+				ReferenceID:   &borrow.BookID,
+				ReferenceType: "BOOK",
+			}); err != nil {
+				log.Printf("err_ReturnBorrowing_CreateNotification: %v\n", err)
+			}
 		}
 	}()
 

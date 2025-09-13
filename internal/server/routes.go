@@ -45,8 +45,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 	userGroup.GET("/:id", s.GetUserByID)
 	userGroup.PUT("/:id", s.UpdateUser, s.AuthMiddleware)
 	userGroup.DELETE("/:id", s.DeleteUser)
+
 	userGroup.GET("/me", s.GetMe, s.AuthMiddleware)
 	userGroup.POST("/me/push-token", s.SavePushToken, s.AuthMiddleware)
+	userGroup.GET("/me/watchlist", s.ListWatchlist, s.AuthMiddleware)
+	userGroup.POST("/me/watchlist", s.AddWatchlist, s.AuthMiddleware)
+	userGroup.DELETE("/me/watchlist/:book_id", s.RemoveWatchlist, s.AuthMiddleware)
 
 	var libraryGroup = e.Group("/api/v1/libraries")
 	libraryGroup.GET("", s.ListLibraries)
@@ -103,6 +107,29 @@ func (s *Server) RegisterRoutes() http.Handler {
 	notificationGroup.POST("/read", s.ReadAllNotifications, s.AuthMiddleware)
 	notificationGroup.POST("/:id/read", s.ReadNotification, s.AuthMiddleware)
 	notificationGroup.GET("/stream", s.StreamNotifications)
+
+	// var watchlistGroup = e.Group("/api/v1/watchlists")
+	// watchlistGroup.GET("", s.ListWatchlists, s.AuthMiddleware)
+	// watchlistGroup.GET("/:id", s.GetWatchlistByID, s.AuthMiddleware)
+	// watchlistGroup.POST("", s.CreateWatchlist, s.AuthMiddleware)
+	// watchlistGroup.DELETE("/:id", s.DeleteWatchlist, s.AuthMiddleware)
+
+	// var collectionGroup = e.Group("/api/v1/collections")
+	// collectionGroup.GET("", s.ListCollections)
+	// collectionGroup.GET("/:id", s.GetCollectionByID)
+	// collectionGroup.POST("", s.CreateCollection, s.AuthMiddleware)
+	// collectionGroup.PUT("/:id", s.UpdateCollection, s.AuthMiddleware)
+	// collectionGroup.DELETE("/:id", s.DeleteCollection, s.AuthMiddleware)
+
+	// // Collection books sub-routes
+	// collectionGroup.GET("/:collection_id/books", s.ListCollectionBooks)
+	// collectionGroup.POST("/:collection_id/books", s.CreateCollectionBook, s.AuthMiddleware)
+	// collectionGroup.DELETE("/:collection_id/books/:id", s.DeleteCollectionBook, s.AuthMiddleware)
+
+	// // Collection followers sub-routes
+	// collectionGroup.GET("/:collection_id/followers", s.ListCollectionFollowers)
+	// collectionGroup.POST("/:collection_id/followers", s.CreateCollectionFollower, s.AuthMiddleware)
+	// collectionGroup.DELETE("/:collection_id/followers/:id", s.DeleteCollectionFollower, s.AuthMiddleware)
 
 	return e
 }

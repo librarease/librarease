@@ -25,6 +25,7 @@ type Book struct {
 	LibraryID  uuid.UUID       `gorm:"uniqueIndex:idx_lib_code,where:deleted_at IS NULL"`
 	Library    *Library        `gorm:"foreignKey:LibraryID;"`
 	Borrowings []Borrowing
+	Watchlists []Watchlist
 }
 
 func (Book) TableName() string {
@@ -67,14 +68,31 @@ func (s *service) ListBooks(ctx context.Context, opt usecase.ListBooksOption) ([
 		orderIn = opt.SortIn
 	}
 
+	if opt.IncludeWatchlists {
+
+		if opt.WatchlistUserID != uuid.Nil {
+			db = db.
+				Preload("Watchlists", "user_id = ?", opt.WatchlistUserID).
+				Joins("JOIN watchlists w ON w.book_id = books.id AND w.user_id = ? AND w.deleted_at IS NULL", opt.WatchlistUserID)
+		} else {
+			db = db.Preload("Watchlists")
+		}
+	}
+
 	if err := db.Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
 
+	if opt.Limit > 0 {
+		db = db.Limit(opt.Limit)
+	}
+
+	if opt.Skip > 0 {
+		db = db.Offset(opt.Skip)
+	}
+
 	if err := db.
 		Joins("Library").
-		Limit(opt.Limit).
-		Offset(opt.Skip).
 		Order(orderBy + " " + orderIn).
 		Find(&books).
 		Error; err != nil {
@@ -88,6 +106,18 @@ func (s *service) ListBooks(ctx context.Context, opt usecase.ListBooksOption) ([
 		if b.Library != nil {
 			lib := b.Library.ConvertToUsecase()
 			ub.Library = &lib
+		}
+		if b.Watchlists != nil {
+			for _, w := range b.Watchlists {
+				uw := usecase.Watchlist{
+					ID:        w.ID,
+					UserID:    w.UserID,
+					BookID:    w.BookID,
+					CreatedAt: w.CreatedAt,
+					UpdatedAt: w.UpdatedAt,
+				}
+				ub.Watchlists = append(ub.Watchlists, uw)
+			}
 		}
 		ubooks = append(ubooks, ub)
 	}

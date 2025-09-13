@@ -10,19 +10,20 @@ import (
 )
 
 type Book struct {
-	ID        string     `json:"id"`
-	Title     string     `json:"title"`
-	Author    string     `json:"author,omitempty"`
-	Year      int        `json:"year,omitempty"`
-	Code      string     `json:"code"`
-	Count     int        `json:"count,omitempty"`
-	Cover     string     `json:"cover,omitempty"`
-	LibraryID string     `json:"library_id,omitempty"`
-	CreatedAt string     `json:"created_at,omitempty"`
-	UpdatedAt string     `json:"updated_at,omitempty"`
-	DeletedAt *string    `json:"deleted_at,omitempty"`
-	Library   *Library   `json:"library,omitempty"`
-	Stats     *BookStats `json:"stats,omitempty"`
+	ID         string      `json:"id"`
+	Title      string      `json:"title"`
+	Author     string      `json:"author,omitempty"`
+	Year       int         `json:"year,omitempty"`
+	Code       string      `json:"code"`
+	Count      int         `json:"count,omitempty"`
+	Cover      string      `json:"cover,omitempty"`
+	LibraryID  string      `json:"library_id,omitempty"`
+	CreatedAt  string      `json:"created_at,omitempty"`
+	UpdatedAt  string      `json:"updated_at,omitempty"`
+	DeletedAt  *string     `json:"deleted_at,omitempty"`
+	Library    *Library    `json:"library,omitempty"`
+	Stats      *BookStats  `json:"stats,omitempty"`
+	Watchlists []Watchlist `json:"watchlists,omitempty"`
 }
 
 type BookStats struct {
@@ -124,6 +125,8 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 
 type GetBookByIDRequest struct {
 	ID string `param:"id" validate:"required,uuid"`
+
+	UserID string `query:"user_id" validate:"omitempty,uuid"`
 }
 
 func (s *Server) GetBookByID(ctx echo.Context) error {
@@ -136,7 +139,11 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 	}
 
 	id, _ := uuid.Parse(req.ID)
-	b, err := s.server.GetBookByID(ctx.Request().Context(), id)
+	wlUserID, _ := uuid.Parse(req.UserID)
+	b, err := s.server.GetBookByID(ctx.Request().Context(), id, usecase.GetBookByIDOption{
+		IncludeWatchlists: req.UserID != "",
+		WatchlistUserID:   wlUserID,
+	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
@@ -173,6 +180,15 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 			BorrowCount: b.Stats.BorrowCount,
 			IsAvailable: b.Stats.IsAvailable,
 		}
+	}
+	for _, wl := range b.Watchlists {
+		book.Watchlists = append(book.Watchlists, Watchlist{
+			ID:        wl.ID.String(),
+			UserID:    wl.UserID.String(),
+			BookID:    wl.BookID.String(),
+			CreatedAt: wl.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: wl.UpdatedAt.UTC().Format(time.RFC3339),
+		})
 	}
 
 	return ctx.JSON(200, Res{
