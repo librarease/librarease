@@ -96,6 +96,7 @@ type Repository interface {
 	// push token
 	SavePushToken(context.Context, uuid.UUID, string, PushProvider) error
 	ListPushTokens(context.Context, ListPushTokensOption) ([]PushToken, int, error)
+	DeletePushToken(context.Context, uuid.UUID) error
 }
 
 type IdentityProvider interface {

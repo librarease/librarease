@@ -16,13 +16,13 @@ type Book struct {
 	Title      string          `gorm:"column:title;type:varchar(255)"`
 	Author     string          `gorm:"column:author;type:varchar(255)"`
 	Year       int             `gorm:"column:year;type:int"`
-	Code       string          `gorm:"column:code;type:varchar(255);uniqueIndex:idx_lib_code"`
+	Code       string          `gorm:"column:code;type:varchar(255);uniqueIndex:idx_lib_code,where:deleted_at IS NULL"`
 	Count      int             `gorm:"column:count;type:int;default:1"`
 	Cover      string          `gorm:"column:cover;type:varchar(255)"`
 	CreatedAt  time.Time       `gorm:"column:created_at"`
 	UpdatedAt  time.Time       `gorm:"column:updated_at"`
 	DeletedAt  *gorm.DeletedAt `gorm:"column:deleted_at"`
-	LibraryID  uuid.UUID       `gorm:"uniqueIndex:idx_lib_code"`
+	LibraryID  uuid.UUID       `gorm:"uniqueIndex:idx_lib_code,where:deleted_at IS NULL"`
 	Library    *Library        `gorm:"foreignKey:LibraryID;"`
 	Borrowings []Borrowing
 }

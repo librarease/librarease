@@ -138,14 +138,16 @@ func (s *Server) StreamNotifications(ctx echo.Context) error {
 
 	var noti *Notification
 
-	// to prevent pending when no notification on connection
-	w.Write([]byte("\n\n"))
-	w.Flush()
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Request().Context().Done():
 			return nil
+		case <-ticker.C:
+			w.Write([]byte(":heartbeat\n\n"))
+			w.Flush()
 		case msg, ok := <-ch:
 			if !ok {
 				fmt.Printf("[DEBUG] notification stream closed\n")

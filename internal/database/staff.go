@@ -13,9 +13,9 @@ import (
 type Staff struct {
 	ID         uuid.UUID       `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
 	Name       string          `gorm:"column:name;type:varchar(255)"`
-	LibraryID  uuid.UUID       `gorm:"column:library_id;type:uuid;uniqueIndex:idx_user_library"`
+	LibraryID  uuid.UUID       `gorm:"column:library_id;type:uuid;uniqueIndex:idx_user_library,where:deleted_at IS NULL"`
 	Library    *Library        `gorm:"foreignKey:LibraryID;references:ID"`
-	UserID     uuid.UUID       `gorm:"column:user_id;type:uuid;uniqueIndex:idx_user_library"`
+	UserID     uuid.UUID       `gorm:"column:user_id;type:uuid;uniqueIndex:idx_user_library,where:deleted_at IS NULL"`
 	User       *User           `gorm:"foreignKey:UserID;references:ID"`
 	CreatedAt  time.Time       `gorm:"column:created_at"`
 	UpdatedAt  time.Time       `gorm:"column:updated_at"`

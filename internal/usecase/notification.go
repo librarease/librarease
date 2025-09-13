@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -114,6 +115,21 @@ func (u Usecase) StreamNotifications(ctx context.Context, userID uuid.UUID) (<-c
 	return notifications, nil
 }
 
+type InvalidTokenError map[uuid.UUID]string
+
+func (e InvalidTokenError) Error() string {
+	var msg string
+	for k, v := range e {
+		msg += fmt.Sprintf("TokenID: %s, Reason: %s; ", k, v)
+	}
+
+	return fmt.Sprintf("invalid tokens: %s", msg)
+}
+
+func NewInvalidTokenError(m map[uuid.UUID]string) InvalidTokenError {
+	return InvalidTokenError(m)
+}
+
 func (u Usecase) CreateNotification(ctx context.Context, n Notification) error {
 	noti, err := u.repo.CreateNotification(ctx, n)
 	if err != nil {
@@ -127,5 +143,19 @@ func (u Usecase) CreateNotification(ctx context.Context, n Notification) error {
 		return err
 	}
 
-	return u.dispatcher.Send(ctx, tokens, noti)
+	if err := u.dispatcher.Send(ctx, tokens, noti); err != nil {
+		var invalidErr InvalidTokenError
+		if errors.As(err, &invalidErr) {
+			for id, reason := range invalidErr {
+				fmt.Printf("deleting invalid token %s: %s\n", id, reason)
+				if err := u.repo.DeletePushToken(ctx, id); err != nil {
+					fmt.Printf("failed to delete invalid token %s: %v\n", id, err)
+				}
+			}
+			// return nil because the notification is created successfully
+			return nil
+		}
+		return fmt.Errorf("send notification: %w", err)
+	}
+	return nil
 }

@@ -12,13 +12,13 @@ import (
 
 type PushToken struct {
 	ID        uuid.UUID       `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
-	UserID    uuid.UUID       `gorm:"column:user_id;type:uuid;uniqueIndex:idx_user_token"`
-	Token     string          `gorm:"column:token;type:text;uniqueIndex:idx_user_token"`
+	UserID    uuid.UUID       `gorm:"column:user_id;type:uuid;uniqueIndex:idx_user_token,where:deleted_at IS NULL"`
+	Token     string          `gorm:"column:token;type:text;uniqueIndex:idx_user_token,where:deleted_at IS NULL"`
 	Provider  string          `gorm:"column:provider;type:varchar(255)"`
 	LastSeen  time.Time       `gorm:"column:last_seen;autoUpdateTime"`
 	CreatedAt time.Time       `gorm:"column:created_at"`
 	UpdatedAt time.Time       `gorm:"column:updated_at"`
-	DeletedAt *gorm.DeletedAt `gorm:"column:deleted_at"`
+	DeletedAt *gorm.DeletedAt `gorm:"column:deleted_at;"`
 
 	User *User `gorm:"foreignKey:UserID;references:ID"`
 }
@@ -86,6 +86,10 @@ func (s *service) ListPushTokens(ctx context.Context, opt usecase.ListPushTokens
 		utokens = append(utokens, ut)
 	}
 	return utokens, int(count), nil
+}
+
+func (s *service) DeletePushToken(ctx context.Context, id uuid.UUID) error {
+	return s.db.WithContext(ctx).Delete(&PushToken{}, "id = ?", id).Error
 }
 
 // Convert core model to Usecase

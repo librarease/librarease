@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/google/uuid"
 	"github.com/librarease/librarease/internal/usecase"
 
 	fb "firebase.google.com/go/v4"
@@ -86,16 +87,20 @@ func (s *Firebase) Provider() usecase.PushProvider {
 
 func (s *Firebase) Send(ctx context.Context, tokens []usecase.PushToken, noti usecase.Notification) error {
 
-	var fcmTokens []string
+	tokenMap := make(map[string]uuid.UUID)
 	for _, t := range tokens {
 		if t.Provider == usecase.FCM {
-			fcmTokens = append(fcmTokens, t.Token)
+			tokenMap[t.Token] = t.ID
 		}
 	}
-	if len(fcmTokens) == 0 {
+	if len(tokenMap) == 0 {
 		return nil
 	}
 
+	var fcmTokens []string
+	for k := range tokenMap {
+		fcmTokens = append(fcmTokens, k)
+	}
 	message := &messaging.MulticastMessage{
 		Tokens: fcmTokens,
 		Notification: &messaging.Notification{
@@ -109,6 +114,15 @@ func (s *Firebase) Send(ctx context.Context, tokens []usecase.PushToken, noti us
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Successfully sent %d messages: %+v\n", bres.SuccessCount, *bres)
+
+	var errorMap = make(map[uuid.UUID]string)
+	for i, res := range bres.Responses {
+		if res.Error != nil {
+			errorMap[tokenMap[fcmTokens[i]]] = res.Error.Error()
+		}
+	}
+	if len(errorMap) > 0 {
+		return usecase.NewInvalidTokenError(errorMap)
+	}
 	return nil
 }
