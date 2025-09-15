@@ -8,19 +8,26 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Collection struct {
-	ID        uuid.UUID       `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
-	LibraryID uuid.UUID       `gorm:"column:library_id;type:uuid;not null"`
-	Title     string          `gorm:"column:title;type:varchar(255);not null"`
-	CreatedAt time.Time       `gorm:"column:created_at"`
-	UpdatedAt time.Time       `gorm:"column:updated_at"`
-	DeletedAt *gorm.DeletedAt `gorm:"column:deleted_at"`
+	ID          uuid.UUID       `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
+	LibraryID   uuid.UUID       `gorm:"column:library_id;type:uuid;not null"`
+	Title       string          `gorm:"column:title;type:varchar(255);not null"`
+	Description string          `gorm:"column:description;type:text"`
+	CreatedAt   time.Time       `gorm:"column:created_at"`
+	UpdatedAt   time.Time       `gorm:"column:updated_at"`
+	DeletedAt   *gorm.DeletedAt `gorm:"column:deleted_at"`
 
 	Library   *Library              `gorm:"foreignKey:LibraryID;references:ID"`
 	Books     []CollectionBooks     `gorm:"foreignKey:CollectionID"`
 	Followers []CollectionFollowers `gorm:"foreignKey:CollectionID"`
+
+	Cover *Asset `gorm:"polymorphicType:OwnerType;polymorphicId:OwnerID;polymorphicValue:collections"`
+
+	BookCount     int `gorm:"->;-:migration"`
+	FollowerCount int `gorm:"->;-:migration"`
 }
 
 func (Collection) TableName() string {
@@ -59,8 +66,6 @@ func (CollectionFollowers) TableName() string {
 	return "collection_followers"
 }
 
-// Collection CRUD methods
-
 // ListCollections retrieves collections with optional filtering
 func (s *service) ListCollections(ctx context.Context, opt usecase.ListCollectionsOption) ([]usecase.Collection, int, error) {
 	var (
@@ -69,7 +74,14 @@ func (s *service) ListCollections(ctx context.Context, opt usecase.ListCollectio
 		count        int64
 	)
 
-	db := s.db.Model([]Collection{}).WithContext(ctx)
+	db := s.db.
+		Model(&Collection{}).
+		WithContext(ctx).
+		Preload("Cover", func(db *gorm.DB) *gorm.DB {
+			return db.Order("updated_at DESC")
+		}).
+		Select(`*,
+			(SELECT COUNT(*) FROM collection_books WHERE collection_books.collection_id = collections.id AND collection_books.deleted_at IS NULL) AS book_count`)
 
 	if opt.LibraryID != uuid.Nil {
 		db = db.Where("library_id = ?", opt.LibraryID)
@@ -109,11 +121,14 @@ func (s *service) ListCollections(ctx context.Context, opt usecase.ListCollectio
 
 	for _, c := range collections {
 		uc := usecase.Collection{
-			ID:        c.ID,
-			LibraryID: c.LibraryID,
-			Title:     c.Title,
-			CreatedAt: c.CreatedAt,
-			UpdatedAt: c.UpdatedAt,
+			ID:            c.ID,
+			LibraryID:     c.LibraryID,
+			Title:         c.Title,
+			Description:   c.Description,
+			CreatedAt:     c.CreatedAt,
+			UpdatedAt:     c.UpdatedAt,
+			BookCount:     c.BookCount,
+			FollowerCount: c.FollowerCount,
 		}
 
 		if c.Library != nil {
@@ -127,6 +142,21 @@ func (s *service) ListCollections(ctx context.Context, opt usecase.ListCollectio
 			}
 		}
 
+		if c.Cover != nil {
+			uc.Cover = &usecase.Asset{
+				ID:        c.Cover.ID,
+				Path:      c.Cover.Path,
+				Colors:    c.Cover.Colors,
+				OwnerID:   c.Cover.OwnerID,
+				OwnerType: c.Cover.OwnerType,
+				Kind:      c.Cover.Kind,
+				IsPrimary: c.Cover.IsPrimary,
+				Position:  c.Cover.Position,
+				CreatedAt: c.Cover.CreatedAt,
+				UpdatedAt: c.Cover.UpdatedAt,
+			}
+		}
+
 		ucollections = append(ucollections, uc)
 	}
 
@@ -137,18 +167,28 @@ func (s *service) ListCollections(ctx context.Context, opt usecase.ListCollectio
 func (s *service) GetCollectionByID(ctx context.Context, id uuid.UUID) (usecase.Collection, error) {
 	var collection Collection
 
-	db := s.db.WithContext(ctx).Preload("Library").Preload("Books.Book").Preload("Followers.User")
+	db := s.db.
+		WithContext(ctx).
+		Preload("Library").
+		Preload("Cover", func(db *gorm.DB) *gorm.DB {
+			return db.Order("updated_at DESC")
+		}).
+		Select(`*,
+			(SELECT COUNT(*) FROM collection_books WHERE collection_books.collection_id = collections.id AND collection_books.deleted_at IS NULL) AS book_count`)
 
 	if err := db.First(&collection, id).Error; err != nil {
 		return usecase.Collection{}, err
 	}
 
 	uc := usecase.Collection{
-		ID:        collection.ID,
-		LibraryID: collection.LibraryID,
-		Title:     collection.Title,
-		CreatedAt: collection.CreatedAt,
-		UpdatedAt: collection.UpdatedAt,
+		ID:            collection.ID,
+		LibraryID:     collection.LibraryID,
+		Title:         collection.Title,
+		Description:   collection.Description,
+		CreatedAt:     collection.CreatedAt,
+		UpdatedAt:     collection.UpdatedAt,
+		BookCount:     collection.BookCount,
+		FollowerCount: collection.FollowerCount,
 	}
 
 	if collection.Library != nil {
@@ -167,12 +207,25 @@ func (s *service) GetCollectionByID(ctx context.Context, id uuid.UUID) (usecase.
 
 // CreateCollection creates a new collection
 func (s *service) CreateCollection(ctx context.Context, c usecase.Collection) (usecase.Collection, error) {
+	var cover *Asset
+	if c.Cover != nil {
+		cover = &Asset{
+			Path:   c.Cover.Path,
+			Colors: c.Cover.Colors,
+		}
+	}
 	collection := Collection{
-		LibraryID: c.LibraryID,
-		Title:     c.Title,
+		LibraryID:   c.LibraryID,
+		Title:       c.Title,
+		Cover:       cover,
+		Description: c.Description,
 	}
 
-	if err := s.db.WithContext(ctx).Create(&collection).Error; err != nil {
+	if err := s.db.
+		WithContext(ctx).
+		Create(&collection).
+		Error; err != nil {
+
 		return usecase.Collection{}, err
 	}
 
@@ -186,60 +239,75 @@ func (s *service) CreateCollection(ctx context.Context, c usecase.Collection) (u
 }
 
 // UpdateCollection updates an existing collection
-func (s *service) UpdateCollection(ctx context.Context, id uuid.UUID, c usecase.Collection) (usecase.Collection, error) {
-	var collection Collection
+func (s *service) UpdateCollection(ctx context.Context, id uuid.UUID, req usecase.UpdateCollectionRequest) (usecase.Collection, error) {
 
-	if err := s.db.WithContext(ctx).First(&collection, id).Error; err != nil {
-		return usecase.Collection{}, err
+	var cover *Asset
+	if req.Cover != nil {
+		cover = &Asset{
+			Path:   req.Cover.Path,
+			Colors: req.Cover.Colors,
+		}
 	}
 
-	collection.Title = c.Title
-	collection.LibraryID = c.LibraryID
+	update := Collection{
+		ID:          id,
+		Title:       req.Title,
+		Description: req.Description,
+		Cover:       cover,
+	}
 
-	if err := s.db.WithContext(ctx).Save(&collection).Error; err != nil {
+	if err := s.db.
+		WithContext(ctx).
+		Clauses(clause.Returning{}).
+		Updates(&update).
+		Error; err != nil {
 		return usecase.Collection{}, err
 	}
 
 	return usecase.Collection{
-		ID:        collection.ID,
-		LibraryID: collection.LibraryID,
-		Title:     collection.Title,
-		CreatedAt: collection.CreatedAt,
-		UpdatedAt: collection.UpdatedAt,
+		ID:          update.ID,
+		LibraryID:   update.LibraryID,
+		Title:       update.Title,
+		Description: update.Description,
+		CreatedAt:   update.CreatedAt,
+		UpdatedAt:   update.UpdatedAt,
 	}, nil
 }
 
-// DeleteCollection deletes a collection
 func (s *service) DeleteCollection(ctx context.Context, id uuid.UUID) error {
 	return s.db.WithContext(ctx).Delete(&Collection{}, id).Error
 }
 
-// CollectionBooks CRUD methods
-
-// ListCollectionBooks retrieves collection books with optional filtering
-func (s *service) ListCollectionBooks(ctx context.Context, opt usecase.ListCollectionBooksOption) ([]usecase.CollectionBook, int, error) {
+func (s *service) ListCollectionBooks(ctx context.Context, id uuid.UUID, opt usecase.ListCollectionBooksOption) ([]usecase.CollectionBook, int, error) {
 	var (
 		collectionBooks  []CollectionBooks
 		ucollectionBooks []usecase.CollectionBook
 		count            int64
 	)
 
-	db := s.db.Model([]CollectionBooks{}).WithContext(ctx)
-
-	if opt.CollectionID != uuid.Nil {
-		db = db.Where("collection_id = ?", opt.CollectionID)
-	}
-
-	if opt.BookID != uuid.Nil {
-		db = db.Where("book_id = ?", opt.BookID)
-	}
-
-	if opt.IncludeCollection {
-		db = db.Preload("Collection")
-	}
+	db := s.db.
+		Model([]CollectionBooks{}).
+		WithContext(ctx).
+		Where("collection_id = ?", id)
 
 	if opt.IncludeBook {
 		db = db.Preload("Book")
+	}
+
+	// For book
+	if opt.BookTitle != "" || opt.BookSortBy != "" || opt.BookSortIn != "" {
+		db = db.Joins("JOIN books ON books.id = collection_books.book_id")
+	}
+	if opt.BookTitle != "" {
+		db = db.Where("books.title ILIKE ?", "%"+opt.BookTitle+"%")
+	}
+	if opt.BookSortBy != "" {
+		sortBy := opt.BookSortBy
+		sortIn := "desc"
+		if opt.BookSortIn != "" {
+			sortIn = opt.BookSortIn
+		}
+		db = db.Order("books." + sortBy + " " + sortIn)
 	}
 
 	if err := db.Count(&count).Error; err != nil {
@@ -250,12 +318,40 @@ func (s *service) ListCollectionBooks(ctx context.Context, opt usecase.ListColle
 		db = db.Limit(opt.Limit)
 	}
 
-	if opt.Offset > 0 {
-		db = db.Offset(opt.Offset)
+	if opt.Skip > 0 {
+		db = db.Offset(opt.Skip)
 	}
 
-	if err := db.Find(&collectionBooks).Error; err != nil {
+	sortBy := "updated_at"
+	sortIn := "desc"
+	if opt.SortBy != "" {
+		sortBy = opt.SortBy
+	}
+	if opt.SortIn != "" {
+		sortIn = opt.SortIn
+	}
+
+	if err := db.
+		Order(sortBy + " " + sortIn).
+		Find(&collectionBooks).
+		Error; err != nil {
 		return nil, 0, err
+	}
+
+	var (
+		statsMap map[uuid.UUID]usecase.BookStats
+		err      error
+	)
+
+	bookIDs := make([]uuid.UUID, 0, len(collectionBooks))
+	for _, cb := range collectionBooks {
+		bookIDs = append(bookIDs, cb.BookID)
+	}
+	if opt.IncludeBook && len(bookIDs) > 0 {
+		statsMap, err = s.getBookStats(ctx, bookIDs)
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	for _, cb := range collectionBooks {
@@ -290,8 +386,10 @@ func (s *service) ListCollectionBooks(ctx context.Context, opt usecase.ListColle
 				CreatedAt: cb.Book.CreatedAt,
 				UpdatedAt: cb.Book.UpdatedAt,
 			}
+			if stats, exists := statsMap[cb.Book.ID]; exists {
+				ucb.Book.Stats = &stats
+			}
 		}
-
 		ucollectionBooks = append(ucollectionBooks, ucb)
 	}
 
@@ -318,12 +416,60 @@ func (s *service) CreateCollectionBook(ctx context.Context, cb usecase.Collectio
 	}, nil
 }
 
-// DeleteCollectionBook removes a book from a collection
-func (s *service) DeleteCollectionBook(ctx context.Context, id uuid.UUID) error {
-	return s.db.WithContext(ctx).Delete(&CollectionBooks{}, id).Error
+func (s *service) UpdateCollectionBooks(
+	ctx context.Context,
+	collectionID uuid.UUID,
+	bookIDs []uuid.UUID,
+) ([]usecase.CollectionBook, error) {
+
+	var collectionBooks []CollectionBooks
+	for _, bookID := range bookIDs {
+		collectionBooks = append(collectionBooks, CollectionBooks{
+			CollectionID: collectionID,
+			BookID:       bookID,
+		})
+	}
+
+	if err := s.db.
+		WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns:     []clause.Column{{Name: "collection_id"}, {Name: "book_id"}},
+			DoNothing:   true,
+			TargetWhere: clause.Where{Exprs: []clause.Expression{clause.Eq{Column: "deleted_at", Value: nil}}},
+		}).
+		Create(&collectionBooks).
+		Error; err != nil {
+		return nil, err
+	}
+
+	var createdCollectionBooks []usecase.CollectionBook
+	for _, cb := range collectionBooks {
+		createdCollectionBooks = append(createdCollectionBooks, usecase.CollectionBook{
+			ID:           cb.ID,
+			CollectionID: cb.CollectionID,
+			BookID:       cb.BookID,
+			CreatedAt:    cb.CreatedAt,
+			UpdatedAt:    cb.UpdatedAt,
+		})
+	}
+
+	return createdCollectionBooks, nil
 }
 
-// CollectionFollowers CRUD methods
+func (s *service) DeleteCollectionBook(ctx context.Context, id uuid.UUID) error {
+	return s.db.
+		WithContext(ctx).
+		Delete(&CollectionBooks{}, id).
+		Error
+}
+
+func (s *service) DeleteCollectionBooks(ctx context.Context, id uuid.UUID, ids []uuid.UUID) error {
+	return s.db.
+		WithContext(ctx).
+		Where("collection_id = ? AND book_id IN ?", id, ids).
+		Delete(&CollectionBooks{}).
+		Error
+}
 
 // ListCollectionFollowers retrieves collection followers with optional filtering
 func (s *service) ListCollectionFollowers(ctx context.Context, opt usecase.ListCollectionFollowersOption) ([]usecase.CollectionFollower, int, error) {

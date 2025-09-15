@@ -53,8 +53,9 @@ func New(gormDB *gorm.DB, noti *pgx.Conn, redis *redis.Client) (*service, error)
 		Notification{},
 		PushToken{},
 		Watchlist{},
-		// Collection{},
-		// CollectionBooks{},
+		Collection{},
+		Asset{},
+		CollectionBooks{},
 		// CollectionFollowers{},
 	)
 	if err != nil {

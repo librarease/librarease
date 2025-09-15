@@ -35,7 +35,7 @@ type ListBooksRequest struct {
 	ID           string `query:"id" validate:"omitempty"`
 	LibraryID    string `query:"library_id" validate:"omitempty,uuid"`
 	Skip         int    `query:"skip"`
-	Limit        int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Limit        int    `query:"limit"`
 	Title        string `query:"title" validate:"omitempty"`
 	SortBy       string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at title author year code"`
 	SortIn       string `query:"sort_in" validate:"omitempty,oneof=asc desc"`

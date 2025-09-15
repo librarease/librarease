@@ -108,25 +108,16 @@ func (s *Server) RegisterRoutes() http.Handler {
 	notificationGroup.POST("/:id/read", s.ReadNotification, s.AuthMiddleware)
 	notificationGroup.GET("/stream", s.StreamNotifications)
 
-	// var watchlistGroup = e.Group("/api/v1/watchlists")
-	// watchlistGroup.GET("", s.ListWatchlists, s.AuthMiddleware)
-	// watchlistGroup.GET("/:id", s.GetWatchlistByID, s.AuthMiddleware)
-	// watchlistGroup.POST("", s.CreateWatchlist, s.AuthMiddleware)
-	// watchlistGroup.DELETE("/:id", s.DeleteWatchlist, s.AuthMiddleware)
+	var collectionGroup = e.Group("/api/v1/collections")
+	collectionGroup.GET("", s.ListCollections)
+	collectionGroup.GET("/:id", s.GetCollectionByID)
+	collectionGroup.POST("", s.CreateCollection, s.AuthMiddleware)
+	collectionGroup.PUT("/:id", s.UpdateCollection, s.AuthMiddleware)
+	collectionGroup.DELETE("/:id", s.DeleteCollection, s.AuthMiddleware)
 
-	// var collectionGroup = e.Group("/api/v1/collections")
-	// collectionGroup.GET("", s.ListCollections)
-	// collectionGroup.GET("/:id", s.GetCollectionByID)
-	// collectionGroup.POST("", s.CreateCollection, s.AuthMiddleware)
-	// collectionGroup.PUT("/:id", s.UpdateCollection, s.AuthMiddleware)
-	// collectionGroup.DELETE("/:id", s.DeleteCollection, s.AuthMiddleware)
+	collectionGroup.GET("/:collection_id/books", s.ListCollectionBooks, s.AuthMiddleware)
+	collectionGroup.PUT("/:collection_id/books", s.UpdateCollectionBooks, s.AuthMiddleware)
 
-	// // Collection books sub-routes
-	// collectionGroup.GET("/:collection_id/books", s.ListCollectionBooks)
-	// collectionGroup.POST("/:collection_id/books", s.CreateCollectionBook, s.AuthMiddleware)
-	// collectionGroup.DELETE("/:collection_id/books/:id", s.DeleteCollectionBook, s.AuthMiddleware)
-
-	// // Collection followers sub-routes
 	// collectionGroup.GET("/:collection_id/followers", s.ListCollectionFollowers)
 	// collectionGroup.POST("/:collection_id/followers", s.CreateCollectionFollower, s.AuthMiddleware)
 	// collectionGroup.DELETE("/:collection_id/followers/:id", s.DeleteCollectionFollower, s.AuthMiddleware)

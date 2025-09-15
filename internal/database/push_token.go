@@ -39,8 +39,9 @@ func (s *service) SavePushToken(
 	}
 
 	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "user_id"}, {Name: "token"}},
-		DoUpdates: clause.AssignmentColumns([]string{"provider", "last_seen", "updated_at"}),
+		Columns:     []clause.Column{{Name: "user_id"}, {Name: "token"}},
+		DoUpdates:   clause.AssignmentColumns([]string{"provider", "last_seen", "updated_at"}),
+		TargetWhere: clause.Where{Exprs: []clause.Expression{clause.Eq{Column: "deleted_at", Value: nil}}},
 	}).Create(&pt).Error
 }
 

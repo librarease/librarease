@@ -122,9 +122,14 @@ func (s *service) ListBooks(ctx context.Context, opt usecase.ListBooksOption) ([
 		ubooks = append(ubooks, ub)
 	}
 
+	bookIDs := make([]uuid.UUID, 0, len(ubooks))
+	for _, b := range ubooks {
+		bookIDs = append(bookIDs, b.ID)
+	}
+
 	// Fetch stats separately if requested
 	if opt.IncludeStats && len(ubooks) > 0 {
-		statsMap, err := s.getBookStats(ctx, ubooks)
+		statsMap, err := s.getBookStats(ctx, bookIDs)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -140,15 +145,9 @@ func (s *service) ListBooks(ctx context.Context, opt usecase.ListBooksOption) ([
 	return ubooks, int(count), nil
 }
 
-func (s *service) getBookStats(ctx context.Context, books []usecase.Book) (map[uuid.UUID]usecase.BookStats, error) {
-	if len(books) == 0 {
+func (s *service) getBookStats(ctx context.Context, bookIDs []uuid.UUID) (map[uuid.UUID]usecase.BookStats, error) {
+	if len(bookIDs) == 0 {
 		return map[uuid.UUID]usecase.BookStats{}, nil
-	}
-
-	// Extract book IDs
-	bookIDs := make([]uuid.UUID, 0, len(books))
-	for _, book := range books {
-		bookIDs = append(bookIDs, book.ID)
 	}
 
 	type bookStat struct {
@@ -234,7 +233,7 @@ func (s *service) GetBookByID(ctx context.Context, id uuid.UUID) (usecase.Book, 
 	}
 
 	// Fetch stats for this book
-	statsMap, err := s.getBookStats(ctx, []usecase.Book{book})
+	statsMap, err := s.getBookStats(ctx, []uuid.UUID{id})
 	if err != nil {
 		return usecase.Book{}, err
 	}

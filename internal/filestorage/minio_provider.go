@@ -61,3 +61,15 @@ func (f *MinIOStorage) MoveTempFilePublic(ctx context.Context, source string, de
 	_, err := f.client.CopyObject(ctx, copyDest, copySource)
 	return err
 }
+
+func (f *MinIOStorage) TempPath() string {
+	return f.tempPath
+}
+
+func (f *MinIOStorage) GetPresignedURL(ctx context.Context, path string) (string, error) {
+	u, err := f.client.PresignedGetObject(ctx, f.bucket, path, time.Minute*consts.PRESIGN_URL_EXPIRE_MINUTES, nil)
+	if err != nil {
+		return "", err
+	}
+	return u.String(), nil
+}

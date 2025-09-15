@@ -107,16 +107,15 @@ type Service interface {
 	DeleteWatchlist(context.Context, usecase.Watchlist) error
 
 	// collection
-	// ListCollections(context.Context, usecase.ListCollectionsOption) ([]usecase.Collection, int, error)
-	// GetCollectionByID(context.Context, uuid.UUID) (usecase.Collection, error)
-	// CreateCollection(context.Context, usecase.Collection) (usecase.Collection, error)
-	// UpdateCollection(context.Context, uuid.UUID, usecase.Collection) (usecase.Collection, error)
-	// DeleteCollection(context.Context, uuid.UUID) error
+	ListCollections(context.Context, usecase.ListCollectionsOption) ([]usecase.Collection, int, error)
+	GetCollectionByID(context.Context, uuid.UUID) (usecase.Collection, error)
+	CreateCollection(context.Context, usecase.Collection) (usecase.Collection, error)
+	UpdateCollection(context.Context, uuid.UUID, usecase.UpdateCollectionRequest) (usecase.Collection, error)
+	DeleteCollection(context.Context, uuid.UUID) error
 
 	// collection books
-	// ListCollectionBooks(context.Context, usecase.ListCollectionBooksOption) ([]usecase.CollectionBook, int, error)
-	// CreateCollectionBook(context.Context, usecase.CollectionBook) (usecase.CollectionBook, error)
-	// DeleteCollectionBook(context.Context, uuid.UUID) error
+	ListCollectionBooks(context.Context, uuid.UUID, usecase.ListCollectionBooksOption) ([]usecase.CollectionBook, int, error)
+	UpdateCollectionBooks(context.Context, uuid.UUID, []uuid.UUID) ([]usecase.CollectionBook, error)
 
 	// collection followers
 	// ListCollectionFollowers(context.Context, usecase.ListCollectionFollowersOption) ([]usecase.CollectionFollower, int, error)

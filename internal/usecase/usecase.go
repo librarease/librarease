@@ -105,16 +105,16 @@ type Repository interface {
 	DeleteWatchlist(context.Context, Watchlist) error
 
 	// collection
-	// ListCollections(context.Context, ListCollectionsOption) ([]Collection, int, error)
-	// GetCollectionByID(context.Context, uuid.UUID) (Collection, error)
-	// CreateCollection(context.Context, Collection) (Collection, error)
-	// UpdateCollection(context.Context, uuid.UUID, Collection) (Collection, error)
-	// DeleteCollection(context.Context, uuid.UUID) error
+	ListCollections(context.Context, ListCollectionsOption) ([]Collection, int, error)
+	GetCollectionByID(context.Context, uuid.UUID) (Collection, error)
+	CreateCollection(context.Context, Collection) (Collection, error)
+	UpdateCollection(context.Context, uuid.UUID, UpdateCollectionRequest) (Collection, error)
+	DeleteCollection(context.Context, uuid.UUID) error
 
 	// collection books
-	// ListCollectionBooks(context.Context, ListCollectionBooksOption) ([]CollectionBook, int, error)
-	// CreateCollectionBook(context.Context, CollectionBook) (CollectionBook, error)
-	// DeleteCollectionBook(context.Context, uuid.UUID) error
+	ListCollectionBooks(context.Context, uuid.UUID, ListCollectionBooksOption) ([]CollectionBook, int, error)
+	UpdateCollectionBooks(context.Context, uuid.UUID, []uuid.UUID) ([]CollectionBook, error)
+	DeleteCollectionBooks(context.Context, uuid.UUID, []uuid.UUID) error
 
 	// collection followers
 	// ListCollectionFollowers(context.Context, ListCollectionFollowersOption) ([]CollectionFollower, int, error)
@@ -133,6 +133,8 @@ type FileStorageProvider interface {
 	// MoveTempFilePublic moves source in temp+path to public+dest
 	MoveTempFilePublic(ctx context.Context, source string, dest string) error
 	GetPublicURL(context.Context) (string, error)
+	TempPath() string
+	GetPresignedURL(ctx context.Context, path string) (string, error)
 }
 
 type Mailer interface {

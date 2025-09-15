@@ -55,9 +55,6 @@ type ListBooksOption struct {
 	// For watchlist
 	IncludeWatchlists bool
 	WatchlistUserID   uuid.UUID
-
-	// For collection
-	CollectionID uuid.UUID
 }
 
 func (u Usecase) ListBooks(ctx context.Context, opt ListBooksOption) ([]Book, int, error) {
