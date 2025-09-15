@@ -82,7 +82,7 @@ func (s *Server) ListCollections(ctx echo.Context) error {
 		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	var data []Collection
+	data := make([]Collection, 0, len(collections))
 	for _, c := range collections {
 		cr := Collection{
 			ID:            c.ID.String(),

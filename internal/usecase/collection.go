@@ -89,11 +89,37 @@ type ListCollectionFollowersOption struct {
 
 // Collection usecase methods
 func (u Usecase) ListCollections(ctx context.Context, opt ListCollectionsOption) ([]Collection, int, error) {
-	return u.repo.ListCollections(ctx, opt)
+	collections, count, err := u.repo.ListCollections(ctx, opt)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
+
+	var list []Collection
+	for _, c := range collections {
+		if c.Cover != nil {
+			c.Cover.Path = fmt.Sprintf("%s/collections/covers/%s", publicURL, c.Cover.Path)
+		}
+		list = append(list, c)
+	}
+
+	return list, count, nil
 }
 
 func (u Usecase) GetCollectionByID(ctx context.Context, id uuid.UUID) (Collection, error) {
-	return u.repo.GetCollectionByID(ctx, id)
+	collection, err := u.repo.GetCollectionByID(ctx, id)
+	if err != nil {
+		return Collection{}, err
+	}
+
+	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
+
+	if collection.Cover != nil {
+		collection.Cover.Path = fmt.Sprintf("%s/collections/covers/%s", publicURL, collection.Cover.Path)
+	}
+
+	return collection, nil
 }
 
 func (u Usecase) CreateCollection(ctx context.Context, c Collection) (Collection, error) {

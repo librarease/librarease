@@ -115,7 +115,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	collectionGroup.PUT("/:id", s.UpdateCollection, s.AuthMiddleware)
 	collectionGroup.DELETE("/:id", s.DeleteCollection, s.AuthMiddleware)
 
-	collectionGroup.GET("/:collection_id/books", s.ListCollectionBooks, s.AuthMiddleware)
+	collectionGroup.GET("/:collection_id/books", s.ListCollectionBooks)
 	collectionGroup.PUT("/:collection_id/books", s.UpdateCollectionBooks, s.AuthMiddleware)
 
 	// collectionGroup.GET("/:collection_id/followers", s.ListCollectionFollowers)

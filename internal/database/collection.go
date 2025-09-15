@@ -202,6 +202,21 @@ func (s *service) GetCollectionByID(ctx context.Context, id uuid.UUID) (usecase.
 		}
 	}
 
+	if collection.Cover != nil {
+		uc.Cover = &usecase.Asset{
+			ID:        collection.Cover.ID,
+			Path:      collection.Cover.Path,
+			Colors:    collection.Cover.Colors,
+			OwnerID:   collection.Cover.OwnerID,
+			OwnerType: collection.Cover.OwnerType,
+			Kind:      collection.Cover.Kind,
+			IsPrimary: collection.Cover.IsPrimary,
+			Position:  collection.Cover.Position,
+			CreatedAt: collection.Cover.CreatedAt,
+			UpdatedAt: collection.Cover.UpdatedAt,
+		}
+	}
+
 	return uc, nil
 }
 
