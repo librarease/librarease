@@ -40,6 +40,8 @@ type ListCollectionsOption struct {
 	IncludeLibrary   bool
 	IncludeBooks     bool
 	IncludeFollowers bool
+	SortBy           string
+	SortIn           string
 }
 
 // CollectionBook structures

@@ -115,7 +115,19 @@ func (s *service) ListCollections(ctx context.Context, opt usecase.ListCollectio
 		db = db.Offset(opt.Offset)
 	}
 
-	if err := db.Find(&collections).Error; err != nil {
+	sortBy := "created_at"
+	sortIn := "desc"
+	if opt.SortBy != "" {
+		sortBy = opt.SortBy
+	}
+	if opt.SortIn != "" {
+		sortIn = opt.SortIn
+	}
+
+	if err := db.
+		Order(sortBy + " " + sortIn).
+		Find(&collections).
+		Error; err != nil {
 		return nil, 0, err
 	}
 

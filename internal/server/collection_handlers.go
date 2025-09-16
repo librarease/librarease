@@ -57,6 +57,8 @@ type ListCollectionsRequest struct {
 	Limit          int    `query:"limit"`
 	Skip           int    `query:"offset"`
 	IncludeLibrary bool   `query:"include_library"`
+	SortBy         string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at title"`
+	SortIn         string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 }
 
 func (s *Server) ListCollections(ctx echo.Context) error {
@@ -77,6 +79,8 @@ func (s *Server) ListCollections(ctx echo.Context) error {
 			Offset:         req.Skip,
 			IncludeLibrary: req.IncludeLibrary,
 			// BookTitle:      req.BookTitle,
+			SortBy: req.SortBy,
+			SortIn: req.SortIn,
 		})
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
