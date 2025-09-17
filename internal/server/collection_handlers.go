@@ -48,6 +48,7 @@ type Collection struct {
 	Cover         *Asset   `json:"cover,omitempty"`
 	BookCount     int      `json:"book_count"`
 	FollowerCount int      `json:"follower_count"`
+	BookIDs       []string `json:"book_ids"`
 }
 
 type ListCollectionsRequest struct {
@@ -135,6 +136,8 @@ func (s *Server) ListCollections(ctx echo.Context) error {
 
 type GetCollectionByIDRequest struct {
 	ID string `param:"id" validate:"required,uuid"`
+
+	IncludeBookIDs bool `query:"include_book_ids"`
 }
 
 func (s *Server) GetCollectionByID(ctx echo.Context) error {
@@ -148,7 +151,9 @@ func (s *Server) GetCollectionByID(ctx echo.Context) error {
 
 	id, _ := uuid.Parse(req.ID)
 
-	col, err := s.server.GetCollectionByID(ctx.Request().Context(), id)
+	col, err := s.server.GetCollectionByID(ctx.Request().Context(), id, usecase.GetCollectionOption{
+		IncludeBookIDs: req.IncludeBookIDs,
+	})
 	if err != nil {
 		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "collection not found"})
 	}
@@ -178,6 +183,10 @@ func (s *Server) GetCollectionByID(ctx echo.Context) error {
 		}
 	}
 
+	bookIDs := make([]string, 0, len(col.BookIDs))
+	for _, bid := range col.BookIDs {
+		bookIDs = append(bookIDs, bid.String())
+	}
 	var collection = Collection{
 		ID:            col.ID.String(),
 		LibraryID:     col.LibraryID.String(),
@@ -189,6 +198,7 @@ func (s *Server) GetCollectionByID(ctx echo.Context) error {
 		UpdatedAt:     col.UpdatedAt.UTC().Format(time.RFC3339),
 		Cover:         asset,
 		Library:       lib,
+		BookIDs:       bookIDs,
 	}
 
 	return ctx.JSON(http.StatusOK, Res{Data: collection})

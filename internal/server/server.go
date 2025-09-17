@@ -108,7 +108,7 @@ type Service interface {
 
 	// collection
 	ListCollections(context.Context, usecase.ListCollectionsOption) ([]usecase.Collection, int, error)
-	GetCollectionByID(context.Context, uuid.UUID) (usecase.Collection, error)
+	GetCollectionByID(context.Context, uuid.UUID, usecase.GetCollectionOption) (usecase.Collection, error)
 	CreateCollection(context.Context, usecase.Collection) (usecase.Collection, error)
 	UpdateCollection(context.Context, uuid.UUID, usecase.UpdateCollectionRequest) (usecase.Collection, error)
 	DeleteCollection(context.Context, uuid.UUID) error

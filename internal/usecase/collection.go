@@ -30,6 +30,7 @@ type Collection struct {
 
 	BookCount     int
 	FollowerCount int
+	BookIDs       []uuid.UUID
 }
 
 type ListCollectionsOption struct {
@@ -42,6 +43,10 @@ type ListCollectionsOption struct {
 	IncludeFollowers bool
 	SortBy           string
 	SortIn           string
+}
+
+type GetCollectionOption struct {
+	IncludeBookIDs bool
 }
 
 // CollectionBook structures
@@ -109,8 +114,8 @@ func (u Usecase) ListCollections(ctx context.Context, opt ListCollectionsOption)
 	return list, count, nil
 }
 
-func (u Usecase) GetCollectionByID(ctx context.Context, id uuid.UUID) (Collection, error) {
-	collection, err := u.repo.GetCollectionByID(ctx, id)
+func (u Usecase) GetCollectionByID(ctx context.Context, id uuid.UUID, opt GetCollectionOption) (Collection, error) {
+	collection, err := u.repo.GetCollectionByID(ctx, id, opt)
 	if err != nil {
 		return Collection{}, err
 	}

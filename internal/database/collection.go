@@ -176,7 +176,12 @@ func (s *service) ListCollections(ctx context.Context, opt usecase.ListCollectio
 }
 
 // GetCollectionByID retrieves a collection by ID
-func (s *service) GetCollectionByID(ctx context.Context, id uuid.UUID) (usecase.Collection, error) {
+func (s *service) GetCollectionByID(
+	ctx context.Context,
+	id uuid.UUID,
+	opt usecase.GetCollectionOption) (
+	usecase.Collection, error) {
+
 	var collection Collection
 
 	db := s.db.
@@ -192,6 +197,17 @@ func (s *service) GetCollectionByID(ctx context.Context, id uuid.UUID) (usecase.
 		return usecase.Collection{}, err
 	}
 
+	var bookIDs []uuid.UUID
+	if opt.IncludeBookIDs {
+		if err := s.db.
+			Model(&CollectionBooks{}).
+			Select("book_id").
+			Where("collection_id = ?", collection.ID).
+			Find(&bookIDs).Error; err != nil {
+			return usecase.Collection{}, err
+		}
+	}
+
 	uc := usecase.Collection{
 		ID:            collection.ID,
 		LibraryID:     collection.LibraryID,
@@ -201,6 +217,7 @@ func (s *service) GetCollectionByID(ctx context.Context, id uuid.UUID) (usecase.
 		UpdatedAt:     collection.UpdatedAt,
 		BookCount:     collection.BookCount,
 		FollowerCount: collection.FollowerCount,
+		BookIDs:       bookIDs,
 	}
 
 	if collection.Library != nil {

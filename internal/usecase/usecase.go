@@ -106,7 +106,7 @@ type Repository interface {
 
 	// collection
 	ListCollections(context.Context, ListCollectionsOption) ([]Collection, int, error)
-	GetCollectionByID(context.Context, uuid.UUID) (Collection, error)
+	GetCollectionByID(context.Context, uuid.UUID, GetCollectionOption) (Collection, error)
 	CreateCollection(context.Context, Collection) (Collection, error)
 	UpdateCollection(context.Context, uuid.UUID, UpdateCollectionRequest) (Collection, error)
 	DeleteCollection(context.Context, uuid.UUID) error
