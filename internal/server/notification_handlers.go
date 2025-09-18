@@ -138,7 +138,7 @@ func (s *Server) StreamNotifications(ctx echo.Context) error {
 
 	var noti *Notification
 
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(20 * time.Second)
 	defer ticker.Stop()
 
 	for {
