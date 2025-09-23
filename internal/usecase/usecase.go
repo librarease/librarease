@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -83,6 +84,11 @@ type Repository interface {
 
 	// analysis
 	GetAnalysis(context.Context, GetAnalysisOption) (Analysis, error)
+	OverdueAnalysis(context.Context, *time.Time, *time.Time, string) ([]OverdueAnalysis, error)
+	BookUtilization(context.Context, GetBookUtilizationOption) ([]BookUtilization, int, error)
+	BorrowingHeatmap(context.Context, uuid.UUID, *time.Time, *time.Time) ([]BorrowHeatmapCell, error)
+	GetPowerUsers(context.Context, GetPowerUsersOption) ([]PowerUser, int, error)
+	GetLongestUnreturned(context.Context, GetOverdueBorrowsOption) ([]OverdueBorrow, int, error)
 
 	// notification
 	SubscribeNotifications(context.Context, chan<- Notification) error

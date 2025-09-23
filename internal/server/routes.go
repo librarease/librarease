@@ -97,6 +97,11 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	var analysisGroup = e.Group("/api/v1/analysis")
 	analysisGroup.GET("", s.GetAnalysis)
+	analysisGroup.GET("/overdue", s.GetOverdueAnalysis)
+	analysisGroup.GET("/book-utilization", s.GetBookUtilization)
+	analysisGroup.GET("/borrowing-heatmap", s.GetBorrowingHeatmap)
+	analysisGroup.GET("/power-users", s.GetPowerUsers)
+	analysisGroup.GET("/longest-unreturned", s.GetLongestUnreturned)
 
 	var fileGroup = e.Group("/api/v1/files")
 	fileGroup.GET("/upload", s.GetTempUploadURL)

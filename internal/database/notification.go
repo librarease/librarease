@@ -24,6 +24,7 @@ type Notification struct {
 	CreatedAt     time.Time  `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt     time.Time  `gorm:"column:updated_at" json:"updated_at"`
 	ReadAt        *time.Time `gorm:"column:read_at" json:"read_at"`
+	SentAt        *time.Time `gorm:"column:sent_at" json:"sent_at"`
 	ReferenceID   *uuid.UUID `gorm:"column:reference_id;type:uuid" json:"reference_id"`
 	ReferenceType string     `gorm:"column:reference_type" json:"reference_type"`
 	DeletedAt     *gorm.DeletedAt
@@ -88,7 +89,7 @@ func (h *notificationHub) listen() {
 		if n == nil {
 			continue
 		}
-		// Parse n.Payload into usecase.Notification (implement your own parsing)
+		// Parse n.Payload into usecase.Notification
 		notif := parseNotification(n)
 
 		// Notify all subscribers

@@ -4,14 +4,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/librarease/librarease/internal/usecase"
 
 	"github.com/labstack/echo/v4"
 )
 
 type BorrowingAnalysis struct {
-	Timestamp string `json:"timestamp"`
-	Count     int    `json:"count"`
+	Timestamp   string `json:"timestamp"`
+	TotalBorrow int    `json:"total_borrow"`
+	TotalReturn int    `json:"total_return"`
 }
 
 type RevenueAnalysis struct {
@@ -76,18 +78,20 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 
 	var borrowing = make([]BorrowingAnalysis, 0)
 	var wg sync.WaitGroup
-	wg.Add(4)
-	go func() {
+
+	wg.Go(func() {
 		defer wg.Done()
 		for _, v := range res.Borrowing {
 			borrowing = append(borrowing, BorrowingAnalysis{
-				Timestamp: v.Timestamp.Format(time.RFC3339),
-				Count:     v.Count,
+				Timestamp:   v.Timestamp.Format(time.RFC3339),
+				TotalBorrow: v.TotalBorrow,
+				TotalReturn: v.TotalReturn,
 			})
 		}
-	}()
+	})
 	var revenue = make([]RevenueAnalysis, 0)
-	go func() {
+
+	wg.Go(func() {
 		defer wg.Done()
 		for _, v := range res.Revenue {
 			revenue = append(revenue, RevenueAnalysis{
@@ -96,9 +100,10 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 				Fine:         v.Fine,
 			})
 		}
-	}()
+	})
+
 	var book = make([]BookAnalysis, 0)
-	go func() {
+	wg.Go(func() {
 		defer wg.Done()
 		for _, v := range res.Book {
 			book = append(book, BookAnalysis{
@@ -106,9 +111,10 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 				Title: v.Title,
 			})
 		}
-	}()
+	})
+
 	var membership = make([]MembershipAnalysis, 0)
-	go func() {
+	wg.Go(func() {
 		defer wg.Done()
 		for _, v := range res.Membership {
 			membership = append(membership, MembershipAnalysis{
@@ -116,7 +122,7 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 				Count: v.Count,
 			})
 		}
-	}()
+	})
 
 	wg.Wait()
 	analysis := Analysis{
@@ -131,6 +137,364 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 		Meta: &Meta{
 			Skip:  req.Skip,
 			Limit: req.Limit,
+		},
+	})
+}
+
+type OverdueAnalysisResponse struct {
+	MembershipID   string  `json:"membership_id"`
+	MembershipName string  `json:"membership_name"`
+	Total          int     `json:"total"`
+	Overdue        int     `json:"overdue"`
+	Rate           float64 `json:"rate"`
+}
+
+type GetOverdueAnalysisRequest struct {
+	From      *string `query:"from"`
+	To        *string `query:"to"`
+	LibraryID string  `query:"library_id" validate:"required,uuid"`
+}
+
+func (s *Server) GetOverdueAnalysis(ctx echo.Context) error {
+	var req GetOverdueAnalysisRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	var from, to *time.Time
+	if req.From != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.From)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid from date format"})
+		}
+		from = &parsed
+	}
+	if req.To != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.To)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid to date format"})
+		}
+		to = &parsed
+	}
+
+	res, err := s.server.OverdueAnalysis(ctx.Request().Context(), from, to, req.LibraryID)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	response := make([]OverdueAnalysisResponse, len(res))
+	for i, r := range res {
+		response[i] = OverdueAnalysisResponse{
+			MembershipID:   r.MembershipID.String(),
+			MembershipName: r.MembershipName,
+			Total:          r.Total,
+			Overdue:        r.Overdue,
+			Rate:           r.Rate,
+		}
+	}
+
+	return ctx.JSON(200, Res{
+		Data: response,
+	})
+}
+
+type BookUtilizationResponse struct {
+	BookID          string  `json:"book_id"`
+	BookTitle       string  `json:"book_title"`
+	Copies          int     `json:"copies"`
+	TotalBorrowings int     `json:"total_borrowings"`
+	UtilizationRate float64 `json:"utilization_rate"`
+}
+
+type GetBookUtilizationRequest struct {
+	From      *string `query:"from"`
+	To        *string `query:"to"`
+	LibraryID string  `query:"library_id" validate:"required,uuid"`
+	Limit     int     `query:"limit"`
+	Skip      int     `query:"skip"`
+}
+
+func (s *Server) GetBookUtilization(ctx echo.Context) error {
+	var req GetBookUtilizationRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	var from, to *time.Time
+	if req.From != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.From)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid from date format"})
+		}
+		from = &parsed
+	}
+	if req.To != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.To)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid to date format"})
+		}
+		to = &parsed
+	}
+
+	opt := usecase.GetBookUtilizationOption{
+		From:      from,
+		To:        to,
+		LibraryID: req.LibraryID,
+		Limit:     req.Limit,
+		Skip:      req.Skip,
+	}
+
+	res, total, err := s.server.BookUtilization(ctx.Request().Context(), opt)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	response := make([]BookUtilizationResponse, len(res))
+	for i, r := range res {
+		response[i] = BookUtilizationResponse{
+			BookID:          r.BookID.String(),
+			BookTitle:       r.BookTitle,
+			Copies:          r.Copies,
+			TotalBorrowings: r.TotalBorrowings,
+			UtilizationRate: r.UtilizationRate,
+		}
+	}
+
+	return ctx.JSON(200, Res{
+		Data: response,
+		Meta: &Meta{
+			Skip:  req.Skip,
+			Limit: req.Limit,
+			Total: total,
+		},
+	})
+}
+
+type BorrowHeatmapResponse struct {
+	DayOfWeek int `json:"day_of_week"` // 0=Sunday ... 6=Saturday
+	HourOfDay int `json:"hour_of_day"` // 0-23
+	Count     int `json:"count"`
+}
+
+type GetBorrowingHeatmapRequest struct {
+	Start     *string `query:"start"`
+	End       *string `query:"end"`
+	LibraryID string  `query:"library_id" validate:"required,uuid"`
+}
+
+func (s *Server) GetBorrowingHeatmap(ctx echo.Context) error {
+	var req GetBorrowingHeatmapRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	libraryID, err := uuid.Parse(req.LibraryID)
+	if err != nil {
+		return ctx.JSON(400, map[string]string{"error": "invalid library_id format"})
+	}
+
+	var start, end *time.Time
+	if req.Start != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.Start)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid start date format"})
+		}
+		start = &parsed
+	}
+	if req.End != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.End)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid end date format"})
+		}
+		end = &parsed
+	}
+
+	res, err := s.server.BorrowingHeatmap(ctx.Request().Context(), libraryID, start, end)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	response := make([]BorrowHeatmapResponse, len(res))
+	for i, r := range res {
+		response[i] = BorrowHeatmapResponse{
+			DayOfWeek: r.DayOfWeek,
+			HourOfDay: r.HourOfDay,
+			Count:     r.Count,
+		}
+	}
+
+	return ctx.JSON(200, Res{
+		Data: response,
+	})
+}
+
+type PowerUserResponse struct {
+	UserID     string `json:"user_id"`
+	UserName   string `json:"user_name"`
+	UserEmail  string `json:"user_email"`
+	TotalBooks int    `json:"total_books"`
+}
+
+type GetPowerUsersRequest struct {
+	From      *string `query:"from"`
+	To        *string `query:"to"`
+	LibraryID string  `query:"library_id" validate:"required,uuid"`
+	Limit     int     `query:"limit"`
+	Skip      int     `query:"skip"`
+}
+
+func (s *Server) GetPowerUsers(ctx echo.Context) error {
+	var req GetPowerUsersRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	libraryID, err := uuid.Parse(req.LibraryID)
+	if err != nil {
+		return ctx.JSON(400, map[string]string{"error": "invalid library_id format"})
+	}
+
+	var from, to *time.Time
+	if req.From != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.From)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid from date format"})
+		}
+		from = &parsed
+	}
+	if req.To != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.To)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid to date format"})
+		}
+		to = &parsed
+	}
+
+	opt := usecase.GetPowerUsersOption{
+		From:      from,
+		To:        to,
+		LibraryID: libraryID,
+		Limit:     req.Limit,
+		Skip:      req.Skip,
+	}
+
+	res, total, err := s.server.GetPowerUsers(ctx.Request().Context(), opt)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	response := make([]PowerUserResponse, len(res))
+	for i, r := range res {
+		response[i] = PowerUserResponse{
+			UserID:     r.UserID.String(),
+			UserName:   r.UserName,
+			UserEmail:  r.UserEmail,
+			TotalBooks: r.TotalBooks,
+		}
+	}
+
+	return ctx.JSON(200, Res{
+		Data: response,
+		Meta: &Meta{
+			Skip:  req.Skip,
+			Limit: req.Limit,
+			Total: total,
+		},
+	})
+}
+
+type OverdueBorrowResponse struct {
+	BorrowingID string `json:"borrowing_id"`
+	BorrowedAt  string `json:"borrowed_at"`
+	UserID      string `json:"user_id"`
+	UserName    string `json:"user_name"`
+	BookID      string `json:"book_id"`
+	BookTitle   string `json:"book_title"`
+	DaysOut     int    `json:"days_out"`
+}
+
+type GetOverdueBorrowsRequest struct {
+	From      *string `query:"from"`
+	To        *string `query:"to"`
+	LibraryID string  `query:"library_id" validate:"required,uuid"`
+	Limit     int     `query:"limit"`
+	Skip      int     `query:"skip"`
+}
+
+func (s *Server) GetLongestUnreturned(ctx echo.Context) error {
+	var req GetOverdueBorrowsRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	libraryID, err := uuid.Parse(req.LibraryID)
+	if err != nil {
+		return ctx.JSON(400, map[string]string{"error": "invalid library_id format"})
+	}
+
+	var from, to *time.Time
+	if req.From != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.From)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid from date format"})
+		}
+		from = &parsed
+	}
+	if req.To != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.To)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid to date format"})
+		}
+		to = &parsed
+	}
+
+	opt := usecase.GetOverdueBorrowsOption{
+		From:      from,
+		To:        to,
+		LibraryID: libraryID,
+		Limit:     req.Limit,
+		Skip:      req.Skip,
+	}
+
+	res, total, err := s.server.GetLongestUnreturned(ctx.Request().Context(), opt)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	response := make([]OverdueBorrowResponse, len(res))
+	for i, r := range res {
+		response[i] = OverdueBorrowResponse{
+			BorrowingID: r.BorrowingID.String(),
+			BorrowedAt:  r.BorrowedAt.Format(time.RFC3339),
+			UserID:      r.UserID.String(),
+			UserName:    r.UserName,
+			BookID:      r.BookID.String(),
+			BookTitle:   r.BookTitle,
+			DaysOut:     r.DaysOut,
+		}
+	}
+
+	return ctx.JSON(200, Res{
+		Data: response,
+		Meta: &Meta{
+			Skip:  req.Skip,
+			Limit: req.Limit,
+			Total: total,
 		},
 	})
 }
