@@ -80,7 +80,6 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 	var wg sync.WaitGroup
 
 	wg.Go(func() {
-		defer wg.Done()
 		for _, v := range res.Borrowing {
 			borrowing = append(borrowing, BorrowingAnalysis{
 				Timestamp:   v.Timestamp.Format(time.RFC3339),
@@ -92,7 +91,6 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 	var revenue = make([]RevenueAnalysis, 0)
 
 	wg.Go(func() {
-		defer wg.Done()
 		for _, v := range res.Revenue {
 			revenue = append(revenue, RevenueAnalysis{
 				Timestamp:    v.Timestamp.Format(time.RFC3339),
@@ -104,7 +102,6 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 
 	var book = make([]BookAnalysis, 0)
 	wg.Go(func() {
-		defer wg.Done()
 		for _, v := range res.Book {
 			book = append(book, BookAnalysis{
 				Count: v.Count,
@@ -115,7 +112,6 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 
 	var membership = make([]MembershipAnalysis, 0)
 	wg.Go(func() {
-		defer wg.Done()
 		for _, v := range res.Membership {
 			membership = append(membership, MembershipAnalysis{
 				Name:  v.Name,
