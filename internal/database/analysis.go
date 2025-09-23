@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,89 +15,100 @@ func (s *service) GetAnalysis(
 	usecase.Analysis, error) {
 
 	var borrowing []usecase.BorrowingAnalysis
-	if err := s.db.WithContext(ctx).Table("borrowings b").
-		Joins("JOIN books bk ON b.book_id = bk.id").
-		Joins("LEFT JOIN returnings r ON r.borrowing_id = b.id AND r.deleted_at IS NULL").
-		Select(`
-			DATE_TRUNC('day', b.borrowed_at) AS timestamp, 
-			COUNT(b.id) AS total_borrow,
-			COUNT(r.id) AS total_return
-		`).
-		Group("DATE_TRUNC('day', b.borrowed_at)").
-		Order("DATE_TRUNC('day', b.borrowed_at) DESC").
-		Where("b.borrowed_at BETWEEN ? AND ?", opt.From, opt.To).
-		Where("bk.library_id = ?", opt.LibraryID).
-		Scan(&borrowing).
-		Error; err != nil {
+	if err := s.db.WithContext(ctx).Raw(`
+		WITH date_series AS (
+			SELECT generate_series(
+				date_trunc('day', ?::timestamp),
+				date_trunc('day', ?::timestamp),
+				'1 day'::interval
+			) AS date_val
+		),
+		borrowing_counts AS (
+			SELECT 
+				DATE_TRUNC('day', b.borrowed_at) AS date_val,
+				COUNT(b.id) AS total_borrow
+			FROM borrowings b
+			JOIN books bk ON b.book_id = bk.id
+			WHERE b.borrowed_at BETWEEN ? AND ?
+				AND bk.library_id = ?
+				AND b.deleted_at IS NULL
+			GROUP BY DATE_TRUNC('day', b.borrowed_at)
+		),
+		returning_counts AS (
+			SELECT 
+				DATE_TRUNC('day', r.returned_at) AS date_val,
+				COUNT(r.id) AS total_return
+			FROM returnings r
+			JOIN borrowings b ON r.borrowing_id = b.id
+			JOIN books bk ON b.book_id = bk.id
+			WHERE r.returned_at BETWEEN ? AND ?
+				AND bk.library_id = ?
+				AND r.deleted_at IS NULL
+				AND b.deleted_at IS NULL
+			GROUP BY DATE_TRUNC('day', r.returned_at)
+		)
+		SELECT 
+			ds.date_val AS timestamp,
+			COALESCE(bc.total_borrow, 0) AS total_borrow,
+			COALESCE(rc.total_return, 0) AS total_return
+		FROM date_series ds
+		LEFT JOIN borrowing_counts bc ON ds.date_val = bc.date_val
+		LEFT JOIN returning_counts rc ON ds.date_val = rc.date_val
+		WHERE COALESCE(bc.total_borrow, 0) > 0 OR COALESCE(rc.total_return, 0) > 0
+		ORDER BY ds.date_val ASC
+	`, opt.From, opt.To, opt.From, opt.To, opt.LibraryID, opt.From, opt.To, opt.LibraryID).
+		Scan(&borrowing).Error; err != nil {
 
 		return usecase.Analysis{}, err
 	}
-	slices.Reverse(borrowing)
 
-	var fineData []usecase.RevenueAnalysis
-	if err := s.db.WithContext(ctx).Table("borrowings b").
-		Joins("JOIN subscriptions s ON b.subscription_id = s.id").
-		Joins("JOIN memberships m ON s.membership_id = m.id").
-		Joins("JOIN returnings r ON r.borrowing_id = b.id").
-		Select(`
-			DATE_TRUNC('day', r.returned_at) AS timestamp,
-			-- SUM((EXTRACT(DAY FROM r.returned_at - b.due_at)) * s.fine_per_day) AS predicted_fine,
-			SUM(r.fine) AS fine
-		`).
-		// Where("r.returned_at > b.due_at").
-		Where("r.deleted_at IS NULL").
-		Where("r.fine > 0").
-		Where("r.returned_at BETWEEN ? AND ?", opt.From, opt.To).
-		Where("m.library_id = ?", opt.LibraryID).
-		Group("DATE_TRUNC('day', r.returned_at)").
-		Order("DATE_TRUNC('day', r.returned_at) DESC").
-		Scan(&fineData).
-		Error; err != nil {
+	var revenue []usecase.RevenueAnalysis
+	if err := s.db.WithContext(ctx).Raw(`
+		WITH date_series AS (
+			SELECT generate_series(
+				date_trunc('day', ?::timestamp),
+				date_trunc('day', ?::timestamp),
+				'1 day'::interval
+			) AS date_val
+		),
+		fine_data AS (
+			SELECT 
+				DATE_TRUNC('day', r.returned_at) AS date_val,
+				SUM(r.fine) AS fine
+			FROM returnings r
+			JOIN borrowings b ON r.borrowing_id = b.id
+			JOIN subscriptions s ON b.subscription_id = s.id
+			JOIN memberships m ON s.membership_id = m.id
+			WHERE r.deleted_at IS NULL
+				AND r.fine > 0
+				AND r.returned_at BETWEEN ? AND ?
+				AND m.library_id = ?
+			GROUP BY DATE_TRUNC('day', r.returned_at)
+		),
+		subscription_data AS (
+			SELECT 
+				DATE_TRUNC('day', s.created_at) AS date_val,
+				SUM(s.amount) AS subscription
+			FROM subscriptions s
+			JOIN memberships m ON s.membership_id = m.id
+			WHERE s.created_at BETWEEN ? AND ?
+				AND m.library_id = ?
+			GROUP BY DATE_TRUNC('day', s.created_at)
+		)
+		SELECT 
+			ds.date_val AS timestamp,
+			COALESCE(fd.fine, 0) AS fine,
+			COALESCE(sd.subscription, 0) AS subscription
+		FROM date_series ds
+		LEFT JOIN fine_data fd ON ds.date_val = fd.date_val
+		LEFT JOIN subscription_data sd ON ds.date_val = sd.date_val
+		WHERE COALESCE(fd.fine, 0) > 0 OR COALESCE(sd.subscription, 0) > 0
+		ORDER BY ds.date_val ASC
+	`, opt.From, opt.To, opt.From, opt.To, opt.LibraryID, opt.From, opt.To, opt.LibraryID).
+		Scan(&revenue).Error; err != nil {
 
 		return usecase.Analysis{}, err
 	}
-
-	var subscriptionData []usecase.RevenueAnalysis
-	if err := s.db.WithContext(ctx).Table("subscriptions s").
-		Joins("JOIN memberships m ON s.membership_id = m.id").
-		Select("DATE_TRUNC('day', s.created_at) AS timestamp, SUM(s.amount) AS subscription").
-		Group("DATE_TRUNC('day', s.created_at)").
-		Order("DATE_TRUNC('day', s.created_at) DESC").
-		Where("s.created_at BETWEEN ? AND ?", opt.From, opt.To).
-		Where("m.library_id = ?", opt.LibraryID).
-		Scan(&subscriptionData).
-		Error; err != nil {
-
-		return usecase.Analysis{}, err
-	}
-	revenueMap := make(map[time.Time]usecase.RevenueAnalysis)
-	for _, r := range fineData {
-		revenueMap[r.Timestamp] = r
-	}
-
-	for _, r := range subscriptionData {
-		if v, exists := revenueMap[r.Timestamp]; exists {
-			v.Subscription = r.Subscription
-			revenueMap[r.Timestamp] = v
-		} else {
-			revenueMap[r.Timestamp] = usecase.RevenueAnalysis{
-				Timestamp:    r.Timestamp,
-				Subscription: r.Subscription,
-			}
-		}
-	}
-
-	revenue := make([]usecase.RevenueAnalysis, 0, len(revenueMap))
-	for _, r := range revenueMap {
-		revenue = append(revenue, r)
-	}
-
-	slices.SortFunc(revenue, func(a, b usecase.RevenueAnalysis) int {
-		if a.Timestamp.Before(b.Timestamp) {
-			return -1
-		}
-		return 1
-	})
 
 	var book []usecase.BookAnalysis
 	if err := s.db.WithContext(ctx).Table("borrowings b").
