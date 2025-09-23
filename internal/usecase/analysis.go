@@ -23,12 +23,14 @@ type RevenueAnalysis struct {
 
 // book borrowing count
 type BookAnalysis struct {
+	ID    uuid.UUID
 	Count int
 	Title string
 }
 
 // membership purchasing count
 type MembershipAnalysis struct {
+	ID    uuid.UUID
 	Name  string
 	Count int
 }

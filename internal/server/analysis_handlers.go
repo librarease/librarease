@@ -23,11 +23,13 @@ type RevenueAnalysis struct {
 }
 
 type BookAnalysis struct {
+	ID    string `json:"id"`
 	Count int    `json:"count"`
 	Title string `json:"title"`
 }
 
 type MembershipAnalysis struct {
+	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Count int    `json:"count"`
 }
@@ -104,6 +106,7 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 	wg.Go(func() {
 		for _, v := range res.Book {
 			book = append(book, BookAnalysis{
+				ID:    v.ID.String(),
 				Count: v.Count,
 				Title: v.Title,
 			})
@@ -114,6 +117,7 @@ func (s *Server) GetAnalysis(ctx echo.Context) error {
 	wg.Go(func() {
 		for _, v := range res.Membership {
 			membership = append(membership, MembershipAnalysis{
+				ID:    v.ID.String(),
 				Name:  v.Name,
 				Count: v.Count,
 			})
