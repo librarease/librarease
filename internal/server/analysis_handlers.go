@@ -276,20 +276,21 @@ func (s *Server) GetBookUtilization(ctx echo.Context) error {
 	})
 }
 
-type BorrowHeatmapResponse struct {
-	DayOfWeek int `json:"day_of_week"` // 0=Sunday ... 6=Saturday
-	HourOfDay int `json:"hour_of_day"` // 0-23
-	Count     int `json:"count"`
+type HeatmapResponse struct {
+	DayOfWeek    int `json:"day_of_week"`    // 0=Sunday ... 6=Saturday
+	HourOfDay    int `json:"hour_of_day"`    // 0-23
+	MinuteOfHour int `json:"minute_of_hour"` // 0 or 30
+	Count        int `json:"count"`
 }
 
-type GetBorrowingHeatmapRequest struct {
+type GetHeatmapRequest struct {
 	Start     *string `query:"start"`
 	End       *string `query:"end"`
 	LibraryID string  `query:"library_id" validate:"required,uuid"`
 }
 
 func (s *Server) GetBorrowingHeatmap(ctx echo.Context) error {
-	var req GetBorrowingHeatmapRequest
+	var req GetHeatmapRequest
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}
@@ -323,12 +324,63 @@ func (s *Server) GetBorrowingHeatmap(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	response := make([]BorrowHeatmapResponse, len(res))
+	response := make([]HeatmapResponse, len(res))
 	for i, r := range res {
-		response[i] = BorrowHeatmapResponse{
-			DayOfWeek: r.DayOfWeek,
-			HourOfDay: r.HourOfDay,
-			Count:     r.Count,
+		response[i] = HeatmapResponse{
+			DayOfWeek:    r.DayOfWeek,
+			HourOfDay:    r.HourOfDay,
+			MinuteOfHour: r.MinuteOfHour,
+			Count:        r.Count,
+		}
+	}
+
+	return ctx.JSON(200, Res{
+		Data: response,
+	})
+}
+
+func (s *Server) GetReturningHeatmap(ctx echo.Context) error {
+	var req GetHeatmapRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	libraryID, err := uuid.Parse(req.LibraryID)
+	if err != nil {
+		return ctx.JSON(400, map[string]string{"error": "invalid library_id format"})
+	}
+
+	var start, end *time.Time
+	if req.Start != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.Start)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid start date format"})
+		}
+		start = &parsed
+	}
+	if req.End != nil {
+		parsed, err := time.Parse(time.RFC3339, *req.End)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": "invalid end date format"})
+		}
+		end = &parsed
+	}
+
+	res, err := s.server.ReturningHeatmap(ctx.Request().Context(), libraryID, start, end)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	response := make([]HeatmapResponse, len(res))
+	for i, r := range res {
+		response[i] = HeatmapResponse{
+			DayOfWeek:    r.DayOfWeek,
+			HourOfDay:    r.HourOfDay,
+			MinuteOfHour: r.MinuteOfHour,
+			Count:        r.Count,
 		}
 	}
 

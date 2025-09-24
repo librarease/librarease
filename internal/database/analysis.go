@@ -282,12 +282,13 @@ func (r *service) BorrowingHeatmap(
 	ctx context.Context,
 	libraryID uuid.UUID,
 	start, end *time.Time) (
-	[]usecase.BorrowHeatmapCell, error) {
+	[]usecase.HeatmapCell, error) {
 
 	q := `
         SELECT
             EXTRACT(DOW FROM b.borrowed_at)::int AS day_of_week,
             EXTRACT(HOUR FROM b.borrowed_at)::int AS hour_of_day,
+            CASE WHEN EXTRACT(MINUTE FROM b.borrowed_at)::int >= 30 THEN 30 ELSE 0 END AS minute_of_hour,
             COUNT(b.id) AS count
         FROM borrowings b
 		JOIN subscriptions s ON b.subscription_id = s.id
@@ -308,8 +309,8 @@ func (r *service) BorrowingHeatmap(
 		i++
 	}
 	q += `
-        GROUP BY day_of_week, hour_of_day
-        ORDER BY day_of_week, hour_of_day
+        GROUP BY day_of_week, hour_of_day, minute_of_hour
+        ORDER BY day_of_week, hour_of_day, minute_of_hour
     `
 
 	rows, err := r.db.WithContext(ctx).Raw(q, args...).Rows()
@@ -318,10 +319,64 @@ func (r *service) BorrowingHeatmap(
 	}
 	defer rows.Close()
 
-	var cells []usecase.BorrowHeatmapCell
+	var cells []usecase.HeatmapCell
 	for rows.Next() {
-		var c usecase.BorrowHeatmapCell
-		if err := rows.Scan(&c.DayOfWeek, &c.HourOfDay, &c.Count); err != nil {
+		var c usecase.HeatmapCell
+		if err := rows.Scan(&c.DayOfWeek, &c.HourOfDay, &c.MinuteOfHour, &c.Count); err != nil {
+			return nil, err
+		}
+		cells = append(cells, c)
+	}
+	return cells, rows.Err()
+}
+
+func (r *service) ReturningHeatmap(
+	ctx context.Context,
+	libraryID uuid.UUID,
+	start, end *time.Time) (
+	[]usecase.HeatmapCell, error) {
+
+	q := `
+        SELECT
+            EXTRACT(DOW FROM r.returned_at)::int AS day_of_week,
+            EXTRACT(HOUR FROM r.returned_at)::int AS hour_of_day,
+            CASE WHEN EXTRACT(MINUTE FROM r.returned_at)::int >= 30 THEN 30 ELSE 0 END AS minute_of_hour,
+            COUNT(r.id) AS count
+        FROM returnings r
+		JOIN borrowings b ON r.borrowing_id = b.id
+		JOIN subscriptions s ON b.subscription_id = s.id
+		JOIN memberships m ON s.membership_id = m.id
+        WHERE r.deleted_at IS NULL
+          AND b.deleted_at IS NULL
+          AND m.library_id = $1
+    `
+	args := []any{libraryID}
+	i := 2
+	if start != nil {
+		q += fmt.Sprintf(" AND r.returned_at >= $%d", i)
+		args = append(args, *start)
+		i++
+	}
+	if end != nil {
+		q += fmt.Sprintf(" AND r.returned_at <= $%d", i)
+		args = append(args, *end)
+		i++
+	}
+	q += `
+        GROUP BY day_of_week, hour_of_day, minute_of_hour
+        ORDER BY day_of_week, hour_of_day, minute_of_hour
+    `
+
+	rows, err := r.db.WithContext(ctx).Raw(q, args...).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var cells []usecase.HeatmapCell
+	for rows.Next() {
+		var c usecase.HeatmapCell
+		if err := rows.Scan(&c.DayOfWeek, &c.HourOfDay, &c.MinuteOfHour, &c.Count); err != nil {
 			return nil, err
 		}
 		cells = append(cells, c)

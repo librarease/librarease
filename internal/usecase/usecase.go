@@ -86,7 +86,8 @@ type Repository interface {
 	GetAnalysis(context.Context, GetAnalysisOption) (Analysis, error)
 	OverdueAnalysis(context.Context, *time.Time, *time.Time, string) ([]OverdueAnalysis, error)
 	BookUtilization(context.Context, GetBookUtilizationOption) ([]BookUtilization, int, error)
-	BorrowingHeatmap(context.Context, uuid.UUID, *time.Time, *time.Time) ([]BorrowHeatmapCell, error)
+	BorrowingHeatmap(context.Context, uuid.UUID, *time.Time, *time.Time) ([]HeatmapCell, error)
+	ReturningHeatmap(context.Context, uuid.UUID, *time.Time, *time.Time) ([]HeatmapCell, error)
 	GetPowerUsers(context.Context, GetPowerUsersOption) ([]PowerUser, int, error)
 	GetLongestUnreturned(context.Context, GetOverdueBorrowsOption) ([]OverdueBorrow, int, error)
 

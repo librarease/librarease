@@ -62,8 +62,12 @@ func (u Usecase) BookUtilization(ctx context.Context, opt GetBookUtilizationOpti
 	return u.repo.BookUtilization(ctx, opt)
 }
 
-func (u Usecase) BorrowingHeatmap(ctx context.Context, libraryID uuid.UUID, start, end *time.Time) ([]BorrowHeatmapCell, error) {
+func (u Usecase) BorrowingHeatmap(ctx context.Context, libraryID uuid.UUID, start, end *time.Time) ([]HeatmapCell, error) {
 	return u.repo.BorrowingHeatmap(ctx, libraryID, start, end)
+}
+
+func (u Usecase) ReturningHeatmap(ctx context.Context, libraryID uuid.UUID, start, end *time.Time) ([]HeatmapCell, error) {
+	return u.repo.ReturningHeatmap(ctx, libraryID, start, end)
 }
 
 func (u Usecase) GetPowerUsers(ctx context.Context, opt GetPowerUsersOption) ([]PowerUser, int, error) {
@@ -90,10 +94,11 @@ type BookUtilization struct {
 	UtilizationRate float64
 }
 
-type BorrowHeatmapCell struct {
-	DayOfWeek int // 0=Sunday ... 6=Saturday
-	HourOfDay int // 0-23
-	Count     int
+type HeatmapCell struct {
+	DayOfWeek    int // 0=Sunday ... 6=Saturday
+	HourOfDay    int // 0-23
+	MinuteOfHour int // 0 or 30
+	Count        int
 }
 
 type PowerUser struct {

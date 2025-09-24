@@ -100,6 +100,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	analysisGroup.GET("/overdue", s.GetOverdueAnalysis)
 	analysisGroup.GET("/book-utilization", s.GetBookUtilization)
 	analysisGroup.GET("/borrowing-heatmap", s.GetBorrowingHeatmap)
+	analysisGroup.GET("/returning-heatmap", s.GetReturningHeatmap)
 	analysisGroup.GET("/power-users", s.GetPowerUsers)
 	analysisGroup.GET("/longest-unreturned", s.GetLongestUnreturned)
 

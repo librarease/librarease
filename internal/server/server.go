@@ -91,7 +91,8 @@ type Service interface {
 	GetAnalysis(context.Context, usecase.GetAnalysisOption) (usecase.Analysis, error)
 	OverdueAnalysis(context.Context, *time.Time, *time.Time, string) ([]usecase.OverdueAnalysis, error)
 	BookUtilization(context.Context, usecase.GetBookUtilizationOption) ([]usecase.BookUtilization, int, error)
-	BorrowingHeatmap(context.Context, uuid.UUID, *time.Time, *time.Time) ([]usecase.BorrowHeatmapCell, error)
+	BorrowingHeatmap(context.Context, uuid.UUID, *time.Time, *time.Time) ([]usecase.HeatmapCell, error)
+	ReturningHeatmap(context.Context, uuid.UUID, *time.Time, *time.Time) ([]usecase.HeatmapCell, error)
 	GetPowerUsers(context.Context, usecase.GetPowerUsersOption) ([]usecase.PowerUser, int, error)
 	GetLongestUnreturned(context.Context, usecase.GetOverdueBorrowsOption) ([]usecase.OverdueBorrow, int, error)
 
