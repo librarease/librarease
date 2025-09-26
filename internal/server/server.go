@@ -17,6 +17,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/plugin/opentelemetry/tracing"
 
 	"github.com/librarease/librarease/internal/config"
 	"github.com/librarease/librarease/internal/database"
@@ -208,6 +209,9 @@ func NewApp() (*App, error) {
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open gorm database connection: %w", err)
+	}
+	if err := gormDB.Use(tracing.NewPlugin()); err != nil {
+		return nil, err
 	}
 
 	// Create separate pgx.Conn for notifications
