@@ -107,7 +107,10 @@ func (s *Firebase) Send(ctx context.Context, tokens []usecase.PushToken, noti us
 			Title: noti.Title,
 			Body:  noti.Message,
 		},
-		// Data: noti.Data,
+		Data: map[string]string{
+			"reference_id":   noti.ReferenceID.String(),
+			"reference_type": noti.ReferenceType,
+		},
 	}
 
 	bres, err := s.message.SendEachForMulticast(ctx, message)
