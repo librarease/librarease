@@ -424,7 +424,6 @@ func (s *service) ListCollectionBooks(ctx context.Context, id uuid.UUID, opt use
 				Author:    cb.Book.Author,
 				Year:      cb.Book.Year,
 				Code:      cb.Book.Code,
-				Count:     cb.Book.Count,
 				Cover:     cb.Book.Cover,
 				LibraryID: cb.Book.LibraryID,
 				CreatedAt: cb.Book.CreatedAt,

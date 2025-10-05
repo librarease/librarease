@@ -26,6 +26,7 @@ type Borrowing struct {
 	Subscription *Subscription
 	Staff        *Staff
 	Returning    *Returning
+	Lost         *Lost
 }
 
 type ListBorrowingsOption struct {
@@ -48,6 +49,7 @@ type ListBorrowingsOption struct {
 	IsActive        bool
 	IsOverdue       bool
 	IsReturned      bool
+	IsLost          bool
 }
 
 // TODO: separate client and admin borrowing list route
@@ -184,19 +186,19 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	}
 
 	if s.UsageLimit > 0 {
-		_, count, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
+		_, usageCount, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
 			SubscriptionIDs: uuid.UUIDs{s.ID},
 		})
 		if err != nil {
 			return Borrowing{}, err
 		}
-		if count >= s.UsageLimit {
+		if usageCount >= s.UsageLimit {
 			return Borrowing{}, fmt.Errorf("subscription %s has reached the usage limit %d", s.ID, s.UsageLimit)
 		}
 	}
 
 	// 2. Check if the user has reached the maximum borrowing limit
-	_, activeCount, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
+	_, activeBorrowCount, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
 		SubscriptionIDs: uuid.UUIDs{s.ID},
 		IsActive:        true,
 	})
@@ -204,7 +206,7 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 		return Borrowing{}, err
 	}
 	// TODO: ErrActiveLoanLimitReached
-	if s.ActiveLoanLimit <= activeCount {
+	if s.ActiveLoanLimit <= activeBorrowCount {
 		return Borrowing{}, fmt.Errorf("user %s has reached the active loan limit", s.UserID)
 	}
 
@@ -223,7 +225,7 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	}
 
 	// 4. Check if the book is available
-	_, count, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
+	_, activeBookCount, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
 		BookIDs:  uuid.UUIDs{borrow.BookID},
 		IsActive: true,
 	})
@@ -231,8 +233,21 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 		return Borrowing{}, err
 	}
 	// TODO: ErrBookNotAvailable
-	if count >= book.Count {
+	if activeBookCount > 0 {
 		return Borrowing{}, fmt.Errorf("book %s is not available", borrow.BookID)
+	}
+
+	// 4. Check if the book is available
+	_, lostBookCount, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
+		BookIDs: uuid.UUIDs{borrow.BookID},
+		IsLost:  true,
+	})
+	if err != nil {
+		return Borrowing{}, err
+	}
+	// TODO: ErrBookNotAvailable
+	if lostBookCount > 0 {
+		return Borrowing{}, fmt.Errorf("book %s is not available (lost)", borrow.BookID)
 	}
 
 	// 5. Check if staff exists

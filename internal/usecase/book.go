@@ -12,8 +12,8 @@ import (
 )
 
 type BookStats struct {
-	BorrowCount int
-	IsAvailable bool
+	BorrowCount     int
+	ActiveBorrowing *Borrowing // nil if available, populated if currently borrowed or lost
 }
 
 type Book struct {
@@ -22,7 +22,6 @@ type Book struct {
 	Author    string
 	Year      int
 	Code      string
-	Count     int
 	Cover     string
 	LibraryID uuid.UUID
 	CreatedAt time.Time

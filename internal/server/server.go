@@ -86,12 +86,15 @@ type Service interface {
 	DeleteReturn(context.Context, uuid.UUID) error
 	UpdateReturn(context.Context, uuid.UUID, usecase.Returning) error
 
+	LostBorrowing(context.Context, uuid.UUID, usecase.Lost) (usecase.Lost, error)
+	UpdateLost(context.Context, uuid.UUID, usecase.Lost) (usecase.Lost, error)
+	DeleteLost(context.Context, uuid.UUID) error
+
 	RegisterUser(context.Context, usecase.RegisterUser) (usecase.User, error)
 	VerifyIDToken(context.Context, string) (string, error)
 
 	GetAnalysis(context.Context, usecase.GetAnalysisOption) (usecase.Analysis, error)
 	OverdueAnalysis(context.Context, *time.Time, *time.Time, string) ([]usecase.OverdueAnalysis, error)
-	BookUtilization(context.Context, usecase.GetBookUtilizationOption) ([]usecase.BookUtilization, int, error)
 	BorrowingHeatmap(context.Context, uuid.UUID, *time.Time, *time.Time) ([]usecase.HeatmapCell, error)
 	ReturningHeatmap(context.Context, uuid.UUID, *time.Time, *time.Time) ([]usecase.HeatmapCell, error)
 	GetPowerUsers(context.Context, usecase.GetPowerUsersOption) ([]usecase.PowerUser, int, error)

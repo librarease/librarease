@@ -15,7 +15,6 @@ type Book struct {
 	Author     string      `json:"author,omitempty"`
 	Year       int         `json:"year,omitempty"`
 	Code       string      `json:"code"`
-	Count      int         `json:"count,omitempty"`
 	Cover      string      `json:"cover,omitempty"`
 	LibraryID  string      `json:"library_id,omitempty"`
 	CreatedAt  string      `json:"created_at,omitempty"`
@@ -27,8 +26,8 @@ type Book struct {
 }
 
 type BookStats struct {
-	BorrowCount int  `json:"borrow_count"`
-	IsAvailable bool `json:"is_available"`
+	BorrowCount int        `json:"borrow_count"`
+	Borrowing   *Borrowing `json:"borrowing,omitempty"`
 }
 
 type ListBooksRequest struct {
@@ -84,7 +83,6 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 			Author:    b.Author,
 			Year:      b.Year,
 			Code:      b.Code,
-			Count:     b.Count,
 			Cover:     b.Cover,
 			LibraryID: b.LibraryID.String(),
 			CreatedAt: b.CreatedAt.Format(time.RFC3339),
@@ -94,9 +92,31 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 
 		// Include stats if they are available
 		if b.Stats != nil {
+			var borrow *Borrowing
+			if b.Stats.ActiveBorrowing != nil {
+				var returning *Returning
+				if b.Stats.ActiveBorrowing.Returning != nil {
+					returning = &Returning{
+						ReturnedAt: b.Stats.ActiveBorrowing.Returning.ReturnedAt,
+					}
+				}
+				var lost *Lost
+				if b.Stats.ActiveBorrowing.Lost != nil {
+					lost = &Lost{
+						ReportedAt: b.Stats.ActiveBorrowing.Lost.ReportedAt,
+					}
+				}
+				borrow = &Borrowing{
+					ID:         b.Stats.ActiveBorrowing.ID.String(),
+					DueAt:      b.Stats.ActiveBorrowing.DueAt.UTC().String(),
+					BorrowedAt: b.Stats.ActiveBorrowing.BorrowedAt.UTC().String(),
+					Returning:  returning,
+					Lost:       lost,
+				}
+			}
 			book.Stats = &BookStats{
 				BorrowCount: b.Stats.BorrowCount,
-				IsAvailable: b.Stats.IsAvailable,
+				Borrowing:   borrow,
 			}
 		}
 
@@ -158,7 +178,6 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 		Author:    b.Author,
 		Year:      b.Year,
 		Code:      b.Code,
-		Count:     b.Count,
 		Cover:     b.Cover,
 		LibraryID: b.LibraryID.String(),
 		CreatedAt: b.CreatedAt.Format(time.RFC3339),
@@ -176,9 +195,31 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 		book.Library = &lib
 	}
 	if b.Stats != nil {
+		var borrow *Borrowing
+		if b.Stats.ActiveBorrowing != nil {
+			var returning *Returning
+			if b.Stats.ActiveBorrowing.Returning != nil {
+				returning = &Returning{
+					ReturnedAt: b.Stats.ActiveBorrowing.Returning.ReturnedAt,
+				}
+			}
+			var lost *Lost
+			if b.Stats.ActiveBorrowing.Lost != nil {
+				lost = &Lost{
+					ReportedAt: b.Stats.ActiveBorrowing.Lost.ReportedAt,
+				}
+			}
+			borrow = &Borrowing{
+				ID:         b.Stats.ActiveBorrowing.ID.String(),
+				DueAt:      b.Stats.ActiveBorrowing.DueAt.UTC().String(),
+				BorrowedAt: b.Stats.ActiveBorrowing.BorrowedAt.UTC().String(),
+				Returning:  returning,
+				Lost:       lost,
+			}
+		}
 		book.Stats = &BookStats{
 			BorrowCount: b.Stats.BorrowCount,
-			IsAvailable: b.Stats.IsAvailable,
+			Borrowing:   borrow,
 		}
 	}
 	for _, wl := range b.Watchlists {
@@ -221,7 +262,6 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		Author:    req.Author,
 		Year:      req.Year,
 		Code:      req.Code,
-		Count:     req.Count,
 		Cover:     req.Cover,
 		LibraryID: libID,
 	})
@@ -241,7 +281,6 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		Author:    b.Author,
 		Year:      b.Year,
 		Code:      b.Code,
-		Count:     b.Count,
 		Cover:     b.Cover,
 		LibraryID: b.LibraryID.String(),
 		CreatedAt: b.CreatedAt.Format(time.RFC3339),
@@ -257,7 +296,6 @@ type UpdateBookRequest struct {
 	Author      string  `json:"author"`
 	Year        int     `json:"year" validate:"omitempty,gte=1500"`
 	Code        string  `json:"code"`
-	Count       int     `json:"count"`
 	LibraryID   string  `json:"library_id" validate:"omitempty,uuid"`
 	UpdateCover *string `json:"update_cover" validate:"omitempty"`
 }
@@ -279,7 +317,6 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		Author:      req.Author,
 		Year:        req.Year,
 		Code:        req.Code,
-		Count:       req.Count,
 		LibraryID:   libID,
 		UpdateCover: req.UpdateCover,
 	})
@@ -299,7 +336,6 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		Author:    b.Author,
 		Year:      b.Year,
 		Code:      b.Code,
-		Count:     b.Count,
 		Cover:     b.Cover,
 		LibraryID: b.LibraryID.String(),
 		CreatedAt: b.CreatedAt.Format(time.RFC3339),

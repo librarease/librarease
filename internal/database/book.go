@@ -17,7 +17,6 @@ type Book struct {
 	Author     string          `gorm:"column:author;type:varchar(255)"`
 	Year       int             `gorm:"column:year;type:int"`
 	Code       string          `gorm:"column:code;type:varchar(255);uniqueIndex:idx_lib_code,where:deleted_at IS NULL"`
-	Count      int             `gorm:"column:count;type:int;default:1"`
 	Cover      string          `gorm:"column:cover;type:varchar(255)"`
 	CreatedAt  time.Time       `gorm:"column:created_at"`
 	UpdatedAt  time.Time       `gorm:"column:updated_at"`
@@ -150,72 +149,96 @@ func (s *service) getBookStats(ctx context.Context, bookIDs []uuid.UUID) (map[uu
 		return map[uuid.UUID]usecase.BookStats{}, nil
 	}
 
-	type bookStat struct {
-		BookID      uuid.UUID `gorm:"column:book_id"`
-		LibraryID   uuid.UUID `gorm:"column:library_id"`
-		BorrowCount int       `gorm:"column:borrow_count"`
+	stats := make(map[uuid.UUID]usecase.BookStats)
+
+	// 1. Count borrowings per book
+	type CountResult struct {
+		BookID uuid.UUID
+		Count  int
+	}
+	var counts []CountResult
+	if err := s.db.WithContext(ctx).
+		Model(&Borrowing{}).
+		Select("book_id, COUNT(*) AS count").
+		Where("book_id IN ?", bookIDs).
+		Group("book_id").
+		Scan(&counts).Error; err != nil {
+		return nil, err
+	}
+	for _, c := range counts {
+		stats[c.BookID] = usecase.BookStats{BorrowCount: c.Count}
 	}
 
-	var stats []bookStat
-	err := s.db.WithContext(ctx).Raw(`
-	       SELECT 
-		       b.id as book_id,
-		       b.library_id,
-		       COUNT(br.id) as borrow_count
-	       FROM books b
-	       LEFT JOIN borrowings br ON br.book_id = b.id
-	       WHERE b.id IN ?
-	       GROUP BY b.id, b.library_id
-       `, bookIDs).Scan(&stats).Error
-
-	if err != nil {
+	// 2. Get latest borrowings (no preload)
+	var latestBorrowings []Borrowing
+	if err := s.db.WithContext(ctx).
+		Raw(`
+			SELECT DISTINCT ON (book_id) *
+			FROM borrowings
+			WHERE book_id IN ? AND deleted_at IS NULL
+			ORDER BY book_id, created_at DESC
+		`, bookIDs).
+		Scan(&latestBorrowings).Error; err != nil {
 		return nil, err
 	}
 
-	// Query availability for all book IDs
-	var availResults []struct {
-		ID          uuid.UUID
-		IsAvailable bool
-	}
-	err2 := s.db.Raw(`
-			   SELECT b.id, (b.count > COALESCE(SUM(
-				   CASE 
-					   WHEN br.id IS NOT NULL AND br.deleted_at IS NULL AND r.id IS NULL THEN 1 
-					   ELSE 0 
-				   END
-			   ), 0)) AS is_available
-			   FROM books b
-			   LEFT JOIN borrowings br ON br.book_id = b.id AND br.deleted_at IS NULL
-			   LEFT JOIN returnings r ON r.borrowing_id = br.id AND r.deleted_at IS NULL
-			   WHERE b.id IN ? AND b.deleted_at IS NULL
-			   GROUP BY b.id, b.count
-		   `, bookIDs).Scan(&availResults).Error
-	availMap := make(map[uuid.UUID]bool)
-	if err2 != nil {
-		return nil, err2
-	}
-	for _, res := range availResults {
-		availMap[res.ID] = res.IsAvailable
+	// 3. Get Returning and Lost for those borrowings
+	borrowingIDs := make([]uuid.UUID, 0, len(latestBorrowings))
+	for _, b := range latestBorrowings {
+		borrowingIDs = append(borrowingIDs, b.ID)
 	}
 
-	// Convert to map
-	statsMap := make(map[uuid.UUID]usecase.BookStats)
-	for _, stat := range stats {
-		statsMap[stat.BookID] = usecase.BookStats{
-			BorrowCount: stat.BorrowCount,
-			IsAvailable: availMap[stat.BookID],
+	var returnings []Returning
+	var losts []Lost
+	if len(borrowingIDs) > 0 {
+		if err := s.db.WithContext(ctx).
+			Where("borrowing_id IN ?", borrowingIDs).
+			Find(&returnings).Error; err != nil {
+			return nil, err
+		}
+		if err := s.db.WithContext(ctx).
+			Where("borrowing_id IN ?", borrowingIDs).
+			Find(&losts).Error; err != nil {
+			return nil, err
 		}
 	}
-	// Also handle books with no borrowings (not in stats)
-	for _, id := range bookIDs {
-		if _, ok := statsMap[id]; !ok {
-			statsMap[id] = usecase.BookStats{
-				BorrowCount: 0,
-				IsAvailable: availMap[id],
+
+	// Map them for easy access
+	retMap := make(map[uuid.UUID]*Returning)
+	for i := range returnings {
+		retMap[returnings[i].BorrowingID] = &returnings[i]
+	}
+	lostMap := make(map[uuid.UUID]*Lost)
+	for i := range losts {
+		lostMap[losts[i].BorrowingID] = &losts[i]
+	}
+
+	// 4. Merge all into final stats
+	for _, b := range latestBorrowings {
+		s := stats[b.BookID]
+		var returning *usecase.Returning
+		if r, exists := retMap[b.ID]; exists {
+			returning = &usecase.Returning{
+				ReturnedAt: r.ReturnedAt,
 			}
 		}
+		var lost *usecase.Lost
+		if lo, exists := lostMap[b.ID]; exists {
+			lost = &usecase.Lost{
+				ReportedAt: lo.ReportedAt,
+			}
+		}
+		s.ActiveBorrowing = &usecase.Borrowing{
+			ID:         b.ID,
+			DueAt:      b.DueAt,
+			BorrowedAt: b.BorrowedAt,
+			Returning:  returning,
+			Lost:       lost,
+		}
+		stats[b.BookID] = s
 	}
-	return statsMap, nil
+
+	return stats, nil
 }
 
 func (s *service) GetBookByID(ctx context.Context, id uuid.UUID) (usecase.Book, error) {
@@ -250,7 +273,6 @@ func (s *service) CreateBook(ctx context.Context, book usecase.Book) (usecase.Bo
 		Author:    book.Author,
 		Year:      book.Year,
 		Code:      book.Code,
-		Count:     book.Count,
 		Cover:     book.Cover,
 		LibraryID: book.LibraryID,
 	}
@@ -268,7 +290,6 @@ func (s *service) UpdateBook(ctx context.Context, id uuid.UUID, book usecase.Boo
 		Author:    book.Author,
 		Year:      book.Year,
 		Code:      book.Code,
-		Count:     book.Count,
 		Cover:     book.Cover,
 		LibraryID: book.LibraryID,
 	}
@@ -298,7 +319,6 @@ func (b Book) ConvertToUsecase() usecase.Book {
 		Author:    b.Author,
 		Year:      b.Year,
 		Code:      b.Code,
-		Count:     b.Count,
 		Cover:     b.Cover,
 		LibraryID: b.LibraryID,
 		CreatedAt: b.CreatedAt,

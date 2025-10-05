@@ -58,10 +58,6 @@ func (u Usecase) OverdueAnalysis(ctx context.Context, from, to *time.Time, libra
 	return u.repo.OverdueAnalysis(ctx, from, to, libraryID)
 }
 
-func (u Usecase) BookUtilization(ctx context.Context, opt GetBookUtilizationOption) ([]BookUtilization, int, error) {
-	return u.repo.BookUtilization(ctx, opt)
-}
-
 func (u Usecase) BorrowingHeatmap(ctx context.Context, libraryID uuid.UUID, start, end *time.Time) ([]HeatmapCell, error) {
 	return u.repo.BorrowingHeatmap(ctx, libraryID, start, end)
 }
@@ -86,14 +82,6 @@ type OverdueAnalysis struct {
 	Rate           float64
 }
 
-type BookUtilization struct {
-	BookID          uuid.UUID
-	BookTitle       string
-	Copies          int
-	TotalBorrowings int
-	UtilizationRate float64
-}
-
 type HeatmapCell struct {
 	DayOfWeek    int // 0=Sunday ... 6=Saturday
 	HourOfDay    int // 0-23
@@ -110,14 +98,6 @@ type PowerUser struct {
 
 type GetPowerUsersOption struct {
 	LibraryID uuid.UUID
-	From      *time.Time
-	To        *time.Time
-	Limit     int
-	Skip      int
-}
-
-type GetBookUtilizationOption struct {
-	LibraryID string
 	From      *time.Time
 	To        *time.Time
 	Limit     int

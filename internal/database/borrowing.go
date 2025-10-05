@@ -28,6 +28,7 @@ type Borrowing struct {
 	DeletedAt      *gorm.DeletedAt
 
 	Returning *Returning
+	Lost      *Lost
 }
 
 func (Borrowing) TableName() string {
@@ -64,15 +65,21 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 	if opt.ReturnedAt != nil {
 		db = db.Where("returnings.returned_at = ?", opt.ReturnedAt)
 	}
-	if opt.IsActive {
-		// Filter borrowings that do not have a corresponding entry in the returnings table
-		db = db.Where("NOT EXISTS (SELECT NULL FROM returnings r WHERE r.borrowing_id = borrowings.id AND r.deleted_at IS NULL)")
-	}
-	if opt.IsOverdue {
-		db = db.Where("due_at < now() AND NOT EXISTS (SELECT NULL FROM returnings r WHERE r.borrowing_id = borrowings.id AND r.deleted_at IS NULL)")
+	if opt.IsActive || opt.IsOverdue {
+		db = db.
+			// - do not have a corresponding entry in the losts table
+			Where("NOT EXISTS (SELECT NULL FROM losts l WHERE l.borrowing_id = borrowings.id AND l.deleted_at IS NULL)").
+			// - do not have a corresponding entry in the returnings table
+			Where("NOT EXISTS (SELECT NULL FROM returnings r WHERE r.borrowing_id = borrowings.id AND r.deleted_at IS NULL)")
+		if opt.IsOverdue {
+			db = db.Where("due_at < now()")
+		}
 	}
 	if opt.IsReturned {
 		db = db.Where("EXISTS (SELECT NULL FROM returnings r WHERE r.borrowing_id = borrowings.id AND r.deleted_at IS NULL)")
+	}
+	if opt.IsLost {
+		db = db.Where("EXISTS (SELECT NULL FROM losts l WHERE l.borrowing_id = borrowings.id AND l.deleted_at IS NULL)")
 	}
 	if len(opt.MembershipIDs) > 0 {
 		db = db.Joins("Subscription").Where("membership_id IN ?", opt.MembershipIDs)
@@ -105,6 +112,7 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 	if err := db.
 		Preload("Book").
 		Preload("Staff").
+		Preload("Lost").
 		Preload("Subscription").
 		Preload("Subscription.User").
 		Preload("Subscription.Membership").
@@ -124,6 +132,11 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		if b.Returning != nil {
 			returning := b.Returning.ConvertToUsecase()
 			ub.Returning = &returning
+		}
+
+		if b.Lost != nil {
+			lost := b.Lost.ConvertToUsecase()
+			ub.Lost = &lost
 		}
 
 		if b.Book != nil {
@@ -169,6 +182,8 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.B
 		WithContext(ctx).
 		Preload("Returning").
 		Preload("Returning.Staff").
+		Preload("Lost").
+		Preload("Lost.Staff").
 		Preload("Book").
 		Preload("Staff").
 		Preload("Subscription").
@@ -198,6 +213,16 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.B
 		if b.Returning.Staff != nil {
 			staff := b.Returning.Staff.ConvertToUsecase()
 			returning.Staff = &staff
+		}
+	}
+
+	if b.Lost != nil {
+		lost := b.Lost.ConvertToUsecase()
+		ub.Lost = &lost
+
+		if b.Lost.Staff != nil {
+			staff := b.Lost.Staff.ConvertToUsecase()
+			lost.Staff = &staff
 		}
 	}
 

@@ -167,16 +167,23 @@ func (s *service) OverdueAnalysis(
 		Table("borrowings b").
 		Joins("JOIN subscriptions s ON b.subscription_id = s.id").
 		Joins("JOIN memberships m ON s.membership_id = m.id").
-		Joins("JOIN returnings r ON r.borrowing_id = b.id").
+		Joins("LEFT JOIN returnings r ON r.borrowing_id = b.id AND r.deleted_at IS NULL").
+		Joins("LEFT JOIN losts l ON l.borrowing_id = b.id AND l.deleted_at IS NULL").
 		Select(`
 		m.id,
 		m.name AS membership,
 		COUNT(*) AS total,
-		SUM(CASE WHEN r.returned_at > b.due_at THEN 1 ELSE 0 END) AS overdue,
-		(SUM(CASE WHEN r.returned_at > b.due_at THEN 1 ELSE 0 END)::float / COUNT(*)) AS overdue_rate
+		SUM(CASE 
+			WHEN l.id IS NULL AND r.id IS NOT NULL AND r.returned_at > b.due_at THEN 1 
+			ELSE 0 
+		END) AS overdue,
+		(SUM(CASE 
+			WHEN l.id IS NULL AND r.id IS NOT NULL AND r.returned_at > b.due_at THEN 1 
+			ELSE 0 
+		END)::float / NULLIF(COUNT(*), 0)) AS overdue_rate
 	`).
 		Where("m.library_id = ?", libraryID).
-		Where("r.deleted_at IS NULL")
+		Where("b.deleted_at IS NULL")
 
 	if from != nil && to != nil {
 		db = db.Where("b.borrowed_at BETWEEN ? AND ?", *from, *to)
@@ -201,81 +208,6 @@ func (s *service) OverdueAnalysis(
 	}
 
 	return analysis, nil
-}
-
-func (s *service) BookUtilization(
-	ctx context.Context,
-	opt usecase.GetBookUtilizationOption) (
-	[]usecase.BookUtilization, int, error) {
-
-	// First, get the total count without limit/skip
-	var totalCount int64
-	countDB := s.db.WithContext(ctx).
-		Table("books bk").
-		Joins("LEFT JOIN borrowings b ON bk.id = b.book_id AND b.deleted_at IS NULL").
-		Where("bk.library_id = ?", opt.LibraryID).
-		Where("bk.deleted_at IS NULL")
-
-	if opt.From != nil && opt.To != nil {
-		countDB = countDB.Where("b.borrowed_at BETWEEN ? AND ?", *opt.From, *opt.To)
-	}
-
-	if err := countDB.
-		Group("bk.id").
-		Count(&totalCount).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// Now get the actual data with limit/skip
-	var result []struct {
-		ID              uuid.UUID `gorm:"column:id"`
-		Title           string    `gorm:"column:title"`
-		Count           int       `gorm:"column:count"`
-		TotalBorrowings int       `gorm:"column:total_borrowings"`
-		UtilizationRate float64   `gorm:"column:utilization_rate"`
-	}
-
-	db := s.db.WithContext(ctx).
-		Table("books bk").
-		Select(`
-		bk.id, bk.title, bk.count AS count,
-		COUNT(b.id) AS total_borrowings,
-		(COUNT(b.id)::float / NULLIF(bk.count, 0)) AS utilization_rate
-	`).
-		Joins("LEFT JOIN borrowings b ON bk.id = b.book_id AND b.deleted_at IS NULL").
-		Where("bk.library_id = ?", opt.LibraryID).
-		Where("bk.deleted_at IS NULL")
-
-	if opt.From != nil && opt.To != nil {
-		db = db.Where("b.borrowed_at BETWEEN ? AND ?", *opt.From, *opt.To)
-	}
-	if opt.Skip > 0 {
-		db = db.Offset(opt.Skip)
-	}
-	if opt.Limit > 0 {
-		db = db.Limit(opt.Limit)
-	}
-
-	if err := db.
-		Group("bk.id, bk.title, bk.count").
-		Order("utilization_rate DESC").
-		Scan(&result).Error; err != nil {
-
-		return nil, 0, err
-	}
-
-	analysis := make([]usecase.BookUtilization, len(result))
-	for i, r := range result {
-		analysis[i] = usecase.BookUtilization{
-			BookID:          r.ID,
-			BookTitle:       r.Title,
-			Copies:          r.Count,
-			TotalBorrowings: r.TotalBorrowings,
-			UtilizationRate: r.UtilizationRate,
-		}
-	}
-
-	return analysis, int(totalCount), nil
 }
 
 func (r *service) BorrowingHeatmap(

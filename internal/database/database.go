@@ -49,6 +49,7 @@ func New(gormDB *gorm.DB, noti *pgx.Conn, redis *redis.Client) (*service, error)
 		Membership{},
 		Subscription{},
 		Returning{},
+		Lost{},
 		Borrowing{},
 		Notification{},
 		PushToken{},

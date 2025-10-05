@@ -77,6 +77,11 @@ type Repository interface {
 	DeleteReturn(ctx context.Context, id uuid.UUID) error
 	UpdateReturn(ctx context.Context, id uuid.UUID, r Returning) error
 
+	// lost
+	CreateLost(context.Context, Lost) (Lost, error)
+	UpdateLost(ctx context.Context, id uuid.UUID, l Lost) error
+	DeleteLost(ctx context.Context, id uuid.UUID) error
+
 	// auth user
 	CreateAuthUser(context.Context, AuthUser) (AuthUser, error)
 	GetAuthUserByUID(context.Context, string) (AuthUser, error)
@@ -85,7 +90,6 @@ type Repository interface {
 	// analysis
 	GetAnalysis(context.Context, GetAnalysisOption) (Analysis, error)
 	OverdueAnalysis(context.Context, *time.Time, *time.Time, string) ([]OverdueAnalysis, error)
-	BookUtilization(context.Context, GetBookUtilizationOption) ([]BookUtilization, int, error)
 	BorrowingHeatmap(context.Context, uuid.UUID, *time.Time, *time.Time) ([]HeatmapCell, error)
 	ReturningHeatmap(context.Context, uuid.UUID, *time.Time, *time.Time) ([]HeatmapCell, error)
 	GetPowerUsers(context.Context, GetPowerUsersOption) ([]PowerUser, int, error)

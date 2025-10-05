@@ -91,6 +91,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 	borrowingGroup.PUT("/:id", s.UpdateBorrowing)
 	borrowingGroup.POST("/:id/return", s.ReturnBorrowing, s.AuthMiddleware)
 	borrowingGroup.DELETE("/:id/return", s.DeleteReturn, s.AuthMiddleware)
+	borrowingGroup.POST("/:id/lost", s.LostBorrowing, s.AuthMiddleware)
+	borrowingGroup.DELETE("/:id/lost", s.DeleteLost, s.AuthMiddleware)
 
 	var authGroup = e.Group("/api/v1/auth")
 	authGroup.POST("/register", s.RegisterUser)
@@ -98,7 +100,6 @@ func (s *Server) RegisterRoutes() http.Handler {
 	var analysisGroup = e.Group("/api/v1/analysis")
 	analysisGroup.GET("", s.GetAnalysis)
 	analysisGroup.GET("/overdue", s.GetOverdueAnalysis)
-	analysisGroup.GET("/book-utilization", s.GetBookUtilization)
 	analysisGroup.GET("/borrowing-heatmap", s.GetBorrowingHeatmap)
 	analysisGroup.GET("/returning-heatmap", s.GetReturningHeatmap)
 	analysisGroup.GET("/power-users", s.GetPowerUsers)

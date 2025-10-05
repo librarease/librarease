@@ -79,7 +79,6 @@ func (s *Server) ListWatchlist(ctx echo.Context) error {
 			Author:    b.Author,
 			Year:      b.Year,
 			Code:      b.Code,
-			Count:     b.Count,
 			Cover:     b.Cover,
 			LibraryID: b.LibraryID.String(),
 			CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
@@ -89,9 +88,31 @@ func (s *Server) ListWatchlist(ctx echo.Context) error {
 
 		// Include stats if they are available
 		if b.Stats != nil {
+			var borrow *Borrowing
+			if b.Stats.ActiveBorrowing != nil {
+				var returning *Returning
+				if b.Stats.ActiveBorrowing.Returning != nil {
+					returning = &Returning{
+						ReturnedAt: b.Stats.ActiveBorrowing.Returning.ReturnedAt,
+					}
+				}
+				var lost *Lost
+				if b.Stats.ActiveBorrowing.Lost != nil {
+					lost = &Lost{
+						ReportedAt: b.Stats.ActiveBorrowing.Lost.ReportedAt,
+					}
+				}
+				borrow = &Borrowing{
+					ID:         b.Stats.ActiveBorrowing.ID.String(),
+					DueAt:      b.Stats.ActiveBorrowing.DueAt.UTC().String(),
+					BorrowedAt: b.Stats.ActiveBorrowing.BorrowedAt.UTC().String(),
+					Returning:  returning,
+					Lost:       lost,
+				}
+			}
 			book.Stats = &BookStats{
 				BorrowCount: b.Stats.BorrowCount,
-				IsAvailable: b.Stats.IsAvailable,
+				Borrowing:   borrow,
 			}
 		}
 

@@ -362,9 +362,31 @@ func (s *Server) ListCollectionBooks(ctx echo.Context) error {
 			}
 
 			if c.Book.Stats != nil {
+				var borrow *Borrowing
+				if c.Book.Stats.ActiveBorrowing != nil {
+					var returning *Returning
+					if c.Book.Stats.ActiveBorrowing.Returning != nil {
+						returning = &Returning{
+							ReturnedAt: c.Book.Stats.ActiveBorrowing.Returning.ReturnedAt,
+						}
+					}
+					var lost *Lost
+					if c.Book.Stats.ActiveBorrowing.Lost != nil {
+						lost = &Lost{
+							ReportedAt: c.Book.Stats.ActiveBorrowing.Lost.ReportedAt,
+						}
+					}
+					borrow = &Borrowing{
+						ID:         c.Book.Stats.ActiveBorrowing.ID.String(),
+						DueAt:      c.Book.Stats.ActiveBorrowing.DueAt.UTC().String(),
+						BorrowedAt: c.Book.Stats.ActiveBorrowing.BorrowedAt.UTC().String(),
+						Returning:  returning,
+						Lost:       lost,
+					}
+				}
 				cr.Book.Stats = &BookStats{
 					BorrowCount: c.Book.Stats.BorrowCount,
-					IsAvailable: c.Book.Stats.IsAvailable,
+					Borrowing:   borrow,
 				}
 			}
 		}

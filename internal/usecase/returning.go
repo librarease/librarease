@@ -27,18 +27,6 @@ type Returning struct {
 	Staff     *Staff
 }
 
-type ListReturningOption struct {
-	Skip   int
-	Limit  int
-	SortBy string
-	SortIn string
-
-	BorrowingIDs uuid.UUIDs
-	StaffIDs     uuid.UUIDs
-	ReturnedAt   time.Time
-	Fine         *int
-}
-
 func (u Usecase) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r Returning) (Borrowing, error) {
 
 	role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
@@ -56,6 +44,10 @@ func (u Usecase) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r R
 	}
 	if borrow.Returning != nil {
 		return Borrowing{}, fmt.Errorf("borrowing already returned")
+	}
+
+	if borrow.Lost != nil {
+		return Borrowing{}, fmt.Errorf("borrowing is marked as lost")
 	}
 
 	if r.ReturnedAt.Before(borrow.BorrowedAt) {
@@ -174,6 +166,19 @@ func (u Usecase) DeleteReturn(ctx context.Context, borrowingId uuid.UUID) error 
 	if borrow.Returning == nil {
 		return fmt.Errorf("borrow has not returned yet: %s", borrowingId)
 	}
+
+	// Check if there is active borrowing
+	_, n, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
+		BookIDs:  []uuid.UUID{borrow.BookID},
+		IsActive: true,
+	})
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return fmt.Errorf("there are active borrowings for this book")
+	}
+
 	if err := u.repo.DeleteReturn(ctx, borrow.Returning.ID); err != nil {
 		return err
 	}
