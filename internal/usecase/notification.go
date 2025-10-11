@@ -28,9 +28,10 @@ type NotificationDispatcher interface {
 }
 
 type ListNotificationsOption struct {
-	Skip   int
-	Limit  int
-	UserID uuid.UUID
+	Skip     int
+	Limit    int
+	UserID   uuid.UUID
+	IsUnread bool
 }
 
 func (u Usecase) ListNotifications(ctx context.Context, opt ListNotificationsOption) ([]Notification, int, int, error) {
@@ -38,24 +39,12 @@ func (u Usecase) ListNotifications(ctx context.Context, opt ListNotificationsOpt
 	if !ok {
 		return nil, 0, 0, fmt.Errorf("user id not found in context")
 	}
-	notifications, unread, total, err := u.repo.ListNotifications(ctx, ListNotificationsOption{
-		Skip:   opt.Skip,
-		Limit:  opt.Limit,
-		UserID: userID,
+	return u.repo.ListNotifications(ctx, ListNotificationsOption{
+		Skip:     opt.Skip,
+		Limit:    opt.Limit,
+		UserID:   userID,
+		IsUnread: opt.IsUnread,
 	})
-	if err != nil {
-		return nil, 0, 0, err
-	}
-
-	var list []Notification
-	for _, n := range notifications {
-		if n.ReferenceID != nil {
-			n.ReferenceID = &uuid.UUID{}
-		}
-		list = append(list, n)
-	}
-
-	return list, unread, total, err
 }
 
 func (u Usecase) ReadNotification(ctx context.Context, id uuid.UUID) error {

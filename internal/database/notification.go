@@ -149,11 +149,17 @@ func (s *service) ListNotifications(ctx context.Context, opt usecase.ListNotific
 		total         int64
 	)
 
-	query := s.db.WithContext(ctx).Model(&Notification{}).
+	query := s.db.
+		WithContext(ctx).
+		Model(&Notification{}).
 		Where("user_id = ?", opt.UserID).
 		Order("created_at desc").
 		Limit(opt.Limit).
 		Offset(opt.Skip)
+
+	if opt.IsUnread {
+		query = query.Where("read_at IS NULL")
+	}
 
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, 0, err

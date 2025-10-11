@@ -22,8 +22,9 @@ type Notification struct {
 }
 
 type ListNotificationRequest struct {
-	Skip  int `query:"skip"`
-	Limit int `query:"limit" validate:"required,min=1,max=100"`
+	Skip     int  `query:"skip"`
+	Limit    int  `query:"limit" validate:"required,min=1,max=100"`
+	IsUnread bool `query:"is_unread"`
 }
 
 func (s *Server) ListNotifications(ctx echo.Context) error {
@@ -36,8 +37,9 @@ func (s *Server) ListNotifications(ctx echo.Context) error {
 	}
 
 	notifications, unread, total, err := s.server.ListNotifications(ctx.Request().Context(), usecase.ListNotificationsOption{
-		Skip:  req.Skip,
-		Limit: req.Limit,
+		Skip:     req.Skip,
+		Limit:    req.Limit,
+		IsUnread: req.IsUnread,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
