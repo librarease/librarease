@@ -46,6 +46,7 @@ type ListBorrowingsOption struct {
 	BorrowedAt      time.Time
 	DueAt           time.Time
 	ReturnedAt      *time.Time
+	LostAt          *time.Time
 	IsActive        bool
 	IsOverdue       bool
 	IsReturned      bool

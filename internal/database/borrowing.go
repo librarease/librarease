@@ -63,7 +63,10 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		db = db.Where("due_at >= ? AND due_at < ?", opt.DueAt, opt.DueAt.Add(24*time.Hour))
 	}
 	if opt.ReturnedAt != nil {
-		db = db.Where("returnings.returned_at >= ? AND returnings.returned_at < ?", opt.ReturnedAt, opt.ReturnedAt.Add(24*time.Hour))
+		db = db.Where("EXISTS (SELECT NULL FROM returnings r WHERE r.borrowing_id = borrowings.id AND r.deleted_at IS NULL AND r.returned_at >= ? AND r.returned_at < ?)", opt.ReturnedAt, opt.ReturnedAt.Add(24*time.Hour))
+	}
+	if opt.LostAt != nil {
+		db = db.Where("EXISTS (SELECT NULL FROM losts l WHERE l.borrowing_id = borrowings.id AND l.deleted_at IS NULL AND l.reported_at >= ? AND l.reported_at < ?)", opt.LostAt, opt.LostAt.Add(24*time.Hour))
 	}
 	if opt.IsActive || opt.IsOverdue {
 		db = db.

@@ -50,6 +50,7 @@ type ListBorrowingsOption struct {
 	BorrowStaffID string  `query:"borrow_staff_id" validate:"omitempty,uuid"`
 	ReturnStaffID string  `query:"return_staff_id" validate:"omitempty,uuid"`
 	ReturnedAt    *string `query:"returned_at" validate:"omitempty"`
+	LostAt        *string `query:"lost_at" validate:"omitempty"`
 }
 
 func (s *Server) ListBorrowings(ctx echo.Context) error {
@@ -138,6 +139,15 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 		returnedAt = &t
 	}
 
+	var lostAt *time.Time
+	if req.LostAt != nil {
+		t, err := time.Parse(time.RFC3339, *req.LostAt)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": err.Error()})
+		}
+		lostAt = &t
+	}
+
 	borrows, total, err := s.server.ListBorrowings(ctx.Request().Context(), usecase.ListBorrowingsOption{
 		Skip:            req.Skip,
 		Limit:           req.Limit,
@@ -154,6 +164,7 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 		BorrowedAt:      borrowedAt,
 		DueAt:           dueAt,
 		ReturnedAt:      returnedAt,
+		LostAt:          lostAt,
 		IsActive:        req.IsActive,
 		IsOverdue:       req.IsOverdue,
 		IsReturned:      req.IsReturned,
