@@ -57,13 +57,13 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		db = db.Where("staff_id IN ?", opt.BorrowStaffIDs)
 	}
 	if !opt.BorrowedAt.IsZero() {
-		db = db.Where("borrowed_at = ?", opt.BorrowedAt)
+		db = db.Where("borrowed_at >= ? AND borrowed_at < ?", opt.BorrowedAt, opt.BorrowedAt.Add(24*time.Hour))
 	}
 	if !opt.DueAt.IsZero() {
-		db = db.Where("due_at = ?", opt.DueAt)
+		db = db.Where("due_at >= ? AND due_at < ?", opt.DueAt, opt.DueAt.Add(24*time.Hour))
 	}
 	if opt.ReturnedAt != nil {
-		db = db.Where("returnings.returned_at = ?", opt.ReturnedAt)
+		db = db.Where("returnings.returned_at >= ? AND returnings.returned_at < ?", opt.ReturnedAt, opt.ReturnedAt.Add(24*time.Hour))
 	}
 	if opt.IsActive || opt.IsOverdue {
 		db = db.
