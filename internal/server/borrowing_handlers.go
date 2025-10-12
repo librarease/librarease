@@ -648,3 +648,29 @@ func (s *Server) UpdateBorrowing(ctx echo.Context) error {
 		UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
 	}})
 }
+
+func (s *Server) DeleteBorrowing(ctx echo.Context) error {
+	var req GetBorrowingByIDRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	id, _ := uuid.Parse(req.ID)
+	if err := s.server.DeleteBorrowing(ctx.Request().Context(), id); err != nil {
+		var notFoundErr usecase.ErrNotFound
+		if errors.As(err, &notFoundErr) {
+			return ctx.JSON(404, map[string]any{
+				"error":   notFoundErr.Error(),
+				"code":    notFoundErr.Code,
+				"message": notFoundErr.Message,
+			})
+		}
+
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.JSON(200, Res{Message: "Borrowing deleted successfully"})
+}

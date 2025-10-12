@@ -71,6 +71,7 @@ type Repository interface {
 	GetBorrowingByID(context.Context, uuid.UUID) (Borrowing, error)
 	CreateBorrowing(context.Context, Borrowing) (Borrowing, error)
 	UpdateBorrowing(context.Context, Borrowing) (Borrowing, error)
+	DeleteBorrowing(context.Context, uuid.UUID) error
 
 	// returning
 	ReturnBorrowing(context.Context, uuid.UUID, Returning) (Borrowing, error)

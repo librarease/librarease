@@ -86,9 +86,10 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	var borrowingGroup = e.Group("/api/v1/borrowings")
 	borrowingGroup.GET("", s.ListBorrowings, s.AuthMiddleware)
-	borrowingGroup.POST("", s.CreateBorrowing)
-	borrowingGroup.GET("/:id", s.GetBorrowingByID)
-	borrowingGroup.PUT("/:id", s.UpdateBorrowing)
+	borrowingGroup.POST("", s.CreateBorrowing, s.AuthMiddleware)
+	borrowingGroup.GET("/:id", s.GetBorrowingByID, s.AuthMiddleware)
+	borrowingGroup.PUT("/:id", s.UpdateBorrowing, s.AuthMiddleware)
+	borrowingGroup.DELETE("/:id", s.DeleteBorrowing, s.AuthMiddleware)
 	borrowingGroup.POST("/:id/return", s.ReturnBorrowing, s.AuthMiddleware)
 	borrowingGroup.DELETE("/:id/return", s.DeleteReturn, s.AuthMiddleware)
 	borrowingGroup.POST("/:id/lost", s.LostBorrowing, s.AuthMiddleware)

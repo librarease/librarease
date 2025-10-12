@@ -81,6 +81,7 @@ type Service interface {
 	GetBorrowingByID(context.Context, uuid.UUID) (usecase.Borrowing, error)
 	CreateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
 	UpdateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
+	DeleteBorrowing(context.Context, uuid.UUID) error
 
 	ReturnBorrowing(context.Context, uuid.UUID, usecase.Returning) (usecase.Borrowing, error)
 	DeleteReturn(context.Context, uuid.UUID) error

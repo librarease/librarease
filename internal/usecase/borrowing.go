@@ -301,3 +301,7 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 func (u Usecase) UpdateBorrowing(ctx context.Context, borrow Borrowing) (Borrowing, error) {
 	return u.repo.UpdateBorrowing(ctx, borrow)
 }
+
+func (u Usecase) DeleteBorrowing(ctx context.Context, id uuid.UUID) error {
+	return u.repo.DeleteBorrowing(ctx, id)
+}

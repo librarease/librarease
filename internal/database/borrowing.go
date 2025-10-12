@@ -304,6 +304,10 @@ func (s *service) UpdateBorrowing(ctx context.Context, b usecase.Borrowing) (use
 	return borrow.ConvertToUsecase(), nil
 }
 
+func (s *service) DeleteBorrowing(ctx context.Context, id uuid.UUID) error {
+	return s.db.WithContext(ctx).Where("id = ?", id).Delete(&Borrowing{}).Error
+}
+
 // Convert core model to Usecase
 func (b Borrowing) ConvertToUsecase() usecase.Borrowing {
 	var d *time.Time
