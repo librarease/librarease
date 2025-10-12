@@ -74,23 +74,23 @@ func (s *Server) ListStaffs(ctx echo.Context) error {
 			LibraryID: st.LibraryID.String(),
 			UserID:    st.UserID.String(),
 			Role:      string(st.Role),
-			CreatedAt: st.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
+			CreatedAt: st.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: st.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 		if st.User != nil {
 			staff.User = &User{
 				ID:   st.User.ID.String(),
 				Name: st.User.Name,
-				// CreatedAt: st.User.CreatedAt.Format(time.RFC3339),
-				// UpdatedAt: st.User.UpdatedAt.Format(time.RFC3339),
+				// CreatedAt: st.User.CreatedAt.UTC().Format(time.RFC3339),
+				// UpdatedAt: st.User.UpdatedAt.UTC().Format(time.RFC3339),
 			}
 		}
 		if st.Library != nil {
 			staff.Library = &Library{
 				ID:   st.Library.ID.String(),
 				Name: st.Library.Name,
-				// CreatedAt: st.Library.CreatedAt.Format(time.RFC3339),
-				// UpdatedAt: st.Library.UpdatedAt.Format(time.RFC3339),
+				// CreatedAt: st.Library.CreatedAt.UTC().Format(time.RFC3339),
+				// UpdatedAt: st.Library.UpdatedAt.UTC().Format(time.RFC3339),
 			}
 		}
 		list = append(list, staff)
@@ -143,8 +143,8 @@ func (s *Server) CreateStaff(ctx echo.Context) error {
 		Role:      string(st.Role),
 		LibraryID: st.LibraryID.String(),
 		UserID:    st.UserID.String(),
-		CreatedAt: st.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
+		CreatedAt: st.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: st.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }
 
@@ -161,8 +161,8 @@ func (s *Server) GetStaffByID(ctx echo.Context) error {
 		LibraryID: st.LibraryID.String(),
 		UserID:    st.UserID.String(),
 		Role:      string(st.Role),
-		CreatedAt: st.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
+		CreatedAt: st.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: st.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 	if st.Library != nil {
 		lib := ConverLibraryFrom(*st.Library)
@@ -207,7 +207,7 @@ func (s *Server) UpdateStaff(ctx echo.Context) error {
 		ID:        st.ID.String(),
 		Name:      st.Name,
 		Role:      string(st.Role),
-		CreatedAt: st.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
+		CreatedAt: st.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: st.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }

@@ -64,8 +64,8 @@ func (s *Server) ListUsers(ctx echo.Context) error {
 			ID:        u.ID.String(),
 			Name:      u.Name,
 			Email:     u.Email,
-			CreatedAt: u.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
+			CreatedAt: u.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: u.UpdatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 
@@ -116,8 +116,8 @@ func (s *Server) GetUserByID(ctx echo.Context) error {
 			LibraryID: st.LibraryID.String(),
 			UserID:    st.UserID.String(),
 			Role:      string(st.Role),
-			CreatedAt: st.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
+			CreatedAt: st.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: st.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 		// if st.User != nil {
 		// 	staff.User = &User{
@@ -142,8 +142,8 @@ func ConvertUserFrom(u usecase.User) User {
 		ID:        u.ID.String(),
 		Name:      u.Name,
 		Email:     u.Email,
-		CreatedAt: u.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
+		CreatedAt: u.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: u.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
 
@@ -210,8 +210,8 @@ func (s *Server) UpdateUser(ctx echo.Context) error {
 		Name:      u.Name,
 		Email:     u.Email,
 		Phone:     u.Phone,
-		CreatedAt: u.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
+		CreatedAt: u.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: u.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }
 
@@ -282,8 +282,8 @@ func (s *Server) GetMe(ctx echo.Context) error {
 			LibraryID: st.LibraryID.String(),
 			UserID:    st.UserID.String(),
 			Role:      string(st.Role),
-			CreatedAt: st.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: st.UpdatedAt.Format(time.RFC3339),
+			CreatedAt: st.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: st.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 		// if st.User != nil {
 		// 	staff.User = &User{

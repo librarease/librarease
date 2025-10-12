@@ -65,6 +65,7 @@ type Repository interface {
 	GetSubscriptionByID(context.Context, uuid.UUID) (Subscription, error)
 	CreateSubscription(context.Context, Subscription) (Subscription, error)
 	UpdateSubscription(context.Context, Subscription) (Subscription, error)
+	DeleteSubscription(context.Context, uuid.UUID) error
 
 	// borrowing
 	ListBorrowings(context.Context, ListBorrowingsOption) ([]Borrowing, int, error)

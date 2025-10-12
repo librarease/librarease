@@ -61,8 +61,8 @@ func (s *Server) ListLibraries(ctx echo.Context) error {
 			Phone:       l.Phone,
 			Email:       l.Email,
 			Description: l.Description,
-			CreatedAt:   l.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:   l.UpdatedAt.Format(time.RFC3339),
+			CreatedAt:   l.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:   l.UpdatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 
@@ -141,8 +141,8 @@ func (s *Server) CreateLibrary(ctx echo.Context) error {
 		Phone:       l.Phone,
 		Email:       l.Email,
 		Description: l.Description,
-		CreatedAt:   l.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:   l.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:   l.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:   l.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }
 
@@ -191,8 +191,8 @@ func (s *Server) UpdateLibrary(ctx echo.Context) error {
 		Phone:       l.Phone,
 		Email:       l.Email,
 		Description: l.Description,
-		CreatedAt:   l.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:   l.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:   l.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:   l.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }
 
@@ -226,7 +226,7 @@ func ConverLibraryFrom(lib usecase.Library) Library {
 		Phone:       lib.Phone,
 		Email:       lib.Email,
 		Description: lib.Description,
-		CreatedAt:   lib.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:   lib.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:   lib.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:   lib.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }

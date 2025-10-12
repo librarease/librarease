@@ -79,15 +79,15 @@ func (s *Server) ListMemberships(ctx echo.Context) error {
 			LoanPeriod:      mem.LoanPeriod,
 			FinePerDay:      mem.FinePerDay,
 			Price:           mem.Price,
-			CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
+			CreatedAt:       mem.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:       mem.UpdatedAt.UTC().Format(time.RFC3339),
 			DeletedAt:       d,
 		}
 		if mem.Library != nil {
 			m.Library = &Library{
 				ID:   mem.Library.ID.String(),
 				Name: mem.Library.Name,
-				// CreatedAt: mem.Library.CreatedAt.Format(time.RFC3339),
+				// CreatedAt: mem.Library.CreatedAt.UTC().Format(time.RFC3339),
 				// UpdatedAt: mem.Library.UpdateAt.String(),
 			}
 		}
@@ -136,16 +136,16 @@ func (s *Server) GetMembershipByID(ctx echo.Context) error {
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
 		Price:           mem.Price,
-		CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:       mem.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:       mem.UpdatedAt.UTC().Format(time.RFC3339),
 		DeletedAt:       d,
 	}
 	if mem.Library != nil {
 		m.Library = &Library{
 			ID:        mem.Library.ID.String(),
 			Name:      mem.Library.Name,
-			CreatedAt: mem.Library.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: mem.Library.UpdatedAt.Format(time.RFC3339),
+			CreatedAt: mem.Library.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: mem.Library.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 	}
 	return ctx.JSON(200, Res{Data: m})
@@ -195,8 +195,8 @@ func (s *Server) CreateMembership(ctx echo.Context) error {
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
 		Price:           mem.Price,
-		CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:       mem.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:       mem.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }
 
@@ -246,7 +246,7 @@ func (s *Server) UpdateMembership(ctx echo.Context) error {
 		LoanPeriod:      mem.LoanPeriod,
 		FinePerDay:      mem.FinePerDay,
 		Price:           mem.Price,
-		CreatedAt:       mem.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:       mem.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:       mem.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:       mem.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }

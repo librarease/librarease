@@ -85,8 +85,8 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 			Code:      b.Code,
 			Cover:     b.Cover,
 			LibraryID: b.LibraryID.String(),
-			CreatedAt: b.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
+			CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: b.UpdatedAt.UTC().Format(time.RFC3339),
 			DeletedAt: d,
 		}
 
@@ -125,8 +125,8 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 				ID:   b.Library.ID.String(),
 				Name: b.Library.Name,
 				Logo: b.Library.Logo,
-				// CreatedAt: b.Library.CreatedAt.Format(time.RFC3339),
-				// UpdatedAt: b.Library.UpdatedAt.Format(time.RFC3339),
+				// CreatedAt: b.Library.CreatedAt.UTC().Format(time.RFC3339),
+				// UpdatedAt: b.Library.UpdatedAt.UTC().Format(time.RFC3339),
 			}
 			book.Library = &lib
 		}
@@ -180,8 +180,8 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 		Code:      b.Code,
 		Cover:     b.Cover,
 		LibraryID: b.LibraryID.String(),
-		CreatedAt: b.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
+		CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: b.UpdatedAt.UTC().Format(time.RFC3339),
 		DeletedAt: d,
 	}
 	if b.Library != nil {
@@ -189,8 +189,8 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 			ID:        b.Library.ID.String(),
 			Name:      b.Library.Name,
 			Logo:      b.Library.Logo,
-			CreatedAt: b.Library.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: b.Library.UpdatedAt.Format(time.RFC3339),
+			CreatedAt: b.Library.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: b.Library.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 		book.Library = &lib
 	}
@@ -283,8 +283,8 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		Code:      b.Code,
 		Cover:     b.Cover,
 		LibraryID: b.LibraryID.String(),
-		CreatedAt: b.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
+		CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: b.UpdatedAt.UTC().Format(time.RFC3339),
 		DeletedAt: d,
 	}})
 }
@@ -338,8 +338,8 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		Code:      b.Code,
 		Cover:     b.Cover,
 		LibraryID: b.LibraryID.String(),
-		CreatedAt: b.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: b.UpdatedAt.Format(time.RFC3339),
+		CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt: b.UpdatedAt.UTC().Format(time.RFC3339),
 		DeletedAt: d,
 	}})
 }

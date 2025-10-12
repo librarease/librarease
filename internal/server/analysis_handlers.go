@@ -457,7 +457,7 @@ func (s *Server) GetLongestUnreturned(ctx echo.Context) error {
 	for i, r := range res {
 		response[i] = OverdueBorrowResponse{
 			BorrowingID: r.BorrowingID.String(),
-			BorrowedAt:  r.BorrowedAt.Format(time.RFC3339),
+			BorrowedAt:  r.BorrowedAt.UTC().Format(time.RFC3339),
 			UserID:      r.UserID.String(),
 			UserName:    r.UserName,
 			BookID:      r.BookID.String(),

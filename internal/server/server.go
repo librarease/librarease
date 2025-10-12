@@ -76,6 +76,7 @@ type Service interface {
 	GetSubscriptionByID(context.Context, uuid.UUID) (usecase.Subscription, error)
 	CreateSubscription(context.Context, usecase.Subscription) (usecase.Subscription, error)
 	UpdateSubscription(context.Context, usecase.Subscription) (usecase.Subscription, error)
+	DeleteSubscription(context.Context, uuid.UUID) error
 
 	ListBorrowings(context.Context, usecase.ListBorrowingsOption) ([]usecase.Borrowing, int, error)
 	GetBorrowingByID(context.Context, uuid.UUID) (usecase.Borrowing, error)

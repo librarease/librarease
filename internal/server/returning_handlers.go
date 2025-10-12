@@ -76,8 +76,8 @@ func (s *Server) ReturnBorrowing(ctx echo.Context) error {
 			StaffID:     borrow.Returning.StaffID.String(),
 			ReturnedAt:  borrow.Returning.ReturnedAt,
 			Fine:        borrow.Returning.Fine,
-			CreatedAt:   borrow.Returning.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:   borrow.Returning.UpdatedAt.Format(time.RFC3339),
+			CreatedAt:   borrow.Returning.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:   borrow.Returning.UpdatedAt.UTC().Format(time.RFC3339),
 			// DeletedAt:   borrow.Returning.DeletedAt,
 		}
 	}
@@ -86,11 +86,11 @@ func (s *Server) ReturnBorrowing(ctx echo.Context) error {
 		BookID:         borrow.BookID.String(),
 		SubscriptionID: borrow.SubscriptionID.String(),
 		StaffID:        borrow.StaffID.String(),
-		BorrowedAt:     borrow.BorrowedAt.Format(time.RFC3339),
-		DueAt:          borrow.DueAt.Format(time.RFC3339),
+		BorrowedAt:     borrow.BorrowedAt.UTC().Format(time.RFC3339),
+		DueAt:          borrow.DueAt.UTC().Format(time.RFC3339),
 		Returning:      r,
-		CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:      borrow.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:      borrow.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }
 

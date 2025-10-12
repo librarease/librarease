@@ -80,9 +80,10 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	var subscriptionGroup = e.Group("/api/v1/subscriptions")
 	subscriptionGroup.GET("", s.ListSubscriptions, s.AuthMiddleware)
-	subscriptionGroup.POST("", s.CreateSubscription)
-	subscriptionGroup.GET("/:id", s.GetSubscriptionByID)
-	subscriptionGroup.PUT("/:id", s.UpdateSubscription)
+	subscriptionGroup.POST("", s.CreateSubscription, s.AuthMiddleware)
+	subscriptionGroup.GET("/:id", s.GetSubscriptionByID, s.AuthMiddleware)
+	subscriptionGroup.PUT("/:id", s.UpdateSubscription, s.AuthMiddleware)
+	subscriptionGroup.DELETE("/:id", s.DeleteSubscription, s.AuthMiddleware)
 
 	var borrowingGroup = e.Group("/api/v1/borrowings")
 	borrowingGroup.GET("", s.ListBorrowings, s.AuthMiddleware)

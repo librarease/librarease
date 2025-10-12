@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // Subscription represents user's purchase of a membership
@@ -216,12 +217,22 @@ func (s *service) UpdateSubscription(ctx context.Context, sub usecase.Subscripti
 	}
 	err := s.db.
 		WithContext(ctx).
+		Clauses(clause.Returning{}).
+		Select("expires_at", "amount", "fine_per_day", "loan_period", "active_loan_limit", "usage_limit").
 		Updates(&d).
 		Error
 	if err != nil {
 		return usecase.Subscription{}, err
 	}
 	return d.ConvertToUsecase(), nil
+}
+
+func (s *service) DeleteSubscription(ctx context.Context, id uuid.UUID) error {
+	return s.db.
+		WithContext(ctx).
+		Where("id = ?", id).
+		Delete(&Subscription{}).
+		Error
 }
 
 // Convert core model to Usecase

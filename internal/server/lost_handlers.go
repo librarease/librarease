@@ -64,8 +64,8 @@ func (s *Server) LostBorrowing(ctx echo.Context) error {
 		ID:         l.ID.String(),
 		StaffID:    l.StaffID.String(),
 		ReportedAt: l.ReportedAt,
-		CreatedAt:  l.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:  l.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:  l.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:  l.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }
 

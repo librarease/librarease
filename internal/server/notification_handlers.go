@@ -53,7 +53,7 @@ func (s *Server) ListNotifications(ctx echo.Context) error {
 			refID  *string
 		)
 		if n.ReadAt != nil {
-			t := n.ReadAt.Format(time.RFC3339)
+			t := n.ReadAt.UTC().Format(time.RFC3339)
 			readAt = &t
 		}
 		if n.ReferenceID != nil {
@@ -64,8 +64,8 @@ func (s *Server) ListNotifications(ctx echo.Context) error {
 			ID:            n.ID.String(),
 			Title:         n.Title,
 			Message:       n.Message,
-			CreatedAt:     n.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:     n.UpdatedAt.Format(time.RFC3339),
+			CreatedAt:     n.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:     n.UpdatedAt.UTC().Format(time.RFC3339),
 			ReadAt:        readAt,
 			ReferenceID:   refID,
 			ReferenceType: n.ReferenceType,
@@ -169,13 +169,13 @@ func (s *Server) StreamNotifications(ctx echo.Context) error {
 				ID:            msg.ID.String(),
 				Title:         msg.Title,
 				Message:       msg.Message,
-				CreatedAt:     msg.CreatedAt.Format(time.RFC3339),
-				UpdatedAt:     msg.UpdatedAt.Format(time.RFC3339),
+				CreatedAt:     msg.CreatedAt.UTC().Format(time.RFC3339),
+				UpdatedAt:     msg.UpdatedAt.UTC().Format(time.RFC3339),
 				ReferenceID:   referenceID,
 				ReferenceType: msg.ReferenceType,
 			}
 			if msg.ReadAt != nil {
-				t := msg.ReadAt.Format(time.RFC3339)
+				t := msg.ReadAt.UTC().Format(time.RFC3339)
 				noti.ReadAt = &t
 			}
 			if msg.ReferenceID != nil {

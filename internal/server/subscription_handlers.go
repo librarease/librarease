@@ -91,10 +91,10 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 			ID:              sub.ID.String(),
 			UserID:          sub.UserID.String(),
 			MembershipID:    sub.MembershipID.String(),
-			CreatedAt:       sub.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:       sub.UpdatedAt.Format(time.RFC3339),
+			CreatedAt:       sub.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:       sub.UpdatedAt.UTC().Format(time.RFC3339),
 			DeletedAt:       d,
-			ExpiresAt:       sub.ExpiresAt.Format(time.RFC3339),
+			ExpiresAt:       sub.ExpiresAt.UTC().Format(time.RFC3339),
 			Amount:          sub.Amount,
 			FinePerDay:      sub.FinePerDay,
 			LoanPeriod:      sub.LoanPeriod,
@@ -163,10 +163,10 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 		ID:              sub.ID.String(),
 		UserID:          sub.UserID.String(),
 		MembershipID:    sub.MembershipID.String(),
-		CreatedAt:       sub.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:       sub.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:       sub.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:       sub.UpdatedAt.UTC().Format(time.RFC3339),
 		DeletedAt:       d,
-		ExpiresAt:       sub.ExpiresAt.String(),
+		ExpiresAt:       sub.ExpiresAt.UTC().Format(time.RFC3339),
 		Amount:          sub.Amount,
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,
@@ -192,8 +192,8 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 			LoanPeriod:      sub.Membership.LoanPeriod,
 			FinePerDay:      sub.Membership.FinePerDay,
 			Price:           sub.Membership.Price,
-			CreatedAt:       sub.Membership.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:       sub.Membership.UpdatedAt.Format(time.RFC3339),
+			CreatedAt:       sub.Membership.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:       sub.Membership.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 
 		if lib := sub.Membership.Library; lib != nil {
@@ -291,13 +291,36 @@ func (s *Server) UpdateSubscription(ctx echo.Context) error {
 		ID:              sub.ID.String(),
 		UserID:          sub.UserID.String(),
 		MembershipID:    sub.MembershipID.String(),
-		CreatedAt:       sub.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:       sub.UpdatedAt.Format(time.RFC3339),
-		ExpiresAt:       sub.ExpiresAt.String(),
+		CreatedAt:       sub.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:       sub.UpdatedAt.UTC().Format(time.RFC3339),
+		ExpiresAt:       sub.ExpiresAt.UTC().Format(time.RFC3339),
 		Amount:          sub.Amount,
 		FinePerDay:      sub.FinePerDay,
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,
 		UsageLimit:      sub.UsageLimit,
 	}})
+}
+
+type DeleteSubscriptionRequest struct {
+	ID string `param:"id" validate:"required,uuid"`
+}
+
+func (s *Server) DeleteSubscription(ctx echo.Context) error {
+	var req DeleteSubscriptionRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	id, _ := uuid.Parse(req.ID)
+
+	err := s.server.DeleteSubscription(ctx.Request().Context(), id)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.NoContent(204)
 }

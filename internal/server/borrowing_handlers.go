@@ -179,7 +179,7 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 	for _, borrow := range borrows {
 		var d *string
 		if borrow.DeletedAt != nil {
-			tmp := borrow.DeletedAt.Format(time.RFC3339)
+			tmp := borrow.DeletedAt.UTC().Format(time.RFC3339)
 			d = &tmp
 		}
 		m := Borrowing{
@@ -187,10 +187,10 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 			BookID:         borrow.BookID.String(),
 			SubscriptionID: borrow.SubscriptionID.String(),
 			StaffID:        borrow.StaffID.String(),
-			BorrowedAt:     borrow.BorrowedAt.Format(time.RFC3339),
-			DueAt:          borrow.DueAt.Format(time.RFC3339),
-			CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
+			BorrowedAt:     borrow.BorrowedAt.UTC().Format(time.RFC3339),
+			DueAt:          borrow.DueAt.UTC().Format(time.RFC3339),
+			CreatedAt:      borrow.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:      borrow.UpdatedAt.UTC().Format(time.RFC3339),
 			DeletedAt:      d,
 		}
 
@@ -329,7 +329,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 
 	var d *string
 	if borrow.DeletedAt != nil {
-		tmp := borrow.DeletedAt.Format(time.RFC3339)
+		tmp := borrow.DeletedAt.UTC().Format(time.RFC3339)
 		d = &tmp
 	}
 	var r *Returning
@@ -340,8 +340,8 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			StaffID:     borrow.Returning.StaffID.String(),
 			ReturnedAt:  borrow.Returning.ReturnedAt,
 			Fine:        borrow.Returning.Fine,
-			CreatedAt:   borrow.Returning.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:   borrow.Returning.UpdatedAt.Format(time.RFC3339),
+			CreatedAt:   borrow.Returning.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:   borrow.Returning.UpdatedAt.UTC().Format(time.RFC3339),
 			// DeletedAt: d,
 		}
 		if borrow.Returning.Staff != nil {
@@ -378,12 +378,12 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 		BookID:         borrow.BookID.String(),
 		SubscriptionID: borrow.SubscriptionID.String(),
 		StaffID:        borrow.StaffID.String(),
-		BorrowedAt:     borrow.BorrowedAt.Format(time.RFC3339),
-		DueAt:          borrow.DueAt.Format(time.RFC3339),
+		BorrowedAt:     borrow.BorrowedAt.UTC().Format(time.RFC3339),
+		DueAt:          borrow.DueAt.UTC().Format(time.RFC3339),
 		Returning:      r,
 		Lost:           l,
-		CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:      borrow.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:      borrow.UpdatedAt.UTC().Format(time.RFC3339),
 		DeletedAt:      d,
 	}
 
@@ -396,8 +396,8 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			Year:      borrow.Book.Year,
 			Cover:     borrow.Book.Cover,
 			LibraryID: borrow.Book.LibraryID.String(),
-			CreatedAt: borrow.Book.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: borrow.Book.UpdatedAt.Format(time.RFC3339),
+			CreatedAt: borrow.Book.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: borrow.Book.UpdatedAt.UTC().Format(time.RFC3339),
 			// DeletedAt: borrow.Book.DeletedAt,
 		}
 		m.Book = &book
@@ -410,23 +410,23 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			Role:      string(borrow.Staff.Role),
 			UserID:    borrow.Staff.UserID.String(),
 			LibraryID: borrow.Staff.LibraryID.String(),
-			CreatedAt: borrow.Staff.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: borrow.Staff.UpdatedAt.Format(time.RFC3339),
+			CreatedAt: borrow.Staff.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: borrow.Staff.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 		if borrow.Staff.User != nil {
 			staff.User = &User{
 				ID:        borrow.Staff.User.ID.String(),
 				Name:      borrow.Staff.User.Name,
-				CreatedAt: borrow.Staff.User.CreatedAt.Format(time.RFC3339),
-				UpdatedAt: borrow.Staff.User.UpdatedAt.Format(time.RFC3339),
+				CreatedAt: borrow.Staff.User.CreatedAt.UTC().Format(time.RFC3339),
+				UpdatedAt: borrow.Staff.User.UpdatedAt.UTC().Format(time.RFC3339),
 			}
 		}
 		if borrow.Staff.Library != nil {
 			staff.Library = &Library{
 				ID:        borrow.Staff.Library.ID.String(),
 				Name:      borrow.Staff.Library.Name,
-				CreatedAt: borrow.Staff.Library.CreatedAt.Format(time.RFC3339),
-				UpdatedAt: borrow.Staff.Library.UpdatedAt.Format(time.RFC3339),
+				CreatedAt: borrow.Staff.Library.CreatedAt.UTC().Format(time.RFC3339),
+				UpdatedAt: borrow.Staff.Library.UpdatedAt.UTC().Format(time.RFC3339),
 			}
 		}
 		m.Staff = &staff
@@ -437,9 +437,9 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			ID:              borrow.SubscriptionID.String(),
 			UserID:          borrow.Subscription.UserID.String(),
 			MembershipID:    borrow.Subscription.MembershipID.String(),
-			CreatedAt:       borrow.Subscription.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:       borrow.Subscription.UpdatedAt.Format(time.RFC3339),
-			ExpiresAt:       borrow.Subscription.ExpiresAt.Format(time.RFC3339),
+			CreatedAt:       borrow.Subscription.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:       borrow.Subscription.UpdatedAt.UTC().Format(time.RFC3339),
+			ExpiresAt:       borrow.Subscription.ExpiresAt.UTC().Format(time.RFC3339),
 			FinePerDay:      borrow.Subscription.FinePerDay,
 			LoanPeriod:      borrow.Subscription.LoanPeriod,
 			ActiveLoanLimit: borrow.Subscription.ActiveLoanLimit,
@@ -449,8 +449,8 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			sub.User = &User{
 				ID:        borrow.Subscription.User.ID.String(),
 				Name:      borrow.Subscription.User.Name,
-				CreatedAt: borrow.Subscription.User.CreatedAt.Format(time.RFC3339),
-				UpdatedAt: borrow.Subscription.User.UpdatedAt.Format(time.RFC3339),
+				CreatedAt: borrow.Subscription.User.CreatedAt.UTC().Format(time.RFC3339),
+				UpdatedAt: borrow.Subscription.User.UpdatedAt.UTC().Format(time.RFC3339),
 			}
 		}
 		if borrow.Subscription.Membership != nil {
@@ -462,8 +462,8 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 				ActiveLoanLimit: borrow.Subscription.Membership.ActiveLoanLimit,
 				LoanPeriod:      borrow.Subscription.Membership.LoanPeriod,
 				FinePerDay:      borrow.Subscription.Membership.FinePerDay,
-				CreatedAt:       borrow.Subscription.Membership.CreatedAt.Format(time.RFC3339),
-				UpdatedAt:       borrow.Subscription.Membership.UpdatedAt.Format(time.RFC3339),
+				CreatedAt:       borrow.Subscription.Membership.CreatedAt.UTC().Format(time.RFC3339),
+				UpdatedAt:       borrow.Subscription.Membership.UpdatedAt.UTC().Format(time.RFC3339),
 			}
 
 			if borrow.Subscription.Membership.Library != nil {
@@ -471,8 +471,8 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 					ID:        borrow.Subscription.Membership.Library.ID.String(),
 					Name:      borrow.Subscription.Membership.Library.Name,
 					Logo:      borrow.Subscription.Membership.Library.Logo,
-					CreatedAt: borrow.Subscription.Membership.Library.CreatedAt.Format(time.RFC3339),
-					UpdatedAt: borrow.Subscription.Membership.Library.UpdatedAt.Format(time.RFC3339),
+					CreatedAt: borrow.Subscription.Membership.Library.CreatedAt.UTC().Format(time.RFC3339),
+					UpdatedAt: borrow.Subscription.Membership.Library.UpdatedAt.UTC().Format(time.RFC3339),
 				}
 			}
 			sub.Membership = &m
@@ -538,10 +538,10 @@ func (s *Server) CreateBorrowing(ctx echo.Context) error {
 		BookID:         borrow.BookID.String(),
 		SubscriptionID: borrow.SubscriptionID.String(),
 		StaffID:        borrow.StaffID.String(),
-		BorrowedAt:     borrow.BorrowedAt.Format(time.RFC3339),
-		DueAt:          borrow.DueAt.Format(time.RFC3339),
-		CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
+		BorrowedAt:     borrow.BorrowedAt.UTC().Format(time.RFC3339),
+		DueAt:          borrow.DueAt.UTC().Format(time.RFC3339),
+		CreatedAt:      borrow.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:      borrow.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }
 
@@ -642,10 +642,10 @@ func (s *Server) UpdateBorrowing(ctx echo.Context) error {
 		BookID:         borrow.BookID.String(),
 		SubscriptionID: borrow.SubscriptionID.String(),
 		StaffID:        borrow.StaffID.String(),
-		BorrowedAt:     borrow.BorrowedAt.Format(time.RFC3339),
-		DueAt:          borrow.DueAt.Format(time.RFC3339),
-		CreatedAt:      borrow.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:      borrow.UpdatedAt.Format(time.RFC3339),
+		BorrowedAt:     borrow.BorrowedAt.UTC().Format(time.RFC3339),
+		DueAt:          borrow.DueAt.UTC().Format(time.RFC3339),
+		CreatedAt:      borrow.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:      borrow.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }
 
