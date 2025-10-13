@@ -133,6 +133,13 @@ type Repository interface {
 	// ListCollectionFollowers(context.Context, ListCollectionFollowersOption) ([]CollectionFollower, int, error)
 	// CreateCollectionFollower(context.Context, CollectionFollower) (CollectionFollower, error)
 	// DeleteCollectionFollower(context.Context, uuid.UUID) error
+
+	// job
+	ListJobs(context.Context, ListJobsOption) ([]Job, int, error)
+	GetJobByID(context.Context, uuid.UUID) (Job, error)
+	CreateJob(context.Context, Job) (Job, error)
+	UpdateJob(context.Context, Job) (Job, error)
+	DeleteJob(context.Context, uuid.UUID) error
 }
 
 type IdentityProvider interface {

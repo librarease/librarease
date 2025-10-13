@@ -674,3 +674,55 @@ func (s *Server) DeleteBorrowing(ctx echo.Context) error {
 
 	return ctx.JSON(200, Res{Message: "Borrowing deleted successfully"})
 }
+
+type ExportBorrowingsRequest struct {
+	LibraryID string `json:"library_id" validate:"required,uuid"`
+
+	IsActive       bool    `json:"is_active"`
+	IsOverdue      bool    `json:"is_overdue"`
+	IsReturned     bool    `json:"is_returned"`
+	IsLost         bool    `json:"is_lost"`
+	BorrowedAtFrom *string `json:"borrowed_at_from" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	BorrowedAtTo   *string `json:"borrowed_at_to" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+}
+
+func (s *Server) ExportBorrowings(ctx echo.Context) error {
+	var req ExportBorrowingsRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	libID, _ := uuid.Parse(req.LibraryID)
+	opt := usecase.ExportBorrowingsOption{
+		LibraryID:  libID,
+		IsActive:   req.IsActive,
+		IsOverdue:  req.IsOverdue,
+		IsReturned: req.IsReturned,
+		IsLost:     req.IsLost,
+	}
+	var from *time.Time
+	if v := req.BorrowedAtFrom; v != nil {
+		if t, err := time.Parse(time.RFC3339, *v); err == nil {
+			from = &t
+		}
+	}
+	var to *time.Time
+	if v := req.BorrowedAtTo; v != nil {
+		if t, err := time.Parse(time.RFC3339, *v); err == nil {
+			to = &t
+		}
+	}
+	opt.BorrowedAtFrom = from
+	opt.BorrowedAtTo = to
+	id, err := s.server.ExportBorrowings(ctx.Request().Context(), opt)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+	return ctx.JSON(202, Res{
+		Message: "Export job has been queued. You will be notified when it's ready.",
+		Data:    map[string]string{"id": id},
+	})
+}
