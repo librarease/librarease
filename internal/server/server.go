@@ -83,6 +83,7 @@ type Service interface {
 	CreateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
 	UpdateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
 	DeleteBorrowing(context.Context, uuid.UUID) error
+	ExportBorrowings(context.Context, usecase.ExportBorrowingsOption) (string, error)
 
 	ReturnBorrowing(context.Context, uuid.UUID, usecase.Returning) (usecase.Borrowing, error)
 	DeleteReturn(context.Context, uuid.UUID) error
@@ -133,6 +134,14 @@ type Service interface {
 	// ListCollectionFollowers(context.Context, usecase.ListCollectionFollowersOption) ([]usecase.CollectionFollower, int, error)
 	// CreateCollectionFollower(context.Context, usecase.CollectionFollower) (usecase.CollectionFollower, error)
 	// DeleteCollectionFollower(context.Context, uuid.UUID) error
+
+	// job
+	ListJobs(context.Context, usecase.ListJobsOption) ([]usecase.Job, int, error)
+	GetJobByID(context.Context, uuid.UUID) (usecase.Job, error)
+	// do not expose CreateJob - jobs are created internally by the system
+	CreateJob(context.Context, usecase.Job) (usecase.Job, error)
+	UpdateJob(context.Context, usecase.Job) (usecase.Job, error)
+	DeleteJob(context.Context, uuid.UUID) error
 }
 
 type Server struct {

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -304,4 +305,60 @@ func (u Usecase) UpdateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 
 func (u Usecase) DeleteBorrowing(ctx context.Context, id uuid.UUID) error {
 	return u.repo.DeleteBorrowing(ctx, id)
+}
+
+type ExportBorrowingsOption struct {
+	LibraryID uuid.UUID
+
+	IsActive       bool
+	IsOverdue      bool
+	IsReturned     bool
+	IsLost         bool
+	BorrowedAtFrom *time.Time
+	BorrowedAtTo   *time.Time
+}
+type ExportBorrowingsJobPayload struct {
+	LibraryID      uuid.UUID  `json:"library_id"`
+	IsActive       bool       `json:"is_active"`
+	IsOverdue      bool       `json:"is_overdue"`
+	IsReturned     bool       `json:"is_returned"`
+	IsLost         bool       `json:"is_lost"`
+	BorrowedAtFrom *time.Time `json:"borrowed_at_from,omitempty"`
+	BorrowedAtTo   *time.Time `json:"borrowed_at_to,omitempty"`
+}
+
+func (u Usecase) ExportBorrowings(ctx context.Context, opt ExportBorrowingsOption) (string, error) {
+	_, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+	if !ok {
+		return "", fmt.Errorf("user role not found in context")
+	}
+	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return "", fmt.Errorf("user id not found in context")
+	}
+	staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
+		UserID:     userID.String(),
+		LibraryIDs: uuid.UUIDs{opt.LibraryID},
+		Limit:      1,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(staffs) == 0 {
+		return "", fmt.Errorf("user %s not staff of library %s", userID, opt.LibraryID)
+	}
+	b, err := json.Marshal(ExportBorrowingsJobPayload(opt))
+	if err != nil {
+		return "", err
+	}
+	job, err := u.CreateJob(ctx, Job{
+		Type:    "export:borrowings",
+		StaffID: staffs[0].ID,
+		Status:  "PENDING",
+		Payload: b,
+	})
+	if err != nil {
+		return "", err
+	}
+	return job.ID.String(), nil
 }

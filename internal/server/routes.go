@@ -95,6 +95,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	borrowingGroup.DELETE("/:id/return", s.DeleteReturn, s.AuthMiddleware)
 	borrowingGroup.POST("/:id/lost", s.LostBorrowing, s.AuthMiddleware)
 	borrowingGroup.DELETE("/:id/lost", s.DeleteLost, s.AuthMiddleware)
+	borrowingGroup.POST("/export", s.ExportBorrowings, s.AuthMiddleware)
 
 	var authGroup = e.Group("/api/v1/auth")
 	authGroup.POST("/register", s.RegisterUser)
@@ -130,6 +131,10 @@ func (s *Server) RegisterRoutes() http.Handler {
 	// collectionGroup.GET("/:collection_id/followers", s.ListCollectionFollowers)
 	// collectionGroup.POST("/:collection_id/followers", s.CreateCollectionFollower, s.AuthMiddleware)
 	// collectionGroup.DELETE("/:collection_id/followers/:id", s.DeleteCollectionFollower, s.AuthMiddleware)
+
+	var jobGroup = e.Group("/api/v1/jobs")
+	jobGroup.GET("", s.ListJobs, s.AuthMiddleware)
+	jobGroup.GET("/:id", s.GetJobByID, s.AuthMiddleware)
 
 	return e
 }
