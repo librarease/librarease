@@ -13,6 +13,7 @@ func New(
 	fsp FileStorageProvider,
 	mp Mailer,
 	dp Dispatcher,
+	qc QueueClient,
 ) Usecase {
 	return Usecase{
 		repo:                repo,
@@ -20,6 +21,7 @@ func New(
 		fileStorageProvider: fsp,
 		mailer:              mp,
 		dispatcher:          dp,
+		queueClient:         qc,
 	}
 }
 
@@ -155,6 +157,7 @@ type FileStorageProvider interface {
 	GetPublicURL(context.Context) (string, error)
 	TempPath() string
 	GetPresignedURL(ctx context.Context, path string) (string, error)
+	UploadFile(ctx context.Context, path string, data []byte) error
 }
 
 type Mailer interface {
@@ -165,12 +168,17 @@ type Dispatcher interface {
 	Send(context.Context, []PushToken, Notification) error
 }
 
+type QueueClient interface {
+	EnqueueJob(ctx context.Context, jobID uuid.UUID, jobType string, payload []byte) error
+}
+
 type Usecase struct {
 	repo                Repository
 	identityProvider    IdentityProvider
 	fileStorageProvider FileStorageProvider
 	mailer              Mailer
 	dispatcher          Dispatcher
+	queueClient         QueueClient
 }
 
 func (u Usecase) Health() map[string]string {

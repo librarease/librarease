@@ -129,76 +129,26 @@ func (u Usecase) GetJobByID(ctx context.Context, id uuid.UUID) (Job, error) {
 	return job, nil
 }
 
-// CreateJob creates a new job and returns it
-// TODO: Integrate with async queue - enqueue task after job creation
-// Example: After successfully creating the job, send it to a message queue
-// like Redis, RabbitMQ, or AWS SQS for async processing by worker processes
+// CreateJob creates a new job and enqueues it to the async queue
 func (u Usecase) CreateJob(ctx context.Context, job Job) (Job, error) {
-	// role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
-	// if !ok {
-	// 	return Job{}, fmt.Errorf("user role not found in context")
-	// }
-	// userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
-	// if !ok {
-	// 	return Job{}, fmt.Errorf("user id not found in context")
-	// }
-
-	// // Verify the staff creating the job exists and belongs to the user
-	// switch role {
-	// case "SUPERADMIN", "ADMIN":
-	// 	// ALLOW ALL - admins can create jobs for any staff
-	// case "USER":
-	// 	// Verify user is staff
-	// 	staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
-	// 		UserID: userID.String(),
-	// 		Limit:  500,
-	// 	})
-	// 	if err != nil {
-	// 		return Job{}, err
-	// 	}
-
-	// 	// Check if the job's StaffID matches one of user's staff records
-	// 	hasAccess := false
-	// 	for _, staff := range staffs {
-	// 		if staff.ID == job.StaffID {
-	// 			hasAccess = true
-	// 			break
-	// 		}
-	// 	}
-
-	// 	if !hasAccess {
-	// 		return Job{}, fmt.Errorf("unauthorized: cannot create job for this staff")
-	// 	}
-	// }
-
 	// Set default status if not provided
 	if job.Status == "" {
 		job.Status = "PENDING"
 	}
 
+	// Create job record in database
 	createdJob, err := u.repo.CreateJob(ctx, job)
 	if err != nil {
 		return Job{}, err
 	}
 
-	// TODO: Async Queue Integration
-	// After successful job creation, enqueue the task to an async queue
-	// Example pseudo-code:
-	//
-	// if err := u.queue.Enqueue(ctx, QueueMessage{
-	//     JobID:   createdJob.ID,
-	//     Type:    createdJob.Type,
-	//     Payload: createdJob.Payload,
-	// }); err != nil {
-	//     // Log error but don't fail the job creation
-	//     fmt.Printf("failed to enqueue job %s: %v\n", createdJob.ID, err)
-	// }
-	//
-	// Worker process would:
-	// 1. Dequeue the message
-	// 2. Update job status to "PROCESSING" via UpdateJob
-	// 3. Execute the task
-	// 4. Update job with result/error and status "COMPLETED"/"FAILED"
+	// Enqueue the job task to the async queue
+	if err := u.queueClient.EnqueueJob(ctx, createdJob.ID, createdJob.Type, createdJob.Payload); err != nil {
+		// Log error but don't fail the job creation
+		// The job is in PENDING state and can be retried manually or by a cleanup job
+		fmt.Printf("[Job] Failed to enqueue job %s: %v\n", createdJob.ID, err)
+	}
+	fmt.Printf("[Job] Successfully enqueued job %s (type: %s)\n", createdJob.ID, createdJob.Type)
 
 	return createdJob, nil
 }

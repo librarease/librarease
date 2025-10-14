@@ -96,6 +96,12 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		// 	Joins("JOIN memberships m ON s.membership_id = m.id").
 		// 	Where("m.library_id = ?", opt.LibraryID)
 	}
+	if opt.BorrowedAtFrom != nil {
+		db = db.Where("borrowed_at >= ?", opt.BorrowedAtFrom)
+	}
+	if opt.BorrowedAtTo != nil {
+		db = db.Where("borrowed_at <= ?", opt.BorrowedAtTo)
+	}
 
 	var (
 		orderIn = "DESC"
@@ -112,6 +118,13 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		return nil, 0, err
 	}
 
+	if opt.Limit > 0 {
+		db = db.Limit(opt.Limit)
+	}
+	if opt.Skip > 0 {
+		db = db.Offset(opt.Skip)
+	}
+
 	if err := db.
 		Preload("Book").
 		Preload("Staff").
@@ -120,8 +133,6 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		Preload("Subscription.User").
 		Preload("Subscription.Membership").
 		Preload("Subscription.Membership.Library").
-		Limit(opt.Limit).
-		Offset(opt.Skip).
 		Order(orderBy + " " + orderIn).
 		Find(&borrows).
 		Error; err != nil {

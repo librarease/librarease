@@ -68,11 +68,13 @@ func New(gormDB *gorm.DB, noti *pgx.Conn, redis *redis.Client) (*service, error)
 		return nil, err
 	}
 
-	if _, err := noti.Exec(context.TODO(), "LISTEN \"new_notification\""); err != nil {
-		return nil, err
+	var notiHub *notificationHub
+	if noti != nil {
+		if _, err := noti.Exec(context.TODO(), "LISTEN \"new_notification\""); err != nil {
+			return nil, err
+		}
+		notiHub = NewNotificationHub(noti)
 	}
-
-	notiHub := NewNotificationHub(noti)
 
 	return &service{db: gormDB, noti: notiHub, cache: redis}, nil
 }
