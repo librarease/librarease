@@ -33,3 +33,6 @@ main
 .DS_Store
 
 *-firebase-adminsdk-*.json
+
+# Docker Compose with sensitive data
+docker-compose.yml
