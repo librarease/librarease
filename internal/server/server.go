@@ -25,6 +25,7 @@ import (
 	"github.com/librarease/librarease/internal/filestorage"
 	"github.com/librarease/librarease/internal/firebase"
 	"github.com/librarease/librarease/internal/push"
+	"github.com/librarease/librarease/internal/queue"
 	"github.com/librarease/librarease/internal/telemetry"
 	"github.com/librarease/librarease/internal/usecase"
 )
@@ -235,11 +236,6 @@ func NewApp() (*App, error) {
 		return nil, fmt.Errorf("failed to connect to database for notification: %w", err)
 	}
 
-	// rdb := redis.NewClient(&redis.Options{
-	// 	Addr:     "localhost:6379",
-	// 	Password: "", // no password set
-	// 	DB:       0,  // use default DB
-	// })
 	repo, err := database.New(gormDB, notifyConn, nil)
 	if err != nil {
 		sqlDB.Close()
@@ -274,7 +270,19 @@ func NewApp() (*App, error) {
 
 	dp := push.NewPushDispatcher(fb)
 
-	sv := usecase.New(repo, fb, fsp, mp, dp)
+	var (
+		redisAddr     = os.Getenv(config.ENV_KEY_REDIS_HOST) + ":" + os.Getenv(config.ENV_KEY_REDIS_PORT)
+		redisPassword = os.Getenv(config.ENV_KEY_REDIS_PASSWORD)
+	)
+
+	// redis := redis.NewClient(&redis.Options{
+	// 	Addr:     redisAddr,
+	// 	Password: redisPassword,
+	// 	DB:       0, // use default DB
+	// })
+	qc := queue.NewClient(redisAddr, redisPassword)
+
+	sv := usecase.New(repo, fb, fsp, mp, dp, qc)
 	v := validator.New()
 
 	port, _ := strconv.Atoi(os.Getenv(config.ENV_KEY_PORT))

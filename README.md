@@ -1,53 +1,148 @@
-# Project librarease
+# librarease
 
-One Paragraph of project description goes here
+A library management system built with Go and PostgreSQL.
 
-## Getting Started
+## Architecture
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+- **API Server**: HTTP REST API (runs by default)
+- **Worker Server**: Background job processor (runs with `-mode worker` flag)
+- Both modes use the same binary built from `cmd/api/main.go`
 
-## MakeFile
+## Quick Start
 
-Run build make command with tests
 ```bash
-make all
-```
-
-Build the application
-```bash
-make build
-```
-
-Run the application
-```bash
-make run
-```
-Create DB container
-```bash
+# Start infrastructure (PostgreSQL, Redis, MinIO)
 make docker-run
+
+# Run API server
+make run
+
+# Run worker (in another terminal)
+make run-worker
 ```
 
-Shutdown DB Container
+## Development
+
+### Build
+
 ```bash
-make docker-down
+make build          # Builds ./main binary
 ```
 
-DB Integrations Test:
+### Run
+
 ```bash
-make itest
+# API mode (default)
+./main
+
+# Worker mode
+./main -mode worker
+
+# Or use make commands
+make run            # API
+make run-worker     # Worker
 ```
 
-Live reload the application:
+### Live Reload
+
 ```bash
-make watch
+make watch          # API with auto-reload
+make watch-worker   # Worker with auto-reload
 ```
 
-Run the test suite:
+### Testing
+
 ```bash
-make test
+make test           # Unit tests
+make itest          # Integration tests
+make all            # Build + test
 ```
 
-Clean up binary from the last build:
+## Docker
+
+### Development
+
 ```bash
-make clean
+make docker-run     # Start PostgreSQL, Redis, MinIO
+make docker-down    # Stop infrastructure
+make docker-logs    # View logs
+```
+
+### Production
+
+```bash
+# Build image
+docker build -t librarease:latest .
+
+# Run API
+docker run -p 8080:8080 librarease:latest
+
+# Run Worker
+docker run librarease:latest ./main -mode worker
+
+# Or use docker-compose
+docker compose up -d
+```
+
+## Environment Variables
+
+```bash
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_DATABASE=librarease
+DB_USER=postgres
+DB_PASSWORD=postgres
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# Worker
+WORKER_CONCURRENCY=10
+
+# MinIO/S3
+MINIO_ENDPOINT=localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+
+# SMTP
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email
+SMTP_PASSWORD=your-password
+```
+
+See `.env.example` for full configuration.
+
+## Project Structure
+
+```
+cmd/api/main.go     # Single entry point with -mode flag
+internal/
+  server/           # HTTP handlers
+  usecase/          # Business logic
+  database/         # GORM repositories  
+  queue/            # Background jobs
+```
+
+## Background Jobs
+
+Worker processes jobs from Redis queue:
+- `export:borrowings` - Export borrowing records
+- Add more handlers in `internal/queue/handlers/`
+
+## Makefile Commands
+
+```bash
+make build          # Build binary
+make run            # Run API
+make run-worker     # Run worker
+make watch          # API with live reload
+make watch-worker   # Worker with live reload
+make test           # Unit tests
+make itest          # Integration tests
+make docker-run     # Start infrastructure
+make docker-down    # Stop infrastructure
+make clean          # Remove binary
 ```

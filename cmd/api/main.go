@@ -19,7 +19,7 @@ func main() {
 
 	// Server startup
 	go func() {
-		log.Printf("Server starting on %s", app.Addr())
+		log.Printf("API server starting on %s", app.Addr())
 		if err := app.ListenAndServe(); err != nil {
 			log.Printf("Server error: %v", err)
 		}
@@ -30,7 +30,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	log.Println("Shutting down API server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -40,5 +40,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Println("Server exited properly")
+	log.Println("API server exited properly")
 }

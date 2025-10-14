@@ -1,7 +1,9 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -52,6 +54,8 @@ type ListBorrowingsOption struct {
 	IsOverdue       bool
 	IsReturned      bool
 	IsLost          bool
+	BorrowedAtFrom  *time.Time
+	BorrowedAtTo    *time.Time
 }
 
 // TODO: separate client and admin borrowing list route
@@ -361,4 +365,150 @@ func (u Usecase) ExportBorrowings(ctx context.Context, opt ExportBorrowingsOptio
 		return "", err
 	}
 	return job.ID.String(), nil
+}
+
+// ProcessExportBorrowingsJob executes the actual export work for a job
+// This method is called by the queue worker to process the export asynchronously
+func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID) error {
+	// 1. Get job from database
+	job, err := u.repo.GetJobByID(ctx, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	// 2. Parse job payload
+	var payload ExportBorrowingsJobPayload
+	if err := json.Unmarshal(job.Payload, &payload); err != nil {
+		return fmt.Errorf("failed to parse job payload: %w", err)
+	}
+
+	// 3. Update job status to PROCESSING
+	now := time.Now()
+	job.Status = "PROCESSING"
+	job.StartedAt = &now
+	if _, err := u.repo.UpdateJob(ctx, job); err != nil {
+		return fmt.Errorf("failed to update job to PROCESSING: %w", err)
+	}
+
+	// 4. Execute the export work
+	fileURL, err := u.executeExport(ctx, payload)
+	if err != nil {
+		// Update job status to FAILED
+		finished := time.Now()
+		job.Status = "FAILED"
+		job.Error = err.Error()
+		job.FinishedAt = &finished
+		u.repo.UpdateJob(ctx, job)
+		return fmt.Errorf("export failed: %w", err)
+	}
+
+	// 5. Update job status to COMPLETED
+	finished := time.Now()
+	job.Status = "COMPLETED"
+	job.Result = fmt.Appendf(nil, "{\"url\":%q}", fileURL)
+	job.FinishedAt = &finished
+	if _, err := u.repo.UpdateJob(ctx, job); err != nil {
+		return fmt.Errorf("failed to update job to COMPLETED: %w", err)
+	}
+
+	// 6. Send notification to staff
+	go func() {
+		if job.Staff != nil {
+			if err := u.CreateNotification(context.Background(), Notification{
+				UserID:        job.Staff.UserID,
+				Title:         "Export Ready",
+				Message:       "Your borrowings export is ready for download",
+				ReferenceType: "JOB",
+				ReferenceID:   &job.ID,
+			}); err != nil {
+				fmt.Printf("failed to send notification for job %s: %v\n", job.ID, err)
+			}
+		}
+	}()
+
+	return nil
+}
+
+// executeExport performs the actual export logic
+func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobPayload) (string, error) {
+	// TODO: Implement actual export logic
+	// 1. Query borrowings with filters
+	borrowings, _, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
+		LibraryIDs:     uuid.UUIDs{payload.LibraryID},
+		IsActive:       payload.IsActive,
+		IsOverdue:      payload.IsOverdue,
+		IsReturned:     payload.IsReturned,
+		IsLost:         payload.IsLost,
+		BorrowedAtFrom: payload.BorrowedAtFrom,
+		BorrowedAtTo:   payload.BorrowedAtTo,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to list borrowings: %w", err)
+	}
+
+	// 2. Generate CSV file
+	csvData := generateCSV(borrowings)
+
+	// 3. Upload to file storage
+	fileName := fmt.Sprintf("borrowings-export-%s-%s.csv",
+		payload.LibraryID, time.Now().Format("20060102-150405"))
+	path := "private/" + payload.LibraryID.String() + "/exports/" + fileName
+
+	if err := u.fileStorageProvider.UploadFile(ctx, path, csvData); err != nil {
+		return "", fmt.Errorf("failed to upload export file: %w", err)
+	}
+
+	// 4. Get presigned URL for download
+	fileURL, err := u.fileStorageProvider.GetPresignedURL(ctx, path)
+	if err != nil {
+		return "", fmt.Errorf("failed to get presigned URL: %w", err)
+	}
+
+	return fileURL, nil
+}
+
+func generateCSV(borrowings []Borrowing) []byte {
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+	// Write header
+	writer.Write([]string{"User", "Book", "Status", "Borrowed At", "Due At", "Returned At", "Lost At"})
+
+	var user, book, status, returnedAt, lostAt string
+	// Write rows
+	for _, b := range borrowings {
+		switch {
+		case b.Lost != nil:
+			status = "Lost"
+			lostAt = b.Lost.ReportedAt.UTC().Format("2006-01-02 15:04")
+
+		case b.Returning != nil:
+			status = "Returned"
+			returnedAt = b.Returning.ReturnedAt.UTC().Format("2006-01-02 15:04")
+
+		case time.Now().After(b.DueAt):
+			status = "Overdue"
+		default:
+			status = "Active"
+		}
+
+		if b.Subscription != nil && b.Subscription.User != nil {
+			user = b.Subscription.User.Name
+		}
+		if b.Book != nil {
+			book = b.Book.Title
+		}
+		writer.Write([]string{
+			user,
+			book,
+			status,
+			b.BorrowedAt.UTC().Format("2006-01-02 15:04"),
+			b.DueAt.UTC().Format("2006-01-02 15:04"),
+			returnedAt,
+			lostAt,
+		})
+		// Reset for next row
+		user, book, status, returnedAt, lostAt = "", "", "", "", ""
+	}
+	writer.Flush()
+	return buf.Bytes()
 }

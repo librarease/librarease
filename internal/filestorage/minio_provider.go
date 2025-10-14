@@ -1,6 +1,7 @@
 package filestorage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
@@ -72,4 +73,10 @@ func (f *MinIOStorage) GetPresignedURL(ctx context.Context, path string) (string
 		return "", err
 	}
 	return u.String(), nil
+}
+
+func (f *MinIOStorage) UploadFile(ctx context.Context, path string, data []byte) error {
+	_, err := f.client.PutObject(ctx, f.bucket, path,
+		bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{})
+	return err
 }
