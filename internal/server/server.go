@@ -143,6 +143,7 @@ type Service interface {
 	CreateJob(context.Context, usecase.Job) (usecase.Job, error)
 	UpdateJob(context.Context, usecase.Job) (usecase.Job, error)
 	DeleteJob(context.Context, uuid.UUID) error
+	DownloadJobResult(context.Context, uuid.UUID) (string, error)
 }
 
 type Server struct {

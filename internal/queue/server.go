@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -19,6 +20,7 @@ import (
 	"github.com/librarease/librarease/internal/firebase"
 	"github.com/librarease/librarease/internal/push"
 	"github.com/librarease/librarease/internal/queue/handlers"
+	"github.com/librarease/librarease/internal/telemetry"
 	"github.com/librarease/librarease/internal/usecase"
 )
 
@@ -32,7 +34,8 @@ type Server struct {
 
 // Worker represents a worker application with all its dependencies
 type Worker struct {
-	server *Server
+	server      *Server
+	otelCleanup func(context.Context) error
 }
 
 // NewWorker creates a fully configured worker with all dependencies
@@ -138,6 +141,13 @@ func NewWorker() (*Worker, error) {
 	log.Println("Worker registered handlers:")
 	log.Println("  - export:borrowings")
 
+	// Set up OpenTelemetry
+	otelShutdown, err := telemetry.SetupOTelSDK(context.Background())
+	if err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("failed to set up OpenTelemetry: %w", err)
+	}
+
 	server := &Server{
 		asynqServer: asynqServer,
 		mux:         mux,
@@ -146,7 +156,8 @@ func NewWorker() (*Worker, error) {
 	}
 
 	return &Worker{
-		server: server,
+		server:      server,
+		otelCleanup: otelShutdown,
 	}, nil
 }
 
@@ -165,6 +176,14 @@ func (w *Worker) Stop() {
 	if w.server.sqlDB != nil {
 		if err := w.server.sqlDB.Close(); err != nil {
 			log.Printf("Error closing database: %v", err)
+		}
+	}
+
+	// Cleanup OpenTelemetry
+	if w.otelCleanup != nil {
+		ctx := context.Background()
+		if err := w.otelCleanup(ctx); err != nil {
+			log.Printf("Error cleaning up OpenTelemetry: %v", err)
 		}
 	}
 }

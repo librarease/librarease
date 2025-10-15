@@ -32,9 +32,9 @@ type ListJobsRequest struct {
 	SortIn    string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 	LibraryID string `query:"library_id" validate:"required,uuid"`
 
-	Types    []string `query:"types"`
-	StaffIDs []string `query:"staff_ids"`
-	Statuses []string `query:"statuses" validate:"omitempty,dive,oneof=PENDING IN_PROGRESS COMPLETED FAILED"`
+	Type    string `query:"type" validate:"omitempty,oneof=export\:borrowings,import\:books"`
+	StaffID string `query:"staff_id" validate:"omitempty,uuid"`
+	Status  string `query:"status" validate:"omitempty,oneof=PENDING PROCESSING COMPLETED FAILED"`
 }
 
 func (s *Server) ListJobs(ctx echo.Context) error {
@@ -49,10 +49,17 @@ func (s *Server) ListJobs(ctx echo.Context) error {
 	libraryID, _ := uuid.Parse(req.LibraryID)
 
 	var staffIDs uuid.UUIDs
-	for _, id := range req.StaffIDs {
-		if uid, err := uuid.Parse(id); err == nil {
-			staffIDs = append(staffIDs, uid)
-		}
+	if req.StaffID != "" {
+		staffID, _ := uuid.Parse(req.StaffID)
+		staffIDs = append(staffIDs, staffID)
+	}
+	var types []string
+	if req.Type != "" {
+		types = append(types, req.Type)
+	}
+	var statuses []string
+	if req.Status != "" {
+		statuses = append(statuses, req.Status)
 	}
 
 	jobs, total, err := s.server.ListJobs(
@@ -62,9 +69,9 @@ func (s *Server) ListJobs(ctx echo.Context) error {
 			Limit:     req.Limit,
 			SortBy:    req.SortBy,
 			SortIn:    req.SortIn,
-			Types:     req.Types,
+			Types:     types,
 			StaffIDs:  staffIDs,
-			Statuses:  req.Statuses,
+			Statuses:  statuses,
 			LibraryID: libraryID,
 		})
 	if err != nil {
@@ -176,4 +183,21 @@ func (s *Server) GetJobByID(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(200, Res{Data: j})
+}
+
+func (s *Server) DownloadJobResult(ctx echo.Context) error {
+	var req GetJobByIDRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	id, _ := uuid.Parse(req.ID)
+	url, err := s.server.DownloadJobResult(ctx.Request().Context(), id)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+	return ctx.JSON(200, Res{Data: map[string]string{"url": url}})
 }

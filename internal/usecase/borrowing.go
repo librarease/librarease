@@ -391,7 +391,7 @@ func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID
 	}
 
 	// 4. Execute the export work
-	fileURL, err := u.executeExport(ctx, payload)
+	res, err := u.executeExport(ctx, payload)
 	if err != nil {
 		// Update job status to FAILED
 		finished := time.Now()
@@ -405,7 +405,7 @@ func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID
 	// 5. Update job status to COMPLETED
 	finished := time.Now()
 	job.Status = "COMPLETED"
-	job.Result = fmt.Appendf(nil, "{\"url\":%q}", fileURL)
+	job.Result = res
 	job.FinishedAt = &finished
 	if _, err := u.repo.UpdateJob(ctx, job); err != nil {
 		return fmt.Errorf("failed to update job to COMPLETED: %w", err)
@@ -418,7 +418,7 @@ func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID
 				UserID:        job.Staff.UserID,
 				Title:         "Export Ready",
 				Message:       "Your borrowings export is ready for download",
-				ReferenceType: "JOB",
+				ReferenceType: "EXPORT_BORROWING",
 				ReferenceID:   &job.ID,
 			}); err != nil {
 				fmt.Printf("failed to send notification for job %s: %v\n", job.ID, err)
@@ -430,8 +430,8 @@ func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID
 }
 
 // executeExport performs the actual export logic
-func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobPayload) (string, error) {
-	// TODO: Implement actual export logic
+func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobPayload) ([]byte, error) {
+
 	// 1. Query borrowings with filters
 	borrowings, _, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
 		LibraryIDs:     uuid.UUIDs{payload.LibraryID},
@@ -443,7 +443,7 @@ func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobP
 		BorrowedAtTo:   payload.BorrowedAtTo,
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to list borrowings: %w", err)
+		return nil, fmt.Errorf("failed to list borrowings: %w", err)
 	}
 
 	// 2. Generate CSV file
@@ -452,19 +452,17 @@ func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobP
 	// 3. Upload to file storage
 	fileName := fmt.Sprintf("borrowings-export-%s-%s.csv",
 		payload.LibraryID, time.Now().Format("20060102-150405"))
-	path := "private/" + payload.LibraryID.String() + "/exports/" + fileName
+	path := "/private/" + payload.LibraryID.String() + "/exports/" + fileName
 
 	if err := u.fileStorageProvider.UploadFile(ctx, path, csvData); err != nil {
-		return "", fmt.Errorf("failed to upload export file: %w", err)
+		return nil, fmt.Errorf("failed to upload export file: %w", err)
 	}
 
-	// 4. Get presigned URL for download
-	fileURL, err := u.fileStorageProvider.GetPresignedURL(ctx, path)
-	if err != nil {
-		return "", fmt.Errorf("failed to get presigned URL: %w", err)
-	}
-
-	return fileURL, nil
+	return json.Marshal(map[string]any{
+		"path": path,
+		"name": fileName,
+		"size": len(csvData),
+	})
 }
 
 func generateCSV(borrowings []Borrowing) []byte {

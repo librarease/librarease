@@ -135,6 +135,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	var jobGroup = e.Group("/api/v1/jobs")
 	jobGroup.GET("", s.ListJobs, s.AuthMiddleware)
 	jobGroup.GET("/:id", s.GetJobByID, s.AuthMiddleware)
+	jobGroup.GET("/:id/download", s.DownloadJobResult, s.AuthMiddleware)
 
 	return e
 }
