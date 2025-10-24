@@ -71,6 +71,7 @@ type Repository interface {
 
 	// borrowing
 	ListBorrowings(context.Context, ListBorrowingsOption) ([]Borrowing, int, error)
+	ListBorrowingSummariesForNotifications(context.Context, NotificationFiltersOption) ([]BorrowingSummary, error)
 	GetBorrowingByID(context.Context, uuid.UUID) (Borrowing, error)
 	CreateBorrowing(context.Context, Borrowing) (Borrowing, error)
 	UpdateBorrowing(context.Context, Borrowing) (Borrowing, error)

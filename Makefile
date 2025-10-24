@@ -24,6 +24,10 @@ run:
 
 run-worker:
 	@go run cmd/worker/main.go
+
+run-scheduler:
+	@go run cmd/worker/main.go -mode scheduler
+
 # Start local development infrastructure (DB, Redis, MinIO)
 docker-run:
 	@echo "Starting local development infrastructure..."

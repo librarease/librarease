@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -145,6 +146,79 @@ func (u Usecase) CreateNotification(ctx context.Context, n Notification) error {
 			return nil
 		}
 		return fmt.Errorf("send notification: %w", err)
+	}
+	return nil
+}
+
+// ProcessOverdueNotifications handles the scheduled overdue notification job
+func (u Usecase) ProcessOverdueNotifications(ctx context.Context) error {
+
+	nearDueSummaries, err := u.findBorrowingSummariesOverdue(ctx, 24*time.Hour)
+	if err != nil {
+		return fmt.Errorf("failed to find near due borrowings: %w", err)
+	}
+
+	overdue1DaySummaries, err := u.findBorrowingSummariesOverdue(ctx, -24*time.Hour)
+	if err != nil {
+		return fmt.Errorf("failed to find 1-day overdue borrowings: %w", err)
+	}
+
+	if err := u.sendNearDueNotificationsFromSummaries(ctx, nearDueSummaries); err != nil {
+		return fmt.Errorf("failed to send near due notifications: %w", err)
+	}
+
+	if err := u.sendOverdueNotificationsFromSummaries(ctx, overdue1DaySummaries); err != nil {
+		return fmt.Errorf("failed to send 1-day overdue notifications: %w", err)
+	}
+
+	log.Printf("Overdue notification processing complete: %d near due, %d (1 day)",
+		len(nearDueSummaries), len(overdue1DaySummaries))
+
+	return nil
+}
+
+func (u Usecase) findBorrowingSummariesOverdue(ctx context.Context, overdueDuration time.Duration) ([]BorrowingSummary, error) {
+	now := time.Now()
+	startWindow := now.Add(overdueDuration - time.Hour)
+	endWindow := now.Add(overdueDuration + time.Hour)
+
+	summaries, err := u.repo.ListBorrowingSummariesForNotifications(ctx, NotificationFiltersOption{
+		DueAtFrom: &startWindow,
+		DueAtTo:   &endWindow,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return summaries, nil
+}
+
+func (u Usecase) sendNearDueNotificationsFromSummaries(ctx context.Context, summaries []BorrowingSummary) error {
+	for _, summary := range summaries {
+		if err := u.CreateNotification(ctx, Notification{
+			Title:         "Book Due Soon",
+			Message:       fmt.Sprintf("Your book %q is due tomorrow (%s). Please return it on time to avoid late fees.", summary.BookTitle, summary.DueAt.Format("15:04")),
+			UserID:        summary.UserID,
+			ReferenceID:   &summary.ID,
+			ReferenceType: "NEAR_DUE",
+		}); err != nil {
+			log.Printf("Failed to send near due notification for borrowing %s: %v", summary.ID, err)
+		}
+	}
+	return nil
+}
+
+func (u Usecase) sendOverdueNotificationsFromSummaries(ctx context.Context, summaries []BorrowingSummary) error {
+	for _, summary := range summaries {
+		if err := u.CreateNotification(ctx, Notification{
+			Title:         "Book Overdue",
+			Message:       fmt.Sprintf("Your book %q is overdue. Please return it as soon as possible to minimize late fees.", summary.BookTitle),
+			UserID:        summary.UserID,
+			ReferenceID:   &summary.ID,
+			ReferenceType: "BORROWING",
+		}); err != nil {
+			log.Printf("Failed to send overdue notification for borrowing %s: %v", summary.ID, err)
+		}
 	}
 	return nil
 }

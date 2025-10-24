@@ -52,7 +52,6 @@ services:
     volumes:
       - /home/ubuntu/librarease/redis:/data
     command: redis-server --appendonly yes --requirepass redispassword
-    
 
   api-service:
     restart: always
@@ -85,6 +84,23 @@ services:
       <<: *shared-env
       WORKER_CONCURRENCY: 10
       OTEL_RESOURCE_ATTRIBUTES: service.name=librarease-api-worker,service.namespace=librarease,deployment.environment=development
+    depends_on: 
+      - db
+      - redis
+
+  scheduler-service:
+    restart: always
+    image: ecr-repo-url/libraraease:backend
+    container_name: scheduler-service
+    command: ["./worker -mode scheduler"]
+    networks:
+      - internal_network
+    volumes:
+      - /home/ubuntu/deploy/path-to-firebase-adminsdk.json:/app/path-to-firebase-adminsdk.json
+    environment:
+      <<: *shared-env
+      WORKER_CONCURRENCY: 10
+      OTEL_RESOURCE_ATTRIBUTES: service.name=librarease-api-scheduler,service.namespace=librarease,deployment.environment=development
     depends_on: 
       - db
       - redis

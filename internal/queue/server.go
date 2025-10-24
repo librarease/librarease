@@ -38,6 +38,12 @@ type Worker struct {
 	otelCleanup func(context.Context) error
 }
 
+// Scheduler represents a scheduler application with all its dependencies
+type Scheduler struct {
+	scheduler   *asynq.Scheduler
+	otelCleanup func(context.Context) error
+}
+
 // NewWorker creates a fully configured worker with all dependencies
 func NewWorker() (*Worker, error) {
 	log.Println("Initializing worker dependencies...")
@@ -136,10 +142,12 @@ func NewWorker() (*Worker, error) {
 
 	// Register task handlers - one line per job type
 	mux.HandleFunc("export:borrowings", h.HandleExportBorrowings)
+	mux.HandleFunc("notification:check-overdue", h.HandleCheckOverdue)
 	// Add more handlers here as needed
 
 	log.Println("Worker registered handlers:")
 	log.Println("  - export:borrowings")
+	log.Println("  - notification:check-overdue")
 
 	// Set up OpenTelemetry
 	otelShutdown, err := telemetry.SetupOTelSDK(context.Background())
@@ -183,6 +191,105 @@ func (w *Worker) Stop() {
 	if w.otelCleanup != nil {
 		ctx := context.Background()
 		if err := w.otelCleanup(ctx); err != nil {
+			log.Printf("Error cleaning up OpenTelemetry: %v", err)
+		}
+	}
+}
+
+// NewScheduler creates a fully configured scheduler with all dependencies
+func NewScheduler() (*Scheduler, error) {
+	log.Println("Initializing scheduler...")
+
+	// Setup Redis connection (same as worker)
+	redisAddr := fmt.Sprintf("%s:%s",
+		os.Getenv(config.ENV_KEY_REDIS_HOST),
+		os.Getenv(config.ENV_KEY_REDIS_PORT),
+	)
+	redisPassword := os.Getenv(config.ENV_KEY_REDIS_PASSWORD)
+
+	// Create Asynq scheduler
+	asynqScheduler := asynq.NewScheduler(
+		asynq.RedisClientOpt{
+			Addr:     redisAddr,
+			Password: redisPassword,
+		},
+		&asynq.SchedulerOpts{
+			LogLevel: asynq.InfoLevel,
+		},
+	)
+
+	// Register periodic tasks
+	if err := registerPeriodicTasks(asynqScheduler); err != nil {
+		return nil, fmt.Errorf("failed to register periodic tasks: %w", err)
+	}
+
+	// Set up OpenTelemetry
+	otelShutdown, err := telemetry.SetupOTelSDK(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to set up OpenTelemetry: %w", err)
+	}
+
+	log.Println("Scheduler initialized successfully")
+
+	return &Scheduler{
+		scheduler:   asynqScheduler,
+		otelCleanup: otelShutdown,
+	}, nil
+}
+
+// registerPeriodicTasks registers all scheduled tasks
+func registerPeriodicTasks(scheduler *asynq.Scheduler) error {
+	log.Println("Registering periodic tasks...")
+
+	// Recurring every hour
+	entryID, err := scheduler.Register(
+		"@every 1h",
+		asynq.NewTask(
+			"notification:check-overdue",
+			nil,
+			asynq.TaskID("unique-notification-check-overdue-task"),
+		),
+		asynq.Queue("default"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to register overdue check task: %w", err)
+	}
+
+	log.Printf("Registered overdue check task with ID: %s", entryID)
+
+	// You can add more periodic tasks here:
+	//
+	// // Weekly analytics report on Mondays at 8:00 AM
+	// entryID, err = scheduler.Register(
+	//     "0 8 * * 1",
+	//     asynq.NewTask("analytics:weekly-report", nil),
+	//     asynq.Queue("low"),
+	// )
+	// if err != nil {
+	//     return fmt.Errorf("failed to register weekly analytics task: %w", err)
+	// }
+
+	log.Println("Periodic tasks registered:")
+	log.Println("  - notification:check-overdue (every hour)")
+
+	return nil
+}
+
+// Start starts the scheduler
+func (s *Scheduler) Start() error {
+	log.Println("Scheduler started successfully")
+	return s.scheduler.Run()
+}
+
+// Stop stops the scheduler gracefully
+func (s *Scheduler) Stop() {
+	log.Println("Stopping scheduler...")
+	s.scheduler.Shutdown()
+
+	// Cleanup OpenTelemetry
+	if s.otelCleanup != nil {
+		ctx := context.Background()
+		if err := s.otelCleanup(ctx); err != nil {
 			log.Printf("Error cleaning up OpenTelemetry: %v", err)
 		}
 	}

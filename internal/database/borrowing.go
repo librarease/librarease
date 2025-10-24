@@ -188,6 +188,70 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 	return uborrows, int(count), nil
 }
 
+// ListBorrowingSummariesForNotifications returns lightweight borrowing summaries with precise notification filters
+func (s *service) ListBorrowingSummariesForNotifications(ctx context.Context, opt usecase.NotificationFiltersOption) ([]usecase.BorrowingSummary, error) {
+	type result struct {
+		ID          uuid.UUID `gorm:"column:id"`
+		UserID      uuid.UUID `gorm:"column:user_id"`
+		DueAt       time.Time `gorm:"column:due_at"`
+		BookTitle   string    `gorm:"column:book_title"`
+		LibraryName string    `gorm:"column:library_name"`
+	}
+
+	var results []result
+
+	// Build optimized query for notification processing
+	db := s.db.WithContext(ctx).
+		Table("borrowings").
+		Joins("JOIN subscriptions s ON borrowings.subscription_id = s.id").
+		Joins("JOIN books b ON borrowings.book_id = b.id").
+		Joins("JOIN libraries l ON b.library_id = l.id").
+		Select(`
+			borrowings.id,
+			s.user_id,
+			borrowings.due_at,
+			b.title as book_title,
+			l.name as library_name
+		`).
+		Where("borrowings.deleted_at IS NULL").
+		// Must be active (not returned or lost)
+		Where("NOT EXISTS (SELECT 1 FROM losts WHERE losts.borrowing_id = borrowings.id AND losts.deleted_at IS NULL)").
+		Where("NOT EXISTS (SELECT 1 FROM returnings WHERE returnings.borrowing_id = borrowings.id AND returnings.deleted_at IS NULL)")
+
+	// Apply precise time filters for near-due notifications
+	if opt.DueAtFrom != nil && opt.DueAtTo != nil {
+		db = db.Where("borrowings.due_at >= ? AND borrowings.due_at <= ?", *opt.DueAtFrom, *opt.DueAtTo)
+	}
+
+	// Optional library filtering
+	if len(opt.LibraryIDs) > 0 {
+		db = db.Where("l.id IN ?", opt.LibraryIDs)
+	}
+
+	// Apply limit
+	if opt.Limit > 0 {
+		db = db.Limit(opt.Limit)
+	}
+
+	if err := db.Find(&results).Error; err != nil {
+		return nil, err
+	}
+
+	// Convert to usecase.BorrowingSummary
+	summaries := make([]usecase.BorrowingSummary, len(results))
+	for i, r := range results {
+		summaries[i] = usecase.BorrowingSummary{
+			ID:          r.ID,
+			UserID:      r.UserID,
+			DueAt:       r.DueAt,
+			BookTitle:   r.BookTitle,
+			LibraryName: r.LibraryName,
+		}
+	}
+
+	return summaries, nil
+}
+
 func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.Borrowing, error) {
 	var b Borrowing
 

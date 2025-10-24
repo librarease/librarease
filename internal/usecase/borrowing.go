@@ -32,6 +32,23 @@ type Borrowing struct {
 	Lost         *Lost
 }
 
+// BorrowingSummary contains minimal borrowing info for efficient notification processing
+type BorrowingSummary struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	DueAt       time.Time
+	BookTitle   string
+	LibraryName string
+}
+
+// NotificationFiltersOption contains precise filters for notification processing
+type NotificationFiltersOption struct {
+	DueAtFrom  *time.Time
+	DueAtTo    *time.Time
+	LibraryIDs []uuid.UUID
+	Limit      int
+}
+
 type ListBorrowingsOption struct {
 	Skip   int
 	Limit  int
