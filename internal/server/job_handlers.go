@@ -185,7 +185,7 @@ func (s *Server) GetJobByID(ctx echo.Context) error {
 	return ctx.JSON(200, Res{Data: j})
 }
 
-func (s *Server) DownloadJobResult(ctx echo.Context) error {
+func (s *Server) DownloadJobAsset(ctx echo.Context) error {
 	var req GetJobByIDRequest
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
@@ -195,7 +195,7 @@ func (s *Server) DownloadJobResult(ctx echo.Context) error {
 	}
 
 	id, _ := uuid.Parse(req.ID)
-	url, err := s.server.DownloadJobResult(ctx.Request().Context(), id)
+	url, err := s.server.DownloadJobAsset(ctx.Request().Context(), id)
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}

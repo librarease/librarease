@@ -246,7 +246,7 @@ func (u Usecase) DeleteJob(ctx context.Context, id uuid.UUID) error {
 	return u.repo.DeleteJob(ctx, id)
 }
 
-func (u Usecase) DownloadJobResult(ctx context.Context, id uuid.UUID) (string, error) {
+func (u Usecase) DownloadJobAsset(ctx context.Context, id uuid.UUID) (string, error) {
 
 	job, err := u.repo.GetJobByID(ctx, id)
 	if err != nil {
@@ -260,8 +260,20 @@ func (u Usecase) DownloadJobResult(ctx context.Context, id uuid.UUID) (string, e
 	var res struct {
 		Path string `json:"path"`
 	}
-	if err := json.Unmarshal(job.Result, &res); err != nil {
-		return "", fmt.Errorf("failed to parse job result: %w", err)
+
+	var b []byte
+
+	switch job.Type {
+	case "export:borrowings":
+		b = job.Result
+	case "import:books":
+		b = job.Payload
+	default:
+		return "", fmt.Errorf("unsupported job type for download: %s", job.Type)
+	}
+
+	if err := json.Unmarshal(b, &res); err != nil {
+		return "", fmt.Errorf("failed to parse job asset: %w", err)
 	}
 
 	return u.fileStorageProvider.GetPresignedURL(ctx, res.Path)

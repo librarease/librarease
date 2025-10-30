@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	consts "github.com/librarease/librarease/internal/config"
@@ -47,9 +48,13 @@ func (f *MinIOStorage) GetTempUploadURL(ctx context.Context, name string) (strin
 }
 
 func (f *MinIOStorage) MoveTempFilePublic(ctx context.Context, source string, dest string) error {
+	return f.MoveTempFile(ctx, source, f.publicPath+"/"+dest)
+}
+
+func (f *MinIOStorage) MoveTempFile(ctx context.Context, source string, dest string) error {
 	var (
 		tempSource = f.tempPath + "/" + source
-		key        = f.publicPath + "/" + dest + "/" + source
+		key        = dest + "/" + source
 	)
 	copyDest := minio.CopyDestOptions{
 		Bucket: f.bucket,
@@ -79,4 +84,12 @@ func (f *MinIOStorage) UploadFile(ctx context.Context, path string, data []byte)
 	_, err := f.client.PutObject(ctx, f.bucket, path,
 		bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{})
 	return err
+}
+
+func (f *MinIOStorage) GetReader(ctx context.Context, path string) (io.ReadCloser, error) {
+	obj, err := f.client.GetObject(ctx, f.bucket, path, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
 }

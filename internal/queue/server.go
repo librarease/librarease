@@ -136,18 +136,16 @@ func NewWorker() (*Worker, error) {
 	)
 
 	mux := asynq.NewServeMux()
-
-	// Create handlers instance
 	h := handlers.NewHandlers(uc)
 
-	// Register task handlers - one line per job type
 	mux.HandleFunc("export:borrowings", h.HandleExportBorrowings)
 	mux.HandleFunc("notification:check-overdue", h.HandleCheckOverdue)
-	// Add more handlers here as needed
+	mux.HandleFunc("import:books", h.HandleImportBooks)
 
 	log.Println("Worker registered handlers:")
-	log.Println("  - export:borrowings")
-	log.Println("  - notification:check-overdue")
+	log.Println(" - export:borrowings")
+	log.Println(" - notification:check-overdue")
+	log.Println(" - import:books")
 
 	// Set up OpenTelemetry
 	otelShutdown, err := telemetry.SetupOTelSDK(context.Background())

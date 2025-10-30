@@ -11,7 +11,6 @@ import (
 func (h *Handlers) HandleCheckOverdue(ctx context.Context, task *asynq.Task) error {
 	log.Println("Processing overdue notification check...")
 
-	// Call the usecase method to process overdue notifications
 	err := h.usecase.ProcessOverdueNotifications(ctx)
 	if err != nil {
 		log.Printf("Error processing overdue notifications: %v", err)

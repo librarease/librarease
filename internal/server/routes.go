@@ -77,6 +77,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 	bookGroup.POST("", s.CreateBook)
 	bookGroup.GET("/:id", s.GetBookByID)
 	bookGroup.PUT("/:id", s.UpdateBook, s.AuthMiddleware)
+	bookGroup.POST("/import/preview", s.PreviewImportBooks, s.AuthMiddleware)
+	bookGroup.POST("/import/confirm", s.ConfirmImportBooks, s.AuthMiddleware)
 
 	var subscriptionGroup = e.Group("/api/v1/subscriptions")
 	subscriptionGroup.GET("", s.ListSubscriptions, s.AuthMiddleware)
@@ -135,7 +137,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	var jobGroup = e.Group("/api/v1/jobs")
 	jobGroup.GET("", s.ListJobs, s.AuthMiddleware)
 	jobGroup.GET("/:id", s.GetJobByID, s.AuthMiddleware)
-	jobGroup.GET("/:id/download", s.DownloadJobResult, s.AuthMiddleware)
+	jobGroup.GET("/:id/download", s.DownloadJobAsset, s.AuthMiddleware)
 
 	return e
 }

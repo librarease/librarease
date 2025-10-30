@@ -343,3 +343,56 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		DeletedAt: d,
 	}})
 }
+
+func (s *Server) PreviewImportBooks(ctx echo.Context) error {
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	src, err := file.Open()
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+	defer src.Close()
+
+	libID, err := uuid.Parse(ctx.FormValue("library_id"))
+	if err != nil {
+		return ctx.JSON(400, map[string]string{"error": "invalid library_id"})
+	}
+
+	res, err := s.server.PreviewImportBooks(ctx.Request().Context(), libID, src, file.Filename)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.JSON(200, Res{Data: res})
+}
+
+type ConfirmImportBooksRequest struct {
+	Path  string `json:"path" validate:"required"`
+	LibID string `json:"library_id" validate:"required,uuid"`
+}
+
+func (s *Server) ConfirmImportBooks(ctx echo.Context) error {
+	var req ConfirmImportBooksRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	libID, _ := uuid.Parse(req.LibID)
+
+	id, err := s.server.ConfirmImportBooks(ctx.Request().Context(), libID, req.Path)
+	if err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.JSON(200, Res{
+		Message: "Import job started",
+		Data: map[string]string{
+			"id": id,
+		},
+	})
+}

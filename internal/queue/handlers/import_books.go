@@ -9,7 +9,8 @@ import (
 	"github.com/hibiken/asynq"
 )
 
-func (h *Handlers) HandleExportBorrowings(ctx context.Context, task *asynq.Task) error {
+func (h *Handlers) HandleImportBooks(ctx context.Context, task *asynq.Task) error {
+
 	var payload TaskPayload
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		log.Printf("[Queue] Failed to parse task payload: %v\n", err)
@@ -22,9 +23,9 @@ func (h *Handlers) HandleExportBorrowings(ctx context.Context, task *asynq.Task)
 		return err
 	}
 
-	log.Printf("[Queue] Processing export:borrowings job: %s\n", jobID)
+	log.Printf("[Queue] Processing import:books job: %s\n", jobID)
 
-	if err := h.usecase.ProcessExportBorrowingsJob(ctx, jobID); err != nil {
+	if err := h.usecase.ProcessImportBooksJob(ctx, jobID); err != nil {
 		log.Printf("[Queue] Failed to process job %s: %v\n", jobID, err)
 		return err
 	}

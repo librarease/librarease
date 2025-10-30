@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/google/uuid"
@@ -154,11 +155,13 @@ type IdentityProvider interface {
 type FileStorageProvider interface {
 	GetTempUploadURL(context.Context, string) (string, error)
 	// MoveTempFilePublic moves source in temp+path to public+dest
+	MoveTempFile(ctx context.Context, source string, dest string) error
 	MoveTempFilePublic(ctx context.Context, source string, dest string) error
 	GetPublicURL(context.Context) (string, error)
 	TempPath() string
 	GetPresignedURL(ctx context.Context, path string) (string, error)
 	UploadFile(ctx context.Context, path string, data []byte) error
+	GetReader(ctx context.Context, path string) (io.ReadCloser, error)
 }
 
 type Mailer interface {

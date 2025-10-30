@@ -92,7 +92,7 @@ services:
     restart: always
     image: ecr-repo-url/libraraease:backend
     container_name: scheduler-service
-    command: ["./worker -mode scheduler"]
+    command: ["./worker", "-mode", "scheduler"]
     networks:
       - internal_network
     volumes:

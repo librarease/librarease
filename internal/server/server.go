@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -66,6 +67,8 @@ type Service interface {
 	GetBookByID(context.Context, uuid.UUID, usecase.GetBookByIDOption) (usecase.Book, error)
 	CreateBook(context.Context, usecase.Book) (usecase.Book, error)
 	UpdateBook(context.Context, uuid.UUID, usecase.Book) (usecase.Book, error)
+	PreviewImportBooks(context.Context, uuid.UUID, io.Reader, string) (usecase.PreviewImportBooksResult, error)
+	ConfirmImportBooks(context.Context, uuid.UUID, string) (string, error)
 
 	ListMemberships(context.Context, usecase.ListMembershipsOption) ([]usecase.Membership, int, error)
 	GetMembershipByID(context.Context, string) (usecase.Membership, error)
@@ -143,7 +146,7 @@ type Service interface {
 	CreateJob(context.Context, usecase.Job) (usecase.Job, error)
 	UpdateJob(context.Context, usecase.Job) (usecase.Job, error)
 	DeleteJob(context.Context, uuid.UUID) error
-	DownloadJobResult(context.Context, uuid.UUID) (string, error)
+	DownloadJobAsset(context.Context, uuid.UUID) (string, error)
 }
 
 type Server struct {
