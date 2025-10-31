@@ -86,6 +86,10 @@ func (f *MinIOStorage) UploadFile(ctx context.Context, path string, data []byte)
 	return err
 }
 
+func (f *MinIOStorage) UploadTempFile(ctx context.Context, path string, data []byte) error {
+	return f.UploadFile(ctx, f.tempPath+"/"+path, data)
+}
+
 func (f *MinIOStorage) GetReader(ctx context.Context, path string) (io.ReadCloser, error) {
 	obj, err := f.client.GetObject(ctx, f.bucket, path, minio.GetObjectOptions{})
 	if err != nil {

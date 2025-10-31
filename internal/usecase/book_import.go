@@ -3,10 +3,14 @@ package usecase
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -251,10 +255,17 @@ func (u Usecase) PreviewImportBooks(ctx context.Context, libID uuid.UUID, r io.R
 	}
 
 	g.Go(func() error {
+		// Generate short hash from file content (first 12 chars of SHA256)
+		hash := sha256.Sum256(data)
+		shortHash := hex.EncodeToString(hash[:])[:12]
+
+		// Extract file extension
+		ext := filepath.Ext(filename)
+
 		mu.Lock()
-		res.Path = "/private/" + libID.String() + "/imports/" + filename
+		res.Path = strings.TrimSuffix(filename, ext) + "_" + shortHash + ext
 		mu.Unlock()
-		return u.fileStorageProvider.UploadFile(ctx, res.Path, data)
+		return u.fileStorageProvider.UploadTempFile(ctx, res.Path, data)
 	})
 
 	g.Go(func() error {
@@ -314,7 +325,7 @@ func (u Usecase) PreviewImportBooks(ctx context.Context, libID uuid.UUID, r io.R
 	return res, nil
 }
 
-func (u Usecase) ConfirmImportBooks(ctx context.Context, libID uuid.UUID, path string) (string, error) {
+func (u Usecase) ConfirmImportBooks(ctx context.Context, libID uuid.UUID, key string) (string, error) {
 
 	_, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
 	if !ok {
@@ -336,8 +347,13 @@ func (u Usecase) ConfirmImportBooks(ctx context.Context, libID uuid.UUID, path s
 		return "", fmt.Errorf("user %s not staff of library %s", userID, libID)
 	}
 
+	path := "/private/" + libID.String() + "/imports"
+	if err := u.fileStorageProvider.MoveTempFile(ctx, key, path); err != nil {
+		return "", err
+	}
+
 	b, err := json.Marshal(map[string]string{
-		"path":       path,
+		"path":       path + "/" + key,
 		"library_id": libID.String(),
 	})
 	if err != nil {
@@ -382,7 +398,7 @@ func (u Usecase) ProcessImportBooksJob(ctx context.Context, jobID uuid.UUID) err
 		return fmt.Errorf("failed to update job to PROCESSING: %w", err)
 	}
 
-	// 4. Execute the export work
+	// 4. Execute the import work
 	res, err := u.executeImportBooks(ctx, payload.LibID, payload.Path)
 	if err != nil {
 		// Update job status to FAILED
@@ -391,7 +407,7 @@ func (u Usecase) ProcessImportBooksJob(ctx context.Context, jobID uuid.UUID) err
 		job.Error = err.Error()
 		job.FinishedAt = &finished
 		u.repo.UpdateJob(ctx, job)
-		return fmt.Errorf("export failed: %w", err)
+		return fmt.Errorf("import failed: %w", err)
 	}
 
 	// 5. Update job status to COMPLETED
