@@ -348,6 +348,26 @@ type ImportBooksRequest struct {
 	Path      string `query:"path" validate:"required"`
 	LibraryID string `query:"library_id" validate:"required,uuid"`
 }
+type ImportBooksResponse struct {
+	Path    string                     `json:"path"`
+	Summary ImportBooksResponseSummary `json:"summary"`
+	Rows    []ImportBooksResponseRow   `json:"rows"`
+}
+
+type ImportBooksResponseSummary struct {
+	CreatedCount int `json:"created_count"`
+	UpdatedCount int `json:"updated_count"`
+	InvalidCount int `json:"invalid_count"`
+}
+
+type ImportBooksResponseRow struct {
+	ID     *string `json:"id,omitempty"`
+	Code   string  `json:"code"`
+	Title  string  `json:"title"`
+	Author string  `json:"author"`
+	Status string  `json:"status"`
+	Error  *string `json:"error,omitempty"`
+}
 
 func (s *Server) PreviewImportBooks(ctx echo.Context) error {
 	var req ImportBooksRequest
@@ -365,7 +385,29 @@ func (s *Server) PreviewImportBooks(ctx echo.Context) error {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	return ctx.JSON(200, Res{Data: res})
+	rows := make([]ImportBooksResponseRow, 0, len(res.Rows))
+	for _, r := range res.Rows {
+		rows = append(rows, ImportBooksResponseRow{
+			ID:     r.ID,
+			Code:   r.Code,
+			Title:  r.Title,
+			Author: r.Author,
+			Status: r.Status,
+			Error:  r.Error,
+		})
+	}
+
+	data := ImportBooksResponse{
+		Path: res.Path,
+		Summary: ImportBooksResponseSummary{
+			CreatedCount: res.Summary.CreatedCount,
+			UpdatedCount: res.Summary.UpdatedCount,
+			InvalidCount: res.Summary.InvalidCount,
+		},
+		Rows: rows,
+	}
+
+	return ctx.JSON(200, Res{Data: data})
 }
 
 type ConfirmImportBooksRequest struct {
