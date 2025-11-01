@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -67,7 +66,7 @@ type Service interface {
 	GetBookByID(context.Context, uuid.UUID, usecase.GetBookByIDOption) (usecase.Book, error)
 	CreateBook(context.Context, usecase.Book) (usecase.Book, error)
 	UpdateBook(context.Context, uuid.UUID, usecase.Book) (usecase.Book, error)
-	PreviewImportBooks(context.Context, uuid.UUID, io.Reader, string) (usecase.PreviewImportBooksResult, error)
+	PreviewImportBooks(context.Context, uuid.UUID, string) (usecase.PreviewImportBooksResult, error)
 	ConfirmImportBooks(context.Context, uuid.UUID, string) (string, error)
 
 	ListMemberships(context.Context, usecase.ListMembershipsOption) ([]usecase.Membership, int, error)
@@ -109,7 +108,7 @@ type Service interface {
 
 	GetDocs(context.Context, usecase.GetDocsOption) (string, error)
 
-	GetTempUploadURL(context.Context, string) (string, error)
+	GetTempUploadURL(context.Context, string) (string, string, error)
 
 	ListNotifications(context.Context, usecase.ListNotificationsOption) ([]usecase.Notification, int, int, error)
 	ReadNotification(context.Context, uuid.UUID) error

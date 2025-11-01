@@ -344,23 +344,23 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 	}})
 }
 
+type ImportBooksRequest struct {
+	Path      string `query:"path" validate:"required"`
+	LibraryID string `query:"library_id" validate:"required,uuid"`
+}
+
 func (s *Server) PreviewImportBooks(ctx echo.Context) error {
-	file, err := ctx.FormFile("file")
-	if err != nil {
+	var req ImportBooksRequest
+	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}
-	src, err := file.Open()
-	if err != nil {
-		return ctx.JSON(500, map[string]string{"error": err.Error()})
-	}
-	defer src.Close()
-
-	libID, err := uuid.Parse(ctx.FormValue("library_id"))
-	if err != nil {
-		return ctx.JSON(400, map[string]string{"error": "invalid library_id"})
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
 
-	res, err := s.server.PreviewImportBooks(ctx.Request().Context(), libID, src, file.Filename)
+	libID, _ := uuid.Parse(req.LibraryID)
+
+	res, err := s.server.PreviewImportBooks(ctx.Request().Context(), libID, req.Path)
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
 	}

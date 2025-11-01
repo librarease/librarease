@@ -39,12 +39,26 @@ func (f *MinIOStorage) GetPublicURL(_ context.Context) (string, error) {
 	return fmt.Sprintf("%s/%s/%s", f.client.EndpointURL(), f.bucket, f.publicPath), nil
 }
 
-func (f *MinIOStorage) GetTempUploadURL(ctx context.Context, name string) (string, error) {
-	u, err := f.client.PresignedPutObject(ctx, f.bucket, f.tempPath+"/"+name, time.Minute*consts.PRESIGN_URL_EXPIRE_MINUTES)
+func (f *MinIOStorage) GetTempUploadURL(ctx context.Context, name string) (string, string, error) {
+	path := f.tempPath + "/" + name
+	u, err := f.client.PresignedPutObject(ctx, f.bucket, path, time.Minute*consts.PRESIGN_URL_EXPIRE_MINUTES)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return u.String(), nil
+	return u.String(), path, nil
+}
+
+func (f *MinIOStorage) CopyFile(ctx context.Context, source string, dest string) error {
+	copyDest := minio.CopyDestOptions{
+		Bucket: f.bucket,
+		Object: dest,
+	}
+	copySource := minio.CopySrcOptions{
+		Bucket: f.bucket,
+		Object: source,
+	}
+	_, err := f.client.CopyObject(ctx, copyDest, copySource)
+	return err
 }
 
 func (f *MinIOStorage) MoveTempFilePublic(ctx context.Context, source string, dest string) error {
@@ -84,10 +98,6 @@ func (f *MinIOStorage) UploadFile(ctx context.Context, path string, data []byte)
 	_, err := f.client.PutObject(ctx, f.bucket, path,
 		bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{})
 	return err
-}
-
-func (f *MinIOStorage) UploadTempFile(ctx context.Context, path string, data []byte) error {
-	return f.UploadFile(ctx, f.tempPath+"/"+path, data)
 }
 
 func (f *MinIOStorage) GetReader(ctx context.Context, path string) (io.ReadCloser, error) {

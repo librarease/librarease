@@ -148,9 +148,8 @@ func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobP
 	csvData := generateCSV(borrowings)
 
 	// 3. Upload to file storage
-	fileName := fmt.Sprintf("borrowings-export-%s-%s.csv",
-		payload.LibraryID, time.Now().Format("20060102-150405"))
-	path := "/private/" + payload.LibraryID.String() + "/exports/" + fileName
+	fileName := fmt.Sprintf("borrowings-export-%s.csv", time.Now().Format("20060102-150405"))
+	path := payload.LibraryID.String() + "/exports/" + fileName
 
 	if err := u.fileStorageProvider.UploadFile(ctx, path, csvData); err != nil {
 		return nil, fmt.Errorf("failed to upload export file: %w", err)

@@ -1,17 +1,12 @@
 package usecase
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/csv"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
-	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -228,7 +223,7 @@ func (u Usecase) validateImportBooksCSV(ctx context.Context, libID uuid.UUID, r 
 	return validatedRows, nil
 }
 
-func (u Usecase) PreviewImportBooks(ctx context.Context, libID uuid.UUID, r io.Reader, filename string) (PreviewImportBooksResult, error) {
+func (u Usecase) PreviewImportBooks(ctx context.Context, libID uuid.UUID, path string) (PreviewImportBooksResult, error) {
 	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
 	if !ok {
 		return PreviewImportBooksResult{}, fmt.Errorf("user id not found in context")
@@ -242,90 +237,62 @@ func (u Usecase) PreviewImportBooks(ctx context.Context, libID uuid.UUID, r io.R
 		return PreviewImportBooksResult{}, err
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
+	var res PreviewImportBooksResult
 
-	var (
-		res PreviewImportBooksResult
-		mu  sync.Mutex
-	)
-
-	data, err := io.ReadAll(r)
+	r, err := u.fileStorageProvider.GetReader(ctx, path)
 	if err != nil {
 		return res, err
 	}
 
-	g.Go(func() error {
-		// Generate short hash from file content (first 12 chars of SHA256)
-		hash := sha256.Sum256(data)
-		shortHash := hex.EncodeToString(hash[:])[:12]
+	res.Path = path
 
-		// Extract file extension
-		ext := filepath.Ext(filename)
-
-		mu.Lock()
-		res.Path = strings.TrimSuffix(filename, ext) + "_" + shortHash + ext
-		mu.Unlock()
-		return u.fileStorageProvider.UploadTempFile(ctx, res.Path, data)
-	})
-
-	g.Go(func() error {
-		validatedRows, err := u.validateImportBooksCSV(ctx, libID, bytes.NewBuffer(data))
-		if err != nil {
-			return err
-		}
-
-		var rows []PreviewImportBooksRow
-		var createCount, updateCount, invalidCount int
-
-		for _, v := range validatedRows {
-			var idStr, errStr *string
-			if v.ID != nil {
-				s := v.ID.String()
-				idStr = &s
-			}
-			if v.ErrMsg != "" {
-				errStr = &v.ErrMsg
-			}
-
-			rows = append(rows, PreviewImportBooksRow{
-				ID:     idStr,
-				Code:   v.Code,
-				Title:  v.Title,
-				Author: v.Author,
-				Status: v.Status,
-				Error:  errStr,
-			})
-
-			switch v.Status {
-			case "create":
-				createCount++
-			case "update":
-				updateCount++
-			case "invalid":
-				invalidCount++
-			}
-		}
-
-		mu.Lock()
-		res.Summary = PreviewImportBooksSummary{
-			CreatedCount: createCount,
-			UpdatedCount: updateCount,
-			InvalidCount: invalidCount,
-		}
-		res.Rows = rows
-		mu.Unlock()
-
-		return nil
-	})
-
-	if err := g.Wait(); err != nil {
+	validatedRows, err := u.validateImportBooksCSV(ctx, libID, r)
+	if err != nil {
 		return res, err
 	}
+
+	var rows []PreviewImportBooksRow
+	var createCount, updateCount, invalidCount int
+
+	for _, v := range validatedRows {
+		var idStr, errStr *string
+		if v.ID != nil {
+			s := v.ID.String()
+			idStr = &s
+		}
+		if v.ErrMsg != "" {
+			errStr = &v.ErrMsg
+		}
+
+		rows = append(rows, PreviewImportBooksRow{
+			ID:     idStr,
+			Code:   v.Code,
+			Title:  v.Title,
+			Author: v.Author,
+			Status: v.Status,
+			Error:  errStr,
+		})
+
+		switch v.Status {
+		case "create":
+			createCount++
+		case "update":
+			updateCount++
+		case "invalid":
+			invalidCount++
+		}
+	}
+	res.Summary = PreviewImportBooksSummary{
+		CreatedCount: createCount,
+		UpdatedCount: updateCount,
+		InvalidCount: invalidCount,
+	}
+	res.Rows = rows
 
 	return res, nil
 }
 
-func (u Usecase) ConfirmImportBooks(ctx context.Context, libID uuid.UUID, key string) (string, error) {
+func (u Usecase) ConfirmImportBooks(ctx context.Context, libID uuid.UUID, path string) (string, error) {
 
 	_, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
 	if !ok {
@@ -347,13 +314,15 @@ func (u Usecase) ConfirmImportBooks(ctx context.Context, libID uuid.UUID, key st
 		return "", fmt.Errorf("user %s not staff of library %s", userID, libID)
 	}
 
-	path := "/private/" + libID.String() + "/imports"
-	if err := u.fileStorageProvider.MoveTempFile(ctx, key, path); err != nil {
+	key := path[strings.LastIndex(path, "/")+1:]
+
+	dest := libID.String() + "/imports/" + key
+	if err := u.fileStorageProvider.CopyFile(ctx, path, dest); err != nil {
 		return "", err
 	}
 
 	b, err := json.Marshal(map[string]string{
-		"path":       path + "/" + key,
+		"path":       dest,
 		"library_id": libID.String(),
 	})
 	if err != nil {

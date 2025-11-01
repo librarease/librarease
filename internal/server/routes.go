@@ -77,8 +77,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 	bookGroup.POST("", s.CreateBook)
 	bookGroup.GET("/:id", s.GetBookByID)
 	bookGroup.PUT("/:id", s.UpdateBook, s.AuthMiddleware)
-	bookGroup.POST("/import/preview", s.PreviewImportBooks, s.AuthMiddleware)
-	bookGroup.POST("/import/confirm", s.ConfirmImportBooks, s.AuthMiddleware)
+	bookGroup.GET("/import", s.PreviewImportBooks, s.AuthMiddleware)
+	bookGroup.POST("/import", s.ConfirmImportBooks, s.AuthMiddleware)
 
 	var subscriptionGroup = e.Group("/api/v1/subscriptions")
 	subscriptionGroup.GET("", s.ListSubscriptions, s.AuthMiddleware)
@@ -111,7 +111,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	analysisGroup.GET("/longest-unreturned", s.GetLongestUnreturned)
 
 	var fileGroup = e.Group("/api/v1/files")
-	fileGroup.GET("/upload", s.GetTempUploadURL)
+	fileGroup.GET("/upload", s.GetTempUploadURL, s.AuthMiddleware)
 
 	var notificationGroup = e.Group("/api/v1/notifications")
 	notificationGroup.GET("", s.ListNotifications, s.AuthMiddleware)
