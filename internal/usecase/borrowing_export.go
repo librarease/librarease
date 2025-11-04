@@ -145,7 +145,7 @@ func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobP
 	}
 
 	// 2. Generate CSV file
-	csvData := generateCSV(borrowings)
+	csvData := generateBorrowingCSV(borrowings)
 
 	// 3. Upload to file storage
 	fileName := fmt.Sprintf("borrowings-export-%s.csv", time.Now().Format("20060102-150405"))
@@ -162,7 +162,7 @@ func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobP
 	})
 }
 
-func generateCSV(borrowings []Borrowing) []byte {
+func generateBorrowingCSV(borrowings []Borrowing) []byte {
 	var buf bytes.Buffer
 	writer := csv.NewWriter(&buf)
 	// Write header

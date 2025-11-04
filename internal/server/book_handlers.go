@@ -1,6 +1,7 @@
 package server
 
 import (
+	"strings"
 	"time"
 
 	"github.com/librarease/librarease/internal/usecase"
@@ -32,6 +33,7 @@ type BookStats struct {
 
 type ListBooksRequest struct {
 	ID           string `query:"id" validate:"omitempty"`
+	IDs          string `query:"ids"`
 	LibraryID    string `query:"library_id" validate:"omitempty,uuid"`
 	Skip         int    `query:"skip"`
 	Limit        int    `query:"limit"`
@@ -56,10 +58,22 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 		libIDs = append(libIDs, id)
 	}
 
+	var ids uuid.UUIDs
+	if req.IDs != "" {
+		for s := range strings.SplitSeq(req.IDs, ",") {
+			id, err := uuid.Parse(s)
+			if err != nil {
+				continue
+			}
+			ids = append(ids, id)
+		}
+	}
+
 	list, total, err := s.server.ListBooks(ctx.Request().Context(), usecase.ListBooksOption{
 		Skip:         req.Skip,
 		Limit:        req.Limit,
 		ID:           req.ID,
+		IDs:          ids,
 		LibraryIDs:   libIDs,
 		Title:        req.Title,
 		SortBy:       req.SortBy,

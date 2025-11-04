@@ -53,7 +53,7 @@ func (s *service) ListBooks(ctx context.Context, opt usecase.ListBooksOption) ([
 	}
 
 	if opt.IDs != nil {
-		db = db.Where("id IN ?", opt.IDs)
+		db = db.Where("books.id IN ?", opt.IDs)
 	}
 
 	var (
