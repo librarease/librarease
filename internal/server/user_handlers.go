@@ -25,7 +25,7 @@ type User struct {
 
 type ListUserRequest struct {
 	Skip       int    `query:"skip"`
-	Limit      int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Limit      int    `query:"limit"`
 	SortBy     string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at name email"`
 	SortIn     string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 	Name       string `query:"name" validate:"omitempty"`
@@ -34,7 +34,7 @@ type ListUserRequest struct {
 }
 
 func (s *Server) ListUsers(ctx echo.Context) error {
-	var req = ListUserRequest{Limit: 20}
+	var req ListUserRequest
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}

@@ -153,9 +153,15 @@ func (s *service) ListNotifications(ctx context.Context, opt usecase.ListNotific
 		WithContext(ctx).
 		Model(&Notification{}).
 		Where("user_id = ?", opt.UserID).
-		Order("created_at desc").
-		Limit(opt.Limit).
-		Offset(opt.Skip)
+		Order("created_at desc")
+
+	if opt.Limit > 0 {
+		query = query.Limit(opt.Limit)
+	}
+
+	if opt.Skip > 0 {
+		query = query.Offset(opt.Skip)
+	}
 
 	if opt.IsUnread {
 		query = query.Where("read_at IS NULL")

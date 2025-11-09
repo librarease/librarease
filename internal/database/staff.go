@@ -65,11 +65,17 @@ func (s *service) ListStaffs(ctx context.Context, opt usecase.ListStaffsOption) 
 		return nil, 0, err
 	}
 
+	if opt.Limit > 0 {
+		db = db.Limit(opt.Limit)
+	}
+
+	if opt.Skip > 0 {
+		db = db.Offset(opt.Skip)
+	}
+
 	if err := db.
 		Preload("Library").
 		Preload("User").
-		Limit(opt.Limit).
-		Offset(opt.Skip).
 		Order(orderBy + " " + orderIn).
 		Find(&staffs).
 		Error; err != nil {

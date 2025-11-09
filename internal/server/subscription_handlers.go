@@ -33,7 +33,7 @@ type Subscription struct {
 
 type ListSubscriptionsRequest struct {
 	Skip   int    `query:"skip"`
-	Limit  int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Limit  int    `query:"limit"`
 	SortBy string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at name"`
 	SortIn string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 
@@ -47,7 +47,7 @@ type ListSubscriptionsRequest struct {
 }
 
 func (s *Server) ListSubscriptions(ctx echo.Context) error {
-	var req = ListSubscriptionsRequest{Limit: 20}
+	var req ListSubscriptionsRequest
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}

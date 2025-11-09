@@ -64,9 +64,15 @@ func (s *service) ListLibraries(ctx context.Context, opt usecase.ListLibrariesOp
 		return nil, 0, err
 	}
 
+	if opt.Limit > 0 {
+		db = db.Limit(opt.Limit)
+	}
+
+	if opt.Skip > 0 {
+		db = db.Offset(opt.Skip)
+	}
+
 	if err := db.
-		Offset(opt.Skip).
-		Limit(opt.Limit).
 		Order(orderBy + " " + orderIn).
 		Find(&libs).
 		Error; err != nil {

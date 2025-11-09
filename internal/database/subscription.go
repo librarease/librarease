@@ -86,12 +86,18 @@ func (s *service) ListSubscriptions(ctx context.Context, opt usecase.ListSubscri
 		return nil, 0, err
 	}
 
+	if opt.Limit > 0 {
+		db = db.Limit(opt.Limit)
+	}
+
+	if opt.Skip > 0 {
+		db = db.Offset(opt.Skip)
+	}
+
 	if err := db.
 		Preload("User").
 		Preload("Membership").
 		Preload("Membership.Library").
-		Limit(opt.Limit).
-		Offset(opt.Skip).
 		Order(orderBy + " " + orderIn).
 		Find(&subs).
 		Error; err != nil {

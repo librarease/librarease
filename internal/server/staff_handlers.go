@@ -23,7 +23,7 @@ type Staff struct {
 
 type ListStaffsRequest struct {
 	Skip   int    `query:"skip"`
-	Limit  int    `query:"limit" validate:"required,gte=1,lte=100"`
+	Limit  int    `query:"limit"`
 	SortBy string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at"`
 	SortIn string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 
@@ -35,7 +35,7 @@ type ListStaffsRequest struct {
 
 func (s *Server) ListStaffs(ctx echo.Context) error {
 
-	var req = ListStaffsRequest{Limit: 20}
+	var req ListStaffsRequest
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.JSON(400, map[string]string{"error": err.Error()})
 	}
