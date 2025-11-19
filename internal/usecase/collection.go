@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"image"
 	"log"
 	"net/http"
@@ -101,12 +100,10 @@ func (u Usecase) ListCollections(ctx context.Context, opt ListCollectionsOption)
 		return nil, 0, err
 	}
 
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
-
 	var list []Collection
 	for _, c := range collections {
 		if c.Cover != nil {
-			c.Cover.Path = fmt.Sprintf("%s/collections/covers/%s", publicURL, c.Cover.Path)
+			c.Cover.Path = u.fileStorageProvider.GetPublicURL(c.Cover.Path)
 		}
 		list = append(list, c)
 	}
@@ -120,10 +117,8 @@ func (u Usecase) GetCollectionByID(ctx context.Context, id uuid.UUID, opt GetCol
 		return Collection{}, err
 	}
 
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
-
 	if collection.Cover != nil {
-		collection.Cover.Path = fmt.Sprintf("%s/collections/covers/%s", publicURL, collection.Cover.Path)
+		collection.Cover.Path = u.fileStorageProvider.GetPublicURL(collection.Cover.Path)
 	}
 
 	return collection, nil
@@ -173,9 +168,8 @@ func (u Usecase) UpdateCollection(ctx context.Context, id uuid.UUID, req UpdateC
 			log.Printf("err_UpdateCollection_fileStorageProvider.MoveTempFilePublic: %v", err)
 			return Collection{}, err
 		}
-		publicPrefix, _ := u.fileStorageProvider.GetPublicURL(ctx)
 
-		colors, err := ExtractColors(ctx, publicPrefix+"/collections/covers/"+*req.UpdateCover)
+		colors, err := ExtractColors(ctx, u.fileStorageProvider.GetPublicURL(*req.UpdateCover))
 		if err != nil {
 			log.Printf("err_UpdateCollection_ExtractColors: %v", err)
 			return Collection{}, err
@@ -198,11 +192,9 @@ func (u Usecase) ListCollectionBooks(ctx context.Context, id uuid.UUID, opt List
 		return nil, 0, err
 	}
 
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
-
 	for i, cb := range list {
 		if cb.Book != nil && cb.Book.Cover != "" {
-			cb.Book.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, cb.Book.ID, cb.Book.Cover)
+			cb.Book.Cover = u.fileStorageProvider.GetPublicURL(cb.Book.Cover)
 			list[i] = cb
 		}
 	}

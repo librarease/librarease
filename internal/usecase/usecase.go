@@ -155,12 +155,12 @@ type IdentityProvider interface {
 type FileStorageProvider interface {
 	GetTempUploadURL(context.Context, string) (string, string, error)
 	CopyFile(ctx context.Context, source string, dest string) error
+	CopyFilePreserveFilename(ctx context.Context, source string, dest string) (string, error)
 	// Deprecated: use CopyFile instead with known source path
 	MoveTempFile(ctx context.Context, source string, dest string) error
 	// MoveTempFilePublic moves source in temp+path to public+dest
 	MoveTempFilePublic(ctx context.Context, source string, dest string) error
-	// Deprecated: should not be used anymore
-	GetPublicURL(context.Context) (string, error)
+	GetPublicURL(path string) (url string)
 	// Deprecated: caller should not know this
 	TempPath() string
 	GetPresignedURL(ctx context.Context, path string) (string, error)

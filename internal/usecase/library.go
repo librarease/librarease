@@ -41,13 +41,12 @@ func (u Usecase) ListLibraries(ctx context.Context, opt ListLibrariesOption) ([]
 	}
 
 	var libraries []Library
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
 
 	for _, lib := range libs {
 
 		var logo string
 		if lib.Logo != "" {
-			logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, lib.ID, lib.Logo)
+			logo = u.fileStorageProvider.GetPublicURL(lib.Logo)
 		}
 
 		libraries = append(libraries, Library{
@@ -75,9 +74,8 @@ func (u Usecase) GetLibraryByID(ctx context.Context, id uuid.UUID) (Library, err
 	}
 
 	var logo string
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
 	if lib.Logo != "" {
-		logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, lib.ID, lib.Logo)
+		logo = u.fileStorageProvider.GetPublicURL(lib.Logo)
 	}
 
 	return Library{
@@ -110,9 +108,8 @@ func (u Usecase) CreateLibrary(ctx context.Context, library Library) (Library, e
 			logo = ""
 		}
 	}
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
 	if logo != "" {
-		logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, lib.ID, lib.Logo)
+		logo = u.fileStorageProvider.GetPublicURL(logo)
 	}
 
 	return Library{
@@ -188,9 +185,8 @@ func (u Usecase) UpdateLibrary(ctx context.Context, id uuid.UUID, library Librar
 	}
 
 	var logo string
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
 	if lib.Logo != "" {
-		logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, lib.ID, lib.Logo)
+		logo = u.fileStorageProvider.GetPublicURL(lib.Logo)
 	}
 
 	return Library{

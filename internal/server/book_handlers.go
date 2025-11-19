@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -252,13 +253,14 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 }
 
 type CreateBookRequest struct {
-	Title     string `json:"title" validate:"required"`
-	Author    string `json:"author" validate:"required"`
-	Year      int    `json:"year" validate:"required,gte=1500"`
-	Code      string `json:"code" validate:"required"`
-	Count     int    `json:"count" validate:"omitempty,gte=0"`
-	Cover     string `json:"cover"`
-	LibraryID string `json:"library_id" validate:"required,uuid"`
+	Title     string          `json:"title" validate:"required"`
+	Author    string          `json:"author" validate:"required"`
+	Year      int             `json:"year" validate:"required,gte=1500"`
+	Code      string          `json:"code" validate:"required"`
+	Count     int             `json:"count" validate:"omitempty,gte=0"`
+	Cover     string          `json:"cover"`
+	LibraryID string          `json:"library_id" validate:"required,uuid"`
+	Colors    json.RawMessage `json:"colors"`
 }
 
 func (s *Server) CreateBook(ctx echo.Context) error {
@@ -277,6 +279,7 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		Year:      req.Year,
 		Code:      req.Code,
 		Cover:     req.Cover,
+		Colors:    req.Colors,
 		LibraryID: libID,
 	})
 

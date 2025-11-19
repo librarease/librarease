@@ -3,8 +3,8 @@ package filestorage
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	consts "github.com/librarease/librarease/internal/config"
@@ -35,8 +35,8 @@ type MinIOStorage struct {
 	publicPath string
 }
 
-func (f *MinIOStorage) GetPublicURL(_ context.Context) (string, error) {
-	return fmt.Sprintf("%s/%s/%s", f.client.EndpointURL(), f.bucket, f.publicPath), nil
+func (f *MinIOStorage) GetPublicURL(path string) string {
+	return f.client.EndpointURL().String() + "/" + f.bucket + "/" + path
 }
 
 func (f *MinIOStorage) GetTempUploadURL(ctx context.Context, name string) (string, string, error) {
@@ -59,6 +59,13 @@ func (f *MinIOStorage) CopyFile(ctx context.Context, source string, dest string)
 	}
 	_, err := f.client.CopyObject(ctx, copyDest, copySource)
 	return err
+}
+
+func (f *MinIOStorage) CopyFilePreserveFilename(ctx context.Context, source string, dest string) (string, error) {
+	// Extract filename from source path
+	filename := source[strings.LastIndex(source, "/")+1:]
+	destPath := dest + "/" + filename
+	return destPath, f.CopyFile(ctx, source, destPath)
 }
 
 func (f *MinIOStorage) MoveTempFilePublic(ctx context.Context, source string, dest string) error {

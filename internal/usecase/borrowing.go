@@ -148,10 +148,9 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 		return nil, 0, err
 	}
 
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
 	for i, borrow := range borrows {
 		if b := borrow.Book; b != nil && b.Cover != "" {
-			borrows[i].Book.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, b.ID, b.Cover)
+			borrows[i].Book.Cover = u.fileStorageProvider.GetPublicURL(b.Cover)
 		}
 	}
 	return borrows, total, nil
@@ -173,20 +172,15 @@ func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID) (Borrowing,
 		return Borrowing{}, err
 	}
 
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
 	if b := borrow.Book; b != nil && b.Cover != "" {
-		borrow.Book.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, b.ID, b.Cover)
+		borrow.Book.Cover = u.fileStorageProvider.GetPublicURL(b.Cover)
 	}
 
 	if borrow.Subscription != nil &&
 		borrow.Subscription.Membership != nil &&
 		borrow.Subscription.Membership.Library != nil &&
 		borrow.Subscription.Membership.Library.Logo != "" {
-		borrow.Subscription.Membership.Library.Logo = fmt.Sprintf("%s/libraries/%s/logo/%s",
-			publicURL,
-			borrow.Subscription.Membership.Library.ID,
-			borrow.Subscription.Membership.Library.Logo,
-		)
+		borrow.Subscription.Membership.Library.Logo = u.fileStorageProvider.GetPublicURL(borrow.Subscription.Membership.Library.Logo)
 	}
 
 	return borrow, nil

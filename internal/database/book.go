@@ -7,6 +7,7 @@ import (
 	"github.com/librarease/librarease/internal/usecase"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -18,6 +19,7 @@ type Book struct {
 	Year       int             `gorm:"column:year;type:int"`
 	Code       string          `gorm:"column:code;type:varchar(255);uniqueIndex:idx_lib_code,where:deleted_at IS NULL"`
 	Cover      string          `gorm:"column:cover;type:varchar(255)"`
+	Colors     datatypes.JSON  `gorm:"column:colors"`
 	CreatedAt  time.Time       `gorm:"column:created_at"`
 	UpdatedAt  time.Time       `gorm:"column:updated_at"`
 	DeletedAt  *gorm.DeletedAt `gorm:"column:deleted_at"`
@@ -269,12 +271,14 @@ func (s *service) GetBookByID(ctx context.Context, id uuid.UUID) (usecase.Book, 
 
 func (s *service) CreateBook(ctx context.Context, book usecase.Book) (usecase.Book, error) {
 	b := Book{
+		ID:        book.ID,
 		Title:     book.Title,
 		Author:    book.Author,
 		Year:      book.Year,
 		Code:      book.Code,
 		Cover:     book.Cover,
 		LibraryID: book.LibraryID,
+		Colors:    []byte(book.Colors),
 	}
 
 	err := s.db.WithContext(ctx).Create(&b).Error
@@ -292,6 +296,7 @@ func (s *service) UpdateBook(ctx context.Context, id uuid.UUID, book usecase.Boo
 		Code:      book.Code,
 		Cover:     book.Cover,
 		LibraryID: book.LibraryID,
+		Colors:    []byte(book.Colors),
 	}
 
 	err := s.db.
@@ -323,6 +328,7 @@ func (b Book) ConvertToUsecase() usecase.Book {
 		LibraryID: b.LibraryID,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
+		Colors:    []byte(b.Colors),
 		DeletedAt: d,
 	}
 }

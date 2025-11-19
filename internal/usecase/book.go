@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -29,6 +30,7 @@ type Book struct {
 	DeletedAt *time.Time
 	Library   *Library
 	Stats     *BookStats
+	Colors    json.RawMessage
 
 	// UpdateCover is used to update cover
 	UpdateCover *string
@@ -62,12 +64,10 @@ func (u Usecase) ListBooks(ctx context.Context, opt ListBooksOption) ([]Book, in
 		return nil, 0, err
 	}
 
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
-
 	var list []Book
 	for _, b := range books {
 		if b.Cover != "" {
-			b.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, b.ID, b.Cover)
+			b.Cover = u.fileStorageProvider.GetPublicURL(b.Cover)
 		}
 		list = append(list, b)
 	}
@@ -76,28 +76,60 @@ func (u Usecase) ListBooks(ctx context.Context, opt ListBooksOption) ([]Book, in
 }
 
 func (u Usecase) CreateBook(ctx context.Context, book Book) (Book, error) {
-	book, err := u.repo.CreateBook(ctx, book)
+
+	role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+	if !ok {
+		return Book{}, fmt.Errorf("user role not found in context")
+	}
+	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return Book{}, fmt.Errorf("user id not found in context")
+	}
+
+	switch role {
+	case "SUPERADMIN":
+		fmt.Println("[DEBUG] global superadmin")
+		// ALLOW ALL
+	case "ADMIN":
+		fmt.Println("[DEBUG] global admin")
+		// ALLOW ALL
+	case "USER":
+		fmt.Println("[DEBUG] global user")
+		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
+			UserID:     userID.String(),
+			LibraryIDs: uuid.UUIDs{book.LibraryID},
+		})
+		if err != nil {
+			return Book{}, err
+		}
+		if len(staffs) == 0 {
+			return Book{}, fmt.Errorf("user is not staff of the library")
+		}
+	}
+
+	book.ID = uuid.New()
+
+	if book.Cover != "" {
+		var err error
+		coverPath := fmt.Sprintf("public/books/%s/cover", book.ID.String())
+		book.Cover, err = u.fileStorageProvider.CopyFilePreserveFilename(ctx, book.Cover, coverPath)
+		if err != nil {
+			log.Printf("CreateBook: copy cover for book %s failed: %v", book.ID, err)
+			// don't save cover if copy failed
+			book.Cover = ""
+		}
+	}
+
+	b, err := u.repo.CreateBook(ctx, book)
 	if err != nil {
 		return Book{}, err
 	}
 
-	var cover = book.Cover
-	if cover != "" {
-		var coverPath = fmt.Sprintf("books/%s/cover", book.ID)
-		err = u.fileStorageProvider.MoveTempFilePublic(ctx, cover, coverPath)
-		if err != nil {
-			fmt.Printf("failed to move file for book %s: %v\n", book.ID, err)
-			// don't save cover if failed to move file
-			cover = ""
-		}
+	if b.Cover != "" {
+		b.Cover = u.fileStorageProvider.GetPublicURL(b.Cover)
 	}
 
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
-	if cover != "" {
-		book.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, book.ID, book.Cover)
-	}
-
-	return book, err
+	return b, err
 }
 
 type GetBookByIDOption struct {
@@ -116,14 +148,13 @@ func (u Usecase) GetBookByID(ctx context.Context, id uuid.UUID, opt GetBookByIDO
 	var mu sync.Mutex
 
 	wg.Go(func() {
-		publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
 
 		mu.Lock()
 		if book.Cover != "" {
-			book.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, book.ID, book.Cover)
+			book.Cover = u.fileStorageProvider.GetPublicURL(book.Cover)
 		}
 		if book.Library != nil && book.Library.Logo != "" {
-			book.Library.Logo = fmt.Sprintf("%s/libraries/%s/logo/%s", publicURL, book.Library.ID, book.Library.Logo)
+			book.Library.Logo = u.fileStorageProvider.GetPublicURL(book.Library.Logo)
 		}
 		mu.Unlock()
 	})
@@ -180,13 +211,14 @@ func (u Usecase) UpdateBook(ctx context.Context, id uuid.UUID, book Book) (Book,
 	}
 
 	if book.UpdateCover != nil {
-		coverPath := fmt.Sprintf("books/%s/cover", id)
-		err := u.fileStorageProvider.MoveTempFilePublic(ctx, *book.UpdateCover, coverPath)
+		var err error
+		coverPath := fmt.Sprintf("public/books/%s/cover", book.ID.String())
+		book.Cover, err = u.fileStorageProvider.CopyFilePreserveFilename(ctx, *book.UpdateCover, coverPath)
 		if err != nil {
-			fmt.Printf("failed to move file for book %s: %v\n", id, err)
-			return Book{}, err
+			log.Printf("UpdateBook: copy cover for book %s failed: %v", id, err)
+			// don't update cover if copy failed
+			book.Cover = ""
 		}
-		book.Cover = *book.UpdateCover
 	}
 
 	b, err := u.repo.UpdateBook(ctx, id, book)
@@ -194,9 +226,8 @@ func (u Usecase) UpdateBook(ctx context.Context, id uuid.UUID, book Book) (Book,
 		return Book{}, err
 	}
 
-	publicURL, _ := u.fileStorageProvider.GetPublicURL(ctx)
 	if b.Cover != "" {
-		b.Cover = fmt.Sprintf("%s/books/%s/cover/%s", publicURL, b.ID, b.Cover)
+		b.Cover = u.fileStorageProvider.GetPublicURL(b.Cover)
 	}
 
 	return b, nil
