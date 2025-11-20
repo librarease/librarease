@@ -233,10 +233,11 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 
 		if borrow.Book != nil {
 			book := Book{
-				ID:    borrow.Book.ID.String(),
-				Code:  borrow.Book.Code,
-				Title: borrow.Book.Title,
-				Cover: borrow.Book.Cover,
+				ID:     borrow.Book.ID.String(),
+				Code:   borrow.Book.Code,
+				Title:  borrow.Book.Title,
+				Cover:  borrow.Book.Cover,
+				Colors: borrow.Book.Colors,
 				// Author:    borrow.Book.Author,
 				// Year:      borrow.Book.Year,
 				// LibraryID: borrow.Book.LibraryID,
@@ -395,6 +396,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			Author:    borrow.Book.Author,
 			Year:      borrow.Book.Year,
 			Cover:     borrow.Book.Cover,
+			Colors:    borrow.Book.Colors,
 			LibraryID: borrow.Book.LibraryID.String(),
 			CreatedAt: borrow.Book.CreatedAt.UTC().Format(time.RFC3339),
 			UpdatedAt: borrow.Book.UpdatedAt.UTC().Format(time.RFC3339),

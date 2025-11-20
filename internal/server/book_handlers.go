@@ -12,19 +12,20 @@ import (
 )
 
 type Book struct {
-	ID         string      `json:"id"`
-	Title      string      `json:"title"`
-	Author     string      `json:"author,omitempty"`
-	Year       int         `json:"year,omitempty"`
-	Code       string      `json:"code"`
-	Cover      string      `json:"cover,omitempty"`
-	LibraryID  string      `json:"library_id,omitempty"`
-	CreatedAt  string      `json:"created_at,omitempty"`
-	UpdatedAt  string      `json:"updated_at,omitempty"`
-	DeletedAt  *string     `json:"deleted_at,omitempty"`
-	Library    *Library    `json:"library,omitempty"`
-	Stats      *BookStats  `json:"stats,omitempty"`
-	Watchlists []Watchlist `json:"watchlists,omitempty"`
+	ID         string          `json:"id"`
+	Title      string          `json:"title"`
+	Author     string          `json:"author,omitempty"`
+	Year       int             `json:"year,omitempty"`
+	Code       string          `json:"code"`
+	Cover      string          `json:"cover,omitempty"`
+	Colors     json.RawMessage `json:"color"`
+	LibraryID  string          `json:"library_id,omitempty"`
+	CreatedAt  string          `json:"created_at,omitempty"`
+	UpdatedAt  string          `json:"updated_at,omitempty"`
+	DeletedAt  *string         `json:"deleted_at,omitempty"`
+	Library    *Library        `json:"library,omitempty"`
+	Stats      *BookStats      `json:"stats,omitempty"`
+	Watchlists []Watchlist     `json:"watchlists,omitempty"`
 }
 
 type BookStats struct {
@@ -103,6 +104,7 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 			CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
 			UpdatedAt: b.UpdatedAt.UTC().Format(time.RFC3339),
 			DeletedAt: d,
+			Colors:    b.Colors,
 		}
 
 		// Include stats if they are available
@@ -194,6 +196,7 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 		Year:      b.Year,
 		Code:      b.Code,
 		Cover:     b.Cover,
+		Colors:    b.Colors,
 		LibraryID: b.LibraryID.String(),
 		CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt: b.UpdatedAt.UTC().Format(time.RFC3339),

@@ -80,6 +80,7 @@ func (s *Server) ListWatchlist(ctx echo.Context) error {
 			Year:      b.Year,
 			Code:      b.Code,
 			Cover:     b.Cover,
+			Colors:    b.Colors,
 			LibraryID: b.LibraryID.String(),
 			CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
 			UpdatedAt: b.UpdatedAt.UTC().Format(time.RFC3339),
