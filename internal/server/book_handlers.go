@@ -18,7 +18,7 @@ type Book struct {
 	Year       int             `json:"year,omitempty"`
 	Code       string          `json:"code"`
 	Cover      string          `json:"cover,omitempty"`
-	Colors     json.RawMessage `json:"color"`
+	Colors     json.RawMessage `json:"colors"`
 	LibraryID  string          `json:"library_id,omitempty"`
 	CreatedAt  string          `json:"created_at,omitempty"`
 	UpdatedAt  string          `json:"updated_at,omitempty"`
