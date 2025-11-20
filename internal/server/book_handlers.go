@@ -312,12 +312,13 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 type UpdateBookRequest struct {
 	ID string `param:"id" validate:"required,uuid"`
 
-	Title       string  `json:"title"`
-	Author      string  `json:"author"`
-	Year        int     `json:"year" validate:"omitempty,gte=1500"`
-	Code        string  `json:"code"`
-	LibraryID   string  `json:"library_id" validate:"omitempty,uuid"`
-	UpdateCover *string `json:"update_cover" validate:"omitempty"`
+	Title       string          `json:"title"`
+	Author      string          `json:"author"`
+	Year        int             `json:"year" validate:"omitempty,gte=1500"`
+	Code        string          `json:"code"`
+	LibraryID   string          `json:"library_id" validate:"omitempty,uuid"`
+	UpdateCover *string         `json:"update_cover" validate:"omitempty"`
+	Colors      json.RawMessage `json:"colors"`
 }
 
 func (s *Server) UpdateBook(ctx echo.Context) error {
@@ -339,6 +340,7 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		Code:        req.Code,
 		LibraryID:   libID,
 		UpdateCover: req.UpdateCover,
+		Colors:      req.Colors,
 	})
 
 	if err != nil {
