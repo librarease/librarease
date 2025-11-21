@@ -141,5 +141,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 	jobGroup.GET("/:id", s.GetJobByID, s.AuthMiddleware)
 	jobGroup.GET("/:id/download", s.DownloadJobAsset, s.AuthMiddleware)
 
+	var reviewGroup = e.Group("/api/v1/reviews")
+	reviewGroup.GET("", s.ListReviews, s.AuthMiddleware)
+	reviewGroup.POST("", s.CreateReview, s.AuthMiddleware)
+	reviewGroup.GET("/:id", s.GetReview, s.AuthMiddleware)
+	reviewGroup.PUT("/:id", s.UpdateReview, s.AuthMiddleware)
+	reviewGroup.DELETE("/:id", s.DeleteReview, s.AuthMiddleware)
+
 	return e
 }

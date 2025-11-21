@@ -148,6 +148,13 @@ type Service interface {
 	UpdateJob(context.Context, usecase.Job) (usecase.Job, error)
 	DeleteJob(context.Context, uuid.UUID) error
 	DownloadJobAsset(context.Context, uuid.UUID) (string, error)
+
+	// review
+	ListReviews(context.Context, usecase.ListReviewsOption) ([]usecase.Review, int, error)
+	GetReview(context.Context, uuid.UUID, usecase.ReviewsOption) (usecase.Review, error)
+	CreateReview(context.Context, usecase.Review) (usecase.Review, error)
+	UpdateReview(context.Context, uuid.UUID, usecase.Review) (usecase.Review, error)
+	DeleteReview(context.Context, uuid.UUID) error
 }
 
 type Server struct {

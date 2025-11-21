@@ -146,6 +146,13 @@ type Repository interface {
 	CreateJob(context.Context, Job) (Job, error)
 	UpdateJob(context.Context, Job) (Job, error)
 	DeleteJob(context.Context, uuid.UUID) error
+
+	// review
+	ListReviews(context.Context, ListReviewsOption) ([]Review, int, error)
+	GetReview(context.Context, uuid.UUID, ReviewsOption) (Review, error)
+	CreateReview(context.Context, Review) (Review, error)
+	UpdateReview(context.Context, uuid.UUID, Review) (Review, error)
+	DeleteReview(context.Context, uuid.UUID) error
 }
 
 type IdentityProvider interface {

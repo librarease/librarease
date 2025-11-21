@@ -28,6 +28,8 @@ type Borrowing struct {
 	Returning    *Returning
 	Lost         *Lost
 
+	Reviews []Review
+
 	PrevID *uuid.UUID
 	NextID *uuid.UUID
 }
