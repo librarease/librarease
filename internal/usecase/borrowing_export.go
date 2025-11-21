@@ -132,13 +132,15 @@ func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobP
 
 	// 1. Query borrowings with filters
 	borrowings, _, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
-		LibraryIDs:     uuid.UUIDs{payload.LibraryID},
-		IsActive:       payload.IsActive,
-		IsOverdue:      payload.IsOverdue,
-		IsReturned:     payload.IsReturned,
-		IsLost:         payload.IsLost,
-		BorrowedAtFrom: payload.BorrowedAtFrom,
-		BorrowedAtTo:   payload.BorrowedAtTo,
+		BorrowingsOption: BorrowingsOption{
+			LibraryIDs:     uuid.UUIDs{payload.LibraryID},
+			IsActive:       payload.IsActive,
+			IsOverdue:      payload.IsOverdue,
+			IsReturned:     payload.IsReturned,
+			IsLost:         payload.IsLost,
+			BorrowedAtFrom: payload.BorrowedAtFrom,
+			BorrowedAtTo:   payload.BorrowedAtTo,
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list borrowings: %w", err)

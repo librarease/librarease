@@ -27,6 +27,9 @@ type Borrowing struct {
 	Staff        *Staff
 	Returning    *Returning
 	Lost         *Lost
+
+	PrevID *uuid.UUID
+	NextID *uuid.UUID
 }
 
 // BorrowingSummary contains minimal borrowing info for efficient notification processing
@@ -46,9 +49,7 @@ type NotificationFiltersOption struct {
 	Limit      int
 }
 
-type ListBorrowingsOption struct {
-	Skip   int
-	Limit  int
+type BorrowingsOption struct {
 	SortBy string
 	SortIn string
 
@@ -70,6 +71,12 @@ type ListBorrowingsOption struct {
 	IsLost          bool
 	BorrowedAtFrom  *time.Time
 	BorrowedAtTo    *time.Time
+}
+
+type ListBorrowingsOption struct {
+	Skip  int
+	Limit int
+	BorrowingsOption
 }
 
 // TODO: separate client and admin borrowing list route
@@ -166,8 +173,76 @@ func (e ErrNotFound) Error() string {
 	return e.Message
 }
 
-func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID) (Borrowing, error) {
-	borrow, err := u.repo.GetBorrowingByID(ctx, id)
+func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt BorrowingsOption) (Borrowing, error) {
+
+	role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+	if !ok {
+		return Borrowing{}, fmt.Errorf("user role not found in context")
+	}
+	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return Borrowing{}, fmt.Errorf("user id not found in context")
+	}
+
+	switch role {
+	case "SUPERADMIN":
+		fmt.Println("[DEBUG] global superadmin")
+		// ALLOW ALL
+	case "ADMIN":
+		fmt.Println("[DEBUG] global admin")
+		// ALLOW ALL
+	case "USER":
+		fmt.Println("[DEBUG] global user")
+		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
+			UserID: userID.String(),
+			// Using a limit of 500 for now, adjust as needed based on expected data size
+			Limit: 500,
+		})
+		if err != nil {
+			return Borrowing{}, err
+		}
+		// user is not staff
+		if len(staffs) == 0 {
+			fmt.Println("[DEBUG] user is not staff, filtering by user id")
+			opt.UserIDs = uuid.UUIDs{userID}
+			break
+		}
+
+		// user is staff
+		fmt.Println("[DEBUG] user is staff")
+		var staffLibIDs uuid.UUIDs
+		for _, staff := range staffs {
+			staffLibIDs = append(staffLibIDs, staff.LibraryID)
+		}
+		// user is staff, filtering by library ids
+		if len(opt.LibraryIDs) == 0 {
+			// user is staff, filters default to assigned libraries
+			fmt.Println("[DEBUG] filtering by default assigned libraries")
+			opt.LibraryIDs = staffLibIDs
+			break
+		}
+
+		fmt.Println("[DEBUG] filtering by library ids query")
+		var intersectLibIDs uuid.UUIDs
+		for _, id := range opt.LibraryIDs {
+			// filter out library ids that are not assigned to the staff
+			if slices.Contains(staffLibIDs, id) {
+				intersectLibIDs = append(intersectLibIDs, id)
+			}
+		}
+
+		if len(intersectLibIDs) == 0 {
+			// user is filtering by library ids but none of the ids are assigned to the staff
+			fmt.Println("[DEBUG] staff filters by lib ids but none assigned")
+			opt.LibraryIDs = staffLibIDs
+			break
+		}
+
+		// user is filtering by library ids and some of the ids are assigned to the staff
+		fmt.Println("[DEBUG] staff filters by lib ids and some assigned")
+		opt.LibraryIDs = intersectLibIDs
+	}
+	borrow, err := u.repo.GetBorrowingByID(ctx, id, opt)
 	if err != nil {
 		return Borrowing{}, err
 	}
@@ -201,7 +276,9 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 
 	if s.UsageLimit > 0 {
 		_, usageCount, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
-			SubscriptionIDs: uuid.UUIDs{s.ID},
+			BorrowingsOption: BorrowingsOption{
+				SubscriptionIDs: uuid.UUIDs{s.ID},
+			},
 		})
 		if err != nil {
 			return Borrowing{}, err
@@ -213,8 +290,10 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 
 	// 2. Check if the user has reached the maximum borrowing limit
 	_, activeBorrowCount, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
-		SubscriptionIDs: uuid.UUIDs{s.ID},
-		IsActive:        true,
+		BorrowingsOption: BorrowingsOption{
+			SubscriptionIDs: uuid.UUIDs{s.ID},
+			IsActive:        true,
+		},
 	})
 	if err != nil {
 		return Borrowing{}, err
@@ -240,8 +319,10 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 
 	// 4. Check if the book is available
 	_, activeBookCount, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
-		BookIDs:  uuid.UUIDs{borrow.BookID},
-		IsActive: true,
+		BorrowingsOption: BorrowingsOption{
+			BookIDs:  uuid.UUIDs{borrow.BookID},
+			IsActive: true,
+		},
 	})
 	if err != nil {
 		return Borrowing{}, err
@@ -253,8 +334,10 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 
 	// 4. Check if the book is available
 	_, lostBookCount, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
-		BookIDs: uuid.UUIDs{borrow.BookID},
-		IsLost:  true,
+		BorrowingsOption: BorrowingsOption{
+			BookIDs: uuid.UUIDs{borrow.BookID},
+			IsLost:  true,
+		},
 	})
 	if err != nil {
 		return Borrowing{}, err

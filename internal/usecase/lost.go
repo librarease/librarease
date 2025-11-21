@@ -35,7 +35,7 @@ func (u Usecase) LostBorrowing(ctx context.Context, borrowingID uuid.UUID, l Los
 	}
 
 	// Get the borrowing record
-	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingID)
+	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingID, BorrowingsOption{})
 	if err != nil {
 		return Lost{}, err
 	}
@@ -52,8 +52,10 @@ func (u Usecase) LostBorrowing(ctx context.Context, borrowingID uuid.UUID, l Los
 
 	// Check if borrowing is latest borrowing for the book
 	latestBorrow, _, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
-		BookIDs: []uuid.UUID{borrow.BookID},
-		Limit:   1,
+		BorrowingsOption: BorrowingsOption{
+			BookIDs: []uuid.UUID{borrow.BookID},
+		},
+		Limit: 1,
 	})
 	if err != nil {
 		return Lost{}, err
@@ -127,7 +129,7 @@ func (u Usecase) LostBorrowing(ctx context.Context, borrowingID uuid.UUID, l Los
 }
 
 func (u Usecase) UpdateLost(ctx context.Context, borrowingID uuid.UUID, l Lost) (Lost, error) {
-	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingID)
+	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingID, BorrowingsOption{})
 	if err != nil {
 		return Lost{}, err
 	}
@@ -144,13 +146,13 @@ func (u Usecase) UpdateLost(ctx context.Context, borrowingID uuid.UUID, l Lost) 
 
 }
 
-func (u Usecase) DeleteLost(ctx context.Context, borrowingId uuid.UUID) error {
-	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingId)
+func (u Usecase) DeleteLost(ctx context.Context, borrowingID uuid.UUID) error {
+	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingID, BorrowingsOption{})
 	if err != nil {
 		return err
 	}
 	if borrow.Lost == nil {
-		return fmt.Errorf("borrow has not been reported lost yet: %s", borrowingId)
+		return fmt.Errorf("borrow has not been reported lost yet: %s", borrowingID)
 	}
 	return u.repo.DeleteLost(ctx, borrow.Lost.ID)
 }

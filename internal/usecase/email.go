@@ -30,7 +30,7 @@ type EmailAttachment struct {
 
 func (u Usecase) SendBorrowingEmail(ctx context.Context, id uuid.UUID) error {
 
-	b, err := u.repo.GetBorrowingByID(ctx, id)
+	b, err := u.repo.GetBorrowingByID(ctx, id, BorrowingsOption{})
 	if err != nil {
 		return err
 	}

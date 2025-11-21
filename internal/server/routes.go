@@ -75,7 +75,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	var bookGroup = e.Group("/api/v1/books")
 	bookGroup.GET("", s.ListBooks)
 	bookGroup.POST("", s.CreateBook, s.AuthMiddleware)
-	bookGroup.GET("/:id", s.GetBookByID)
+	bookGroup.GET("/:id", s.GetBookByID, s.AuthMiddleware)
 	bookGroup.PUT("/:id", s.UpdateBook, s.AuthMiddleware)
 	bookGroup.GET("/import", s.PreviewImportBooks, s.AuthMiddleware)
 	bookGroup.POST("/import", s.ConfirmImportBooks, s.AuthMiddleware)

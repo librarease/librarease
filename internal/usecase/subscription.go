@@ -179,7 +179,9 @@ func (u Usecase) UpdateSubscription(ctx context.Context, sub Subscription) (Subs
 
 func (u Usecase) DeleteSubscription(ctx context.Context, id uuid.UUID) error {
 	_, count, err := u.ListBorrowings(ctx, ListBorrowingsOption{
-		SubscriptionIDs: uuid.UUIDs{id},
+		BorrowingsOption: BorrowingsOption{
+			SubscriptionIDs: uuid.UUIDs{id},
+		},
 	})
 	if err != nil {
 		return err

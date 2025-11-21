@@ -38,7 +38,7 @@ func (u Usecase) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r R
 		return Borrowing{}, fmt.Errorf("user id not found in context")
 	}
 
-	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingID)
+	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingID, BorrowingsOption{})
 	if err != nil {
 		return Borrowing{}, err
 	}
@@ -159,7 +159,7 @@ func (u Usecase) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r R
 }
 
 func (u Usecase) DeleteReturn(ctx context.Context, borrowingId uuid.UUID) error {
-	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingId)
+	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingId, BorrowingsOption{})
 	if err != nil {
 		return err
 	}
@@ -169,8 +169,10 @@ func (u Usecase) DeleteReturn(ctx context.Context, borrowingId uuid.UUID) error 
 
 	// Check if there is active borrowing
 	_, n, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
-		BookIDs:  []uuid.UUID{borrow.BookID},
-		IsActive: true,
+		BorrowingsOption: BorrowingsOption{
+			BookIDs:  []uuid.UUID{borrow.BookID},
+			IsActive: true,
+		},
 	})
 	if err != nil {
 		return err
@@ -199,7 +201,7 @@ func (u Usecase) DeleteReturn(ctx context.Context, borrowingId uuid.UUID) error 
 }
 
 func (u Usecase) UpdateReturn(ctx context.Context, borrowingId uuid.UUID, r Returning) error {
-	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingId)
+	borrow, err := u.repo.GetBorrowingByID(ctx, borrowingId, BorrowingsOption{})
 	if err != nil {
 		return err
 	}

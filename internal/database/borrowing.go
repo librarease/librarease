@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/librarease/librarease/internal/usecase"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -252,37 +255,64 @@ func (s *service) ListBorrowingSummariesForNotifications(ctx context.Context, op
 	return summaries, nil
 }
 
-func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID) (usecase.Borrowing, error) {
-	var b Borrowing
+func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt usecase.BorrowingsOption) (usecase.Borrowing, error) {
 
-	err := s.db.
-		Model(Borrowing{}).
-		WithContext(ctx).
-		Preload("Returning").
-		Preload("Returning.Staff").
-		Preload("Lost").
-		Preload("Lost.Staff").
-		Preload("Book").
-		Preload("Staff").
-		Preload("Subscription").
-		Preload("Subscription.User").
-		Preload("Subscription.Membership").
-		Preload("Subscription.Membership.Library").
-		Where("id = ?", id).
-		First(&b).
-		Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return usecase.Borrowing{}, usecase.ErrNotFound{
-				ID:      id,
-				Code:    "borrowing_not_found",
-				Message: fmt.Sprintf("borrowing with id %s not found", id),
+	var (
+		b              Borrowing
+		prevID, nextID *uuid.UUID
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		err := s.db.
+			Model(Borrowing{}).
+			WithContext(ctx).
+			Preload("Returning").
+			Preload("Returning.Staff").
+			Preload("Lost").
+			Preload("Lost.Staff").
+			Preload("Book").
+			Preload("Staff").
+			Preload("Subscription").
+			Preload("Subscription.User").
+			Preload("Subscription.Membership").
+			Preload("Subscription.Membership.Library").
+			Where("id = ?", id).
+			First(&b).
+			Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return usecase.ErrNotFound{
+					ID:      id,
+					Code:    "borrowing_not_found",
+					Message: fmt.Sprintf("borrowing with id %s not found", id),
+				}
 			}
+			return err
 		}
+		return nil
+	})
+
+	if !reflect.DeepEqual(opt, usecase.BorrowingsOption{}) {
+		g.Go(func() error {
+			p, n, err := s.GetBorrowingSiblings(ctx, id, opt)
+			if err != nil {
+				return err
+			}
+			prevID, nextID = p, n
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
 		return usecase.Borrowing{}, err
 	}
 
 	ub := b.ConvertToUsecase()
+
+	ub.PrevID = prevID
+	ub.NextID = nextID
 
 	if b.Returning != nil {
 		returning := b.Returning.ConvertToUsecase()
@@ -383,6 +413,162 @@ func (s *service) DeleteBorrowing(ctx context.Context, id uuid.UUID) error {
 	return s.db.WithContext(ctx).Where("id = ?", id).Delete(&Borrowing{}).Error
 }
 
+type BorrowingSiblings struct {
+	ID     uuid.UUID
+	PrevID *uuid.UUID
+	NextID *uuid.UUID
+}
+
+func (s *service) GetBorrowingSiblings(ctx context.Context, id uuid.UUID, opt usecase.BorrowingsOption) (*uuid.UUID, *uuid.UUID, error) {
+	if opt.SortBy == "" {
+		opt.SortBy = "b.created_at"
+	}
+	if !strings.Contains(opt.SortBy, ".") {
+		opt.SortBy = "b." + opt.SortBy
+	}
+	if opt.SortIn == "" {
+		opt.SortIn = "DESC"
+	}
+
+	var joins []string
+	var where []string
+	var args []any
+
+	where = append(where, "b.deleted_at IS NULL")
+
+	addIn := func(col string, vals uuid.UUIDs) {
+		if len(vals) == 0 {
+			return
+		}
+		p := placeholders(len(vals))
+		where = append(where, fmt.Sprintf("%s IN (%s)", col, p))
+		for _, v := range vals {
+			args = append(args, v)
+		}
+	}
+
+	addIn("b.book_id", opt.BookIDs)
+	addIn("b.subscription_id", opt.SubscriptionIDs)
+	addIn("b.staff_id", opt.BorrowStaffIDs)
+
+	if len(opt.ReturnStaffIDs) > 0 {
+		joins = append(joins, "JOIN returnings r_return ON r_return.borrowing_id = b.id AND r_return.deleted_at IS NULL")
+		p := placeholders(len(opt.ReturnStaffIDs))
+		where = append(where, fmt.Sprintf("r_return.staff_id IN (%s)", p))
+		for _, v := range opt.ReturnStaffIDs {
+			args = append(args, v)
+		}
+	}
+
+	if len(opt.MembershipIDs) > 0 {
+		joins = append(joins, "JOIN subscriptions s_m ON s_m.id = b.subscription_id")
+		p := placeholders(len(opt.MembershipIDs))
+		where = append(where, fmt.Sprintf("s_m.membership_id IN (%s)", p))
+		for _, v := range opt.MembershipIDs {
+			args = append(args, v)
+		}
+	}
+
+	if len(opt.LibraryIDs) > 0 {
+		joins = append(joins, "JOIN books bk ON bk.id = b.book_id")
+		p := placeholders(len(opt.LibraryIDs))
+		where = append(where, fmt.Sprintf("bk.library_id IN (%s)", p))
+		for _, v := range opt.LibraryIDs {
+			args = append(args, v)
+		}
+	}
+
+	if len(opt.UserIDs) > 0 {
+		joins = append(joins, "JOIN subscriptions s_u ON s_u.id = b.subscription_id")
+		p := placeholders(len(opt.UserIDs))
+		where = append(where, fmt.Sprintf("s_u.user_id IN (%s)", p))
+		for _, v := range opt.UserIDs {
+			args = append(args, v)
+		}
+	}
+
+	if len(opt.ReturningIDs) > 0 {
+		joins = append(joins, "JOIN returnings r_id ON r_id.borrowing_id = b.id AND r_id.deleted_at IS NULL")
+		p := placeholders(len(opt.ReturningIDs))
+		where = append(where, fmt.Sprintf("r_id.id IN (%s)", p))
+		for _, v := range opt.ReturningIDs {
+			args = append(args, v)
+		}
+	}
+
+	if !opt.BorrowedAt.IsZero() {
+		where = append(where, "b.borrowed_at::date = ?")
+		args = append(args, opt.BorrowedAt)
+	}
+	if opt.BorrowedAtFrom != nil {
+		where = append(where, "b.borrowed_at >= ?")
+		args = append(args, *opt.BorrowedAtFrom)
+	}
+	if opt.BorrowedAtTo != nil {
+		where = append(where, "b.borrowed_at <= ?")
+		args = append(args, *opt.BorrowedAtTo)
+	}
+	if !opt.DueAt.IsZero() {
+		where = append(where, "b.due_at::date = ?")
+		args = append(args, opt.DueAt)
+	}
+	if opt.ReturnedAt != nil {
+		where = append(where, "EXISTS (SELECT 1 FROM returnings r WHERE r.borrowing_id = b.id AND r.deleted_at IS NULL AND r.returned_at >= ? AND r.returned_at < ?)")
+		args = append(args, *opt.ReturnedAt, opt.ReturnedAt.Add(24*time.Hour))
+	}
+	if opt.LostAt != nil {
+		where = append(where, "EXISTS (SELECT 1 FROM losts l WHERE l.borrowing_id = b.id AND l.deleted_at IS NULL AND l.reported_at >= ? AND l.reported_at < ?)")
+		args = append(args, *opt.LostAt, opt.LostAt.Add(24*time.Hour))
+	}
+
+	if opt.IsActive || opt.IsOverdue {
+		where = append(where, "NOT EXISTS (SELECT 1 FROM losts l2 WHERE l2.borrowing_id = b.id AND l2.deleted_at IS NULL)")
+		where = append(where, "NOT EXISTS (SELECT 1 FROM returnings r4 WHERE r4.borrowing_id = b.id AND r4.deleted_at IS NULL)")
+		if opt.IsOverdue {
+			where = append(where, "b.due_at < NOW()")
+		}
+	}
+	if opt.IsReturned {
+		where = append(where, "EXISTS (SELECT 1 FROM returnings r5 WHERE r5.borrowing_id = b.id AND r5.deleted_at IS NULL)")
+	}
+	if opt.IsLost {
+		where = append(where, "EXISTS (SELECT 1 FROM losts l3 WHERE l3.borrowing_id = b.id AND l3.deleted_at IS NULL)")
+	}
+
+	joinsSQL := ""
+	if len(joins) > 0 {
+		joinsSQL = strings.Join(joins, "\n")
+	}
+	whereSQL := "WHERE " + strings.Join(where, "\nAND ")
+
+	sql := fmt.Sprintf(`
+WITH filtered AS (
+    SELECT b.id, %s AS sort_col
+    FROM borrowings b
+    %s
+    %s
+),
+ordered AS (
+    SELECT id,
+           LAG(id) OVER (ORDER BY sort_col %s, id) AS prev_id,
+           LEAD(id) OVER (ORDER BY sort_col %s, id) AS next_id
+    FROM filtered
+)
+SELECT prev_id, next_id FROM ordered WHERE id = ?
+`, opt.SortBy, joinsSQL, whereSQL, opt.SortIn, opt.SortIn)
+
+	args = append(args, id)
+
+	var out struct {
+		PrevID *uuid.UUID
+		NextID *uuid.UUID
+	}
+	if err := s.db.Raw(sql, args...).Scan(&out).Error; err != nil {
+		return nil, nil, err
+	}
+	return out.PrevID, out.NextID, nil
+}
+
 // Convert core model to Usecase
 func (b Borrowing) ConvertToUsecase() usecase.Borrowing {
 	var d *time.Time
@@ -400,4 +586,14 @@ func (b Borrowing) ConvertToUsecase() usecase.Borrowing {
 		UpdatedAt:      b.UpdatedAt,
 		DeletedAt:      d,
 	}
+}
+func placeholders(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	p := make([]string, n)
+	for i := range n {
+		p[i] = "?"
+	}
+	return strings.Join(p, ",")
 }

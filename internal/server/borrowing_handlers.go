@@ -26,11 +26,12 @@ type Borrowing struct {
 	Staff        *Staff        `json:"staff"`
 	Returning    *Returning    `json:"returning,omitempty"`
 	Lost         *Lost         `json:"lost,omitempty"`
+
+	PrevID *string `json:"prev_id,omitempty"`
+	NextID *string `json:"next_id,omitempty"`
 }
 
-type ListBorrowingsOption struct {
-	Skip   int    `query:"skip"`
-	Limit  int    `query:"limit" validate:"required,gte=1,lte=100"`
+type BorrowingsOption struct {
 	SortBy string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at"`
 	SortIn string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 
@@ -51,6 +52,12 @@ type ListBorrowingsOption struct {
 	ReturnStaffID string  `query:"return_staff_id" validate:"omitempty,uuid"`
 	ReturnedAt    *string `query:"returned_at" validate:"omitempty"`
 	LostAt        *string `query:"lost_at" validate:"omitempty"`
+}
+
+type ListBorrowingsOption struct {
+	Skip  int `query:"skip"`
+	Limit int `query:"limit" validate:"required,gte=1,lte=100"`
+	BorrowingsOption
 }
 
 func (s *Server) ListBorrowings(ctx echo.Context) error {
@@ -149,26 +156,28 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 	}
 
 	borrows, total, err := s.server.ListBorrowings(ctx.Request().Context(), usecase.ListBorrowingsOption{
-		Skip:            req.Skip,
-		Limit:           req.Limit,
-		SortBy:          req.SortBy,
-		SortIn:          req.SortIn,
-		BookIDs:         bookIDs,
-		SubscriptionIDs: subscriptionIDs,
-		BorrowStaffIDs:  borrowStaffIDs,
-		ReturnStaffIDs:  returnStaffIDs,
-		MembershipIDs:   membershipIDs,
-		LibraryIDs:      libIDs,
-		UserIDs:         userIDs,
-		ReturningIDs:    returningIDs,
-		BorrowedAt:      borrowedAt,
-		DueAt:           dueAt,
-		ReturnedAt:      returnedAt,
-		LostAt:          lostAt,
-		IsActive:        req.IsActive,
-		IsOverdue:       req.IsOverdue,
-		IsReturned:      req.IsReturned,
-		IsLost:          req.IsLost,
+		Skip:  req.Skip,
+		Limit: req.Limit,
+		BorrowingsOption: usecase.BorrowingsOption{
+			SortBy:          req.SortBy,
+			SortIn:          req.SortIn,
+			BookIDs:         bookIDs,
+			SubscriptionIDs: subscriptionIDs,
+			BorrowStaffIDs:  borrowStaffIDs,
+			ReturnStaffIDs:  returnStaffIDs,
+			MembershipIDs:   membershipIDs,
+			LibraryIDs:      libIDs,
+			UserIDs:         userIDs,
+			ReturningIDs:    returningIDs,
+			BorrowedAt:      borrowedAt,
+			DueAt:           dueAt,
+			ReturnedAt:      returnedAt,
+			LostAt:          lostAt,
+			IsActive:        req.IsActive,
+			IsOverdue:       req.IsOverdue,
+			IsReturned:      req.IsReturned,
+			IsLost:          req.IsLost,
+		},
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -302,6 +311,7 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 
 type GetBorrowingByIDRequest struct {
 	ID string `param:"id" validate:"required,uuid"`
+	BorrowingsOption
 }
 
 func (s *Server) GetBorrowingByID(ctx echo.Context) error {
@@ -312,9 +322,113 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 	if err := s.validator.Struct(req); err != nil {
 		return ctx.JSON(422, map[string]string{"error": err.Error()})
 	}
+	var bookIDs uuid.UUIDs
+	if req.BookID != "" {
+		id, _ := uuid.Parse(req.BookID)
+		bookIDs = append(bookIDs, id)
+	}
+
+	var subscriptionIDs uuid.UUIDs
+	if req.SubscriptionID != "" {
+		id, _ := uuid.Parse(req.SubscriptionID)
+		subscriptionIDs = append(subscriptionIDs, id)
+	}
+
+	var borrowStaffIDs uuid.UUIDs
+	if req.BorrowStaffID != "" {
+		id, _ := uuid.Parse(req.BorrowStaffID)
+		borrowStaffIDs = append(borrowStaffIDs, id)
+	}
+
+	var returnStaffIDs uuid.UUIDs
+	if req.ReturnStaffID != "" {
+		id, _ := uuid.Parse(req.ReturnStaffID)
+		returnStaffIDs = append(returnStaffIDs, id)
+	}
+
+	var membershipIDs uuid.UUIDs
+	if req.MembershipID != "" {
+		id, _ := uuid.Parse(req.MembershipID)
+		membershipIDs = append(membershipIDs, id)
+	}
+
+	var userIDs uuid.UUIDs
+	if req.UserID != "" {
+		id, _ := uuid.Parse(req.UserID)
+		userIDs = append(userIDs, id)
+	}
+
+	// NOTE: libIDs.Strings() initializes a slice of strings
+	// meaning non-nil but empty
+	var libIDs uuid.UUIDs
+	if req.LibraryID != "" {
+		id, _ := uuid.Parse(req.LibraryID)
+		libIDs = append(libIDs, id)
+	}
+
+	var returningIDs uuid.UUIDs
+	if req.ReturningID != "" {
+		id, _ := uuid.Parse(req.ReturningID)
+		returningIDs = append(returningIDs, id)
+	}
+
+	var borrowedAt time.Time
+	if req.BorrowedAt != "" {
+		t, err := time.Parse(time.RFC3339, req.BorrowedAt)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": err.Error()})
+		}
+		borrowedAt = t
+	}
+
+	var dueAt time.Time
+	if req.DueAt != "" {
+		t, err := time.Parse(time.RFC3339, req.DueAt)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": err.Error()})
+		}
+		dueAt = t
+	}
+
+	var returnedAt *time.Time
+	if req.ReturnedAt != nil {
+		t, err := time.Parse(time.RFC3339, *req.ReturnedAt)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": err.Error()})
+		}
+		returnedAt = &t
+	}
+
+	var lostAt *time.Time
+	if req.LostAt != nil {
+		t, err := time.Parse(time.RFC3339, *req.LostAt)
+		if err != nil {
+			return ctx.JSON(400, map[string]string{"error": err.Error()})
+		}
+		lostAt = &t
+	}
 
 	id, _ := uuid.Parse(req.ID)
-	borrow, err := s.server.GetBorrowingByID(ctx.Request().Context(), id)
+	borrow, err := s.server.GetBorrowingByID(ctx.Request().Context(), id, usecase.BorrowingsOption{
+		SortBy:          req.SortBy,
+		SortIn:          req.SortIn,
+		BookIDs:         bookIDs,
+		SubscriptionIDs: subscriptionIDs,
+		BorrowStaffIDs:  borrowStaffIDs,
+		ReturnStaffIDs:  returnStaffIDs,
+		MembershipIDs:   membershipIDs,
+		LibraryIDs:      libIDs,
+		UserIDs:         userIDs,
+		ReturningIDs:    returningIDs,
+		BorrowedAt:      borrowedAt,
+		DueAt:           dueAt,
+		ReturnedAt:      returnedAt,
+		LostAt:          lostAt,
+		IsActive:        req.IsActive,
+		IsOverdue:       req.IsOverdue,
+		IsReturned:      req.IsReturned,
+		IsLost:          req.IsLost,
+	})
 	if err != nil {
 		var notFoundErr usecase.ErrNotFound
 		if errors.As(err, &notFoundErr) {
@@ -332,6 +446,16 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 	if borrow.DeletedAt != nil {
 		tmp := borrow.DeletedAt.UTC().Format(time.RFC3339)
 		d = &tmp
+	}
+	var prevID *string
+	if borrow.PrevID != nil {
+		s := borrow.PrevID.String()
+		prevID = &s
+	}
+	var nextID *string
+	if borrow.NextID != nil {
+		s := borrow.NextID.String()
+		nextID = &s
 	}
 	var r *Returning
 	if borrow.Returning != nil {
@@ -374,7 +498,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			l.Staff = &staff
 		}
 	}
-	m := Borrowing{
+	b := Borrowing{
 		ID:             borrow.ID.String(),
 		BookID:         borrow.BookID.String(),
 		SubscriptionID: borrow.SubscriptionID.String(),
@@ -386,6 +510,8 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 		CreatedAt:      borrow.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:      borrow.UpdatedAt.UTC().Format(time.RFC3339),
 		DeletedAt:      d,
+		PrevID:         prevID,
+		NextID:         nextID,
 	}
 
 	if borrow.Book != nil {
@@ -402,7 +528,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			UpdatedAt: borrow.Book.UpdatedAt.UTC().Format(time.RFC3339),
 			// DeletedAt: borrow.Book.DeletedAt,
 		}
-		m.Book = &book
+		b.Book = &book
 	}
 
 	if borrow.Staff != nil {
@@ -431,7 +557,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 				UpdatedAt: borrow.Staff.Library.UpdatedAt.UTC().Format(time.RFC3339),
 			}
 		}
-		m.Staff = &staff
+		b.Staff = &staff
 	}
 
 	if borrow.Subscription != nil {
@@ -479,10 +605,10 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			}
 			sub.Membership = &m
 		}
-		m.Subscription = &sub
+		b.Subscription = &sub
 	}
 
-	return ctx.JSON(200, Res{Data: m})
+	return ctx.JSON(200, Res{Data: b})
 }
 
 type CreateBorrowingRequest struct {

@@ -82,7 +82,7 @@ type Service interface {
 	DeleteSubscription(context.Context, uuid.UUID) error
 
 	ListBorrowings(context.Context, usecase.ListBorrowingsOption) ([]usecase.Borrowing, int, error)
-	GetBorrowingByID(context.Context, uuid.UUID) (usecase.Borrowing, error)
+	GetBorrowingByID(context.Context, uuid.UUID, usecase.BorrowingsOption) (usecase.Borrowing, error)
 	CreateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
 	UpdateBorrowing(context.Context, usecase.Borrowing) (usecase.Borrowing, error)
 	DeleteBorrowing(context.Context, uuid.UUID) error
