@@ -49,19 +49,21 @@ type Repository interface {
 	GetBookByID(context.Context, uuid.UUID) (Book, error)
 	CreateBook(context.Context, Book) (Book, error)
 	UpdateBook(context.Context, uuid.UUID, Book) (Book, error)
+	DeleteBook(context.Context, uuid.UUID) error
 
 	// staff
 	ListStaffs(context.Context, ListStaffsOption) ([]Staff, int, error)
 	CreateStaff(context.Context, Staff) (Staff, error)
 	GetStaffByID(context.Context, uuid.UUID) (Staff, error)
 	UpdateStaff(context.Context, Staff) (Staff, error)
+	DeleteStaff(context.Context, uuid.UUID) error
 
 	// membership
 	ListMemberships(context.Context, ListMembershipsOption) ([]Membership, int, error)
 	GetMembershipByID(context.Context, uuid.UUID) (Membership, error)
 	CreateMembership(context.Context, Membership) (Membership, error)
 	UpdateMembership(context.Context, Membership) (Membership, error)
-	// DeleteMembership(context.Context, string) error
+	DeleteMembership(context.Context, uuid.UUID) error
 
 	// subscription
 	ListSubscriptions(context.Context, ListSubscriptionsOption) ([]Subscription, int, error)

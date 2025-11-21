@@ -232,3 +232,50 @@ func (u Usecase) UpdateBook(ctx context.Context, id uuid.UUID, book Book) (Book,
 
 	return b, nil
 }
+func (u Usecase) DeleteBook(ctx context.Context, id uuid.UUID) error {
+	role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+	if !ok {
+		return fmt.Errorf("user role not found in context")
+	}
+	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return fmt.Errorf("user id not found in context")
+	}
+
+	switch role {
+	case "SUPERADMIN":
+		// ALLOW
+	case "ADMIN":
+		// ALLlOW
+	case "USER":
+		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
+			UserID: userID.String(),
+			// FIXME: no way to check book's library
+			// LibraryIDs: uuid.UUIDs{library.ID},
+		})
+		if err != nil {
+			return err
+		}
+		if len(staffs) == 0 {
+			// TODO: implement error
+			return fmt.Errorf("you are not right staff for the book")
+		}
+	}
+
+	// check borrowings
+	b, _, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
+		BorrowingsOption: BorrowingsOption{
+			BookIDs: uuid.UUIDs{id},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if len(b) > 0 {
+		return fmt.Errorf("book has %d borrowings", len(b))
+	}
+
+	// u.repo.
+
+	return nil
+}

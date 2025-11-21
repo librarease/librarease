@@ -173,3 +173,57 @@ func (u Usecase) GetStaffByID(ctx context.Context, id string) (Staff, error) {
 func (u Usecase) UpdateStaff(ctx context.Context, staff Staff) (Staff, error) {
 	return u.repo.UpdateStaff(ctx, staff)
 }
+
+func (u Usecase) DeleteStaff(ctx context.Context, id uuid.UUID) error {
+	role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+	if !ok {
+		return fmt.Errorf("user role not found in context")
+	}
+	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return fmt.Errorf("user id not found in context")
+	}
+
+	var isRequireToCheckRemover bool
+
+	switch role {
+	case "SUPERADMIN":
+		// ALLOW
+	case "ADMIN":
+		// ALLlOW
+	case "USER":
+		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
+			UserID: userID.String(),
+		})
+		if err != nil {
+			return err
+		}
+		if len(staffs) == 0 {
+			// TODO: implement error
+			return fmt.Errorf("you are not the staff")
+		}
+		isRequireToCheckRemover = true
+	}
+
+	// "SUPERADMIN","ADMIN"
+	if !isRequireToCheckRemover {
+		return u.DeleteStaff(ctx, id)
+	}
+
+	// check staff to be removed
+	removee, err := u.repo.GetStaffByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if removee.Role == StaffRoleAdmin {
+		return fmt.Errorf("admin cannot be removed")
+	}
+	remover, err := u.repo.GetStaffByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if remover.Role != StaffRoleAdmin {
+		return fmt.Errorf("staff cannot be removed")
+	}
+	return u.DeleteStaff(ctx, id)
+}

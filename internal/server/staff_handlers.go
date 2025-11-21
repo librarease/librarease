@@ -211,3 +211,23 @@ func (s *Server) UpdateStaff(ctx echo.Context) error {
 		UpdatedAt: st.UpdatedAt.UTC().Format(time.RFC3339),
 	}})
 }
+
+func (s *Server) DeleteStaff(ctx echo.Context) error {
+	var req DeleteRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(422, map[string]string{"error": err.Error()})
+	}
+
+	id, _ := uuid.Parse(req.ID)
+
+	if err := s.server.DeleteStaff(ctx.Request().Context(), id); err != nil {
+		return ctx.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.JSON(200, Res{
+		Data: map[string]string{"id": req.ID},
+	})
+}

@@ -61,11 +61,13 @@ type Service interface {
 	CreateStaff(context.Context, usecase.Staff) (usecase.Staff, error)
 	GetStaffByID(context.Context, string) (usecase.Staff, error)
 	UpdateStaff(context.Context, usecase.Staff) (usecase.Staff, error)
+	DeleteStaff(context.Context, uuid.UUID) error
 
 	ListBooks(context.Context, usecase.ListBooksOption) ([]usecase.Book, int, error)
 	GetBookByID(context.Context, uuid.UUID, usecase.GetBookByIDOption) (usecase.Book, error)
 	CreateBook(context.Context, usecase.Book) (usecase.Book, error)
 	UpdateBook(context.Context, uuid.UUID, usecase.Book) (usecase.Book, error)
+	DeleteBook(context.Context, uuid.UUID) error
 	PreviewImportBooks(context.Context, uuid.UUID, string) (usecase.PreviewImportBooksResult, error)
 	ConfirmImportBooks(context.Context, uuid.UUID, string) (string, error)
 
@@ -73,7 +75,7 @@ type Service interface {
 	GetMembershipByID(context.Context, string) (usecase.Membership, error)
 	CreateMembership(context.Context, usecase.Membership) (usecase.Membership, error)
 	UpdateMembership(context.Context, usecase.Membership) (usecase.Membership, error)
-	// DeleteMembership(context.Context, string) error
+	DeleteMembership(context.Context, uuid.UUID) error
 
 	ListSubscriptions(context.Context, usecase.ListSubscriptionsOption) ([]usecase.Subscription, int, error)
 	GetSubscriptionByID(context.Context, uuid.UUID) (usecase.Subscription, error)

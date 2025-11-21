@@ -152,6 +152,10 @@ func (s *service) UpdateStaff(ctx context.Context, staff usecase.Staff) (usecase
 	return st.ConvertToUsecase(), nil
 }
 
+func (s *service) DeleteStaff(ctx context.Context, id uuid.UUID) error {
+	return s.db.WithContext(ctx).Where("id = ?", id).Delete(&Staff{}).Error
+}
+
 // Convert core model to Usecase
 func (st Staff) ConvertToUsecase() usecase.Staff {
 	var d *time.Time

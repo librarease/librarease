@@ -312,6 +312,10 @@ func (s *service) UpdateBook(ctx context.Context, id uuid.UUID, book usecase.Boo
 	return b.ConvertToUsecase(), nil
 }
 
+func (s *service) DeleteBook(ctx context.Context, id uuid.UUID) error {
+	return s.db.WithContext(ctx).Where("id = ?", id).Delete(&Book{}).Error
+}
+
 // Convert core model to Usecase
 func (b Book) ConvertToUsecase() usecase.Book {
 	var d *time.Time

@@ -64,19 +64,21 @@ func (s *Server) RegisterRoutes() http.Handler {
 	staffGroup.POST("", s.CreateStaff, s.AuthMiddleware)
 	staffGroup.GET("/:id", s.GetStaffByID)
 	staffGroup.PUT("/:id", s.UpdateStaff)
+	staffGroup.DELETE("/:id", s.DeleteStaff, s.AuthMiddleware)
 
 	var membershipGroup = e.Group("/api/v1/memberships")
 	membershipGroup.GET("", s.ListMemberships)
 	membershipGroup.POST("", s.CreateMembership)
 	membershipGroup.GET("/:id", s.GetMembershipByID)
 	membershipGroup.PUT("/:id", s.UpdateMembership)
-	// membershipGroup.DELETE("/:id", s.DeleteMembership)
+	membershipGroup.DELETE("/:id", s.DeleteMembership, s.AuthMiddleware)
 
 	var bookGroup = e.Group("/api/v1/books")
 	bookGroup.GET("", s.ListBooks)
 	bookGroup.POST("", s.CreateBook, s.AuthMiddleware)
 	bookGroup.GET("/:id", s.GetBookByID, s.AuthMiddleware)
 	bookGroup.PUT("/:id", s.UpdateBook, s.AuthMiddleware)
+	bookGroup.DELETE("/:id", s.DeleteBook, s.AuthMiddleware)
 	bookGroup.GET("/import", s.PreviewImportBooks, s.AuthMiddleware)
 	bookGroup.POST("/import", s.ConfirmImportBooks, s.AuthMiddleware)
 
