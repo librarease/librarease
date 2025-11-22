@@ -245,6 +245,8 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 		book.Stats = &BookStats{
 			BorrowCount: b.Stats.BorrowCount,
 			Borrowing:   borrow,
+			Rating:      b.Stats.Rating,
+			ReviewCount: b.Stats.ReviewCount,
 		}
 	}
 	for _, wl := range b.Watchlists {
