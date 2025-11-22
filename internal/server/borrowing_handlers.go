@@ -26,6 +26,7 @@ type Borrowing struct {
 	Staff        *Staff        `json:"staff"`
 	Returning    *Returning    `json:"returning,omitempty"`
 	Lost         *Lost         `json:"lost,omitempty"`
+	Review       *Review       `json:"review,omitempty"`
 
 	PrevID *string `json:"prev_id,omitempty"`
 	NextID *string `json:"next_id,omitempty"`
@@ -486,8 +487,8 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			ReportedAt:  borrow.Lost.ReportedAt,
 			Fine:        borrow.Lost.Fine,
 			Note:        borrow.Lost.Note,
-			CreatedAt:   borrow.Lost.CreatedAt.UTC().String(),
-			UpdatedAt:   borrow.Lost.UpdatedAt.UTC().String(),
+			CreatedAt:   borrow.Lost.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:   borrow.Lost.UpdatedAt.UTC().Format(time.RFC3339),
 			// DeletedAt: d,
 		}
 		if borrow.Lost.Staff != nil {
@@ -496,6 +497,17 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 				Name: borrow.Staff.Name,
 			}
 			l.Staff = &staff
+		}
+	}
+	var review *Review
+	if borrow.Review != nil {
+		review = &Review{
+			ID:          borrow.Review.ID.String(),
+			Rating:      borrow.Review.Rating,
+			Comment:     borrow.Review.Comment,
+			BorrowingID: borrow.Review.BorrowingID.String(),
+			CreatedAt:   borrow.Review.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:   borrow.Review.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 	}
 	b := Borrowing{
@@ -507,6 +519,7 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 		DueAt:          borrow.DueAt.UTC().Format(time.RFC3339),
 		Returning:      r,
 		Lost:           l,
+		Review:         review,
 		CreatedAt:      borrow.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:      borrow.UpdatedAt.UTC().Format(time.RFC3339),
 		DeletedAt:      d,
@@ -574,11 +587,17 @@ func (s *Server) GetBorrowingByID(ctx echo.Context) error {
 			UsageLimit:      borrow.Subscription.UsageLimit,
 		}
 		if borrow.Subscription.User != nil {
-			sub.User = &User{
+			user := &User{
 				ID:        borrow.Subscription.User.ID.String(),
 				Name:      borrow.Subscription.User.Name,
 				CreatedAt: borrow.Subscription.User.CreatedAt.UTC().Format(time.RFC3339),
 				UpdatedAt: borrow.Subscription.User.UpdatedAt.UTC().Format(time.RFC3339),
+			}
+			sub.User = user
+
+			// Populalte review user
+			if b.Review != nil {
+				b.Review.User = user
 			}
 		}
 		if borrow.Subscription.Membership != nil {

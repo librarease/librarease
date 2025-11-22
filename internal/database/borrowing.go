@@ -32,6 +32,7 @@ type Borrowing struct {
 
 	Returning *Returning
 	Lost      *Lost
+	Review    *Review
 }
 
 func (Borrowing) TableName() string {
@@ -278,6 +279,7 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt usecas
 			Preload("Subscription.User").
 			Preload("Subscription.Membership").
 			Preload("Subscription.Membership.Library").
+			Preload("Review").
 			Where("id = ?", id).
 			First(&b).
 			Error
@@ -362,6 +364,11 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt usecas
 	if b.Staff != nil {
 		staff := b.Staff.ConvertToUsecase()
 		ub.Staff = &staff
+	}
+
+	if b.Review != nil {
+		review := b.Review.ConvertToUsecase()
+		ub.Review = &review
 	}
 
 	return ub, nil

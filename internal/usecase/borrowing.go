@@ -27,8 +27,7 @@ type Borrowing struct {
 	Staff        *Staff
 	Returning    *Returning
 	Lost         *Lost
-
-	Reviews []Review
+	Review       *Review
 
 	PrevID *uuid.UUID
 	NextID *uuid.UUID
