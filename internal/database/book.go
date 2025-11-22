@@ -171,7 +171,33 @@ func (s *service) getBookStats(ctx context.Context, bookIDs []uuid.UUID) (map[uu
 		stats[c.BookID] = usecase.BookStats{BorrowCount: c.Count}
 	}
 
-	// 2. Get latest borrowings (no preload)
+	// 2. Get review stats per book (average rating and count)
+	type ReviewStats struct {
+		BookID      uuid.UUID
+		AvgRating   *float64
+		ReviewCount int
+	}
+	var reviewStats []ReviewStats
+	if err := s.db.WithContext(ctx).
+		Table("reviews").
+		Select("borrowings.book_id, AVG(reviews.rating) as avg_rating, COUNT(reviews.id) as review_count").
+		Joins("JOIN borrowings ON borrowings.id = reviews.borrowing_id AND borrowings.deleted_at IS NULL").
+		Where("borrowings.book_id IN ?", bookIDs).
+		Where("reviews.deleted_at IS NULL").
+		Group("borrowings.book_id").
+		Scan(&reviewStats).Error; err != nil {
+		return nil, err
+	}
+	for _, rs := range reviewStats {
+		s := stats[rs.BookID]
+		if rs.AvgRating != nil {
+			s.Rating = *rs.AvgRating
+		}
+		s.ReviewCount = rs.ReviewCount
+		stats[rs.BookID] = s
+	}
+
+	// 3. Get latest borrowings (no preload)
 	var latestBorrowings []Borrowing
 	if err := s.db.WithContext(ctx).
 		Raw(`
@@ -184,7 +210,7 @@ func (s *service) getBookStats(ctx context.Context, bookIDs []uuid.UUID) (map[uu
 		return nil, err
 	}
 
-	// 3. Get Returning and Lost for those borrowings
+	// 4. Get Returning and Lost for those borrowings
 	borrowingIDs := make([]uuid.UUID, 0, len(latestBorrowings))
 	for _, b := range latestBorrowings {
 		borrowingIDs = append(borrowingIDs, b.ID)
@@ -215,7 +241,7 @@ func (s *service) getBookStats(ctx context.Context, bookIDs []uuid.UUID) (map[uu
 		lostMap[losts[i].BorrowingID] = &losts[i]
 	}
 
-	// 4. Merge all into final stats
+	// 5. Merge all into final stats
 	for _, b := range latestBorrowings {
 		s := stats[b.BookID]
 		var returning *usecase.Returning

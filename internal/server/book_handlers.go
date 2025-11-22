@@ -31,6 +31,8 @@ type Book struct {
 type BookStats struct {
 	BorrowCount int        `json:"borrow_count"`
 	Borrowing   *Borrowing `json:"borrowing,omitempty"`
+	Rating      float64    `json:"rating,omitempty"`
+	ReviewCount int        `json:"review_count,omitempty"`
 }
 
 type ListBooksRequest struct {
@@ -134,6 +136,8 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 			book.Stats = &BookStats{
 				BorrowCount: b.Stats.BorrowCount,
 				Borrowing:   borrow,
+				Rating:      b.Stats.Rating,
+				ReviewCount: b.Stats.ReviewCount,
 			}
 		}
 

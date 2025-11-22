@@ -15,6 +15,8 @@ import (
 type BookStats struct {
 	BorrowCount     int
 	ActiveBorrowing *Borrowing // nil if available, populated if currently borrowed or lost
+	Rating          float64
+	ReviewCount     int
 }
 
 type Book struct {
