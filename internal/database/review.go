@@ -43,20 +43,40 @@ func (s service) ListReviews(ctx context.Context, opt usecase.ListReviewsOption)
 		Preload("Borrowing.Subscription").
 		Preload("Borrowing.Subscription.User")
 
+	// Determine which joins are needed
+	needBorrowings := opt.BookID != uuid.Nil || opt.UserID != uuid.Nil || opt.LibraryID != uuid.Nil
+	needSubscriptions := opt.UserID != uuid.Nil
+	needBooks := opt.LibraryID != uuid.Nil
+
+	// Apply joins once
+	if needBorrowings {
+		db = db.Joins("JOIN borrowings ON borrowings.id = reviews.borrowing_id AND borrowings.deleted_at IS NULL")
+	}
+	if needSubscriptions {
+		db = db.Joins("JOIN subscriptions ON subscriptions.id = borrowings.subscription_id")
+	}
+	if needBooks {
+		db = db.Joins("JOIN books ON books.id = borrowings.book_id")
+	}
+
+	// Apply filters
 	if opt.BorrowingID != uuid.Nil {
-		db = db.Where("id = ?", opt.BorrowingID)
+		db = db.Where("reviews.borrowing_id = ?", opt.BorrowingID)
 	}
 	if opt.BookID != uuid.Nil {
-		db = db.Where("book_id = ?", opt.BookID)
+		db = db.Where("borrowings.book_id = ?", opt.BookID)
 	}
 	if opt.UserID != uuid.Nil {
-		db = db.Where("user_id = ?", opt.UserID)
+		db = db.Where("subscriptions.user_id = ?", opt.UserID)
+	}
+	if opt.LibraryID != uuid.Nil {
+		db = db.Where("books.library_id = ?", opt.LibraryID)
 	}
 	if opt.Rating != nil {
-		db = db.Where("rating = ?", *opt.Rating)
+		db = db.Where("reviews.rating = ?", *opt.Rating)
 	}
 	if opt.Comment != nil {
-		db = db.Where("comment ILIKE ?", "%"+*opt.Comment+"%")
+		db = db.Where("reviews.comment ILIKE ?", "%"+*opt.Comment+"%")
 	}
 
 	var (
@@ -193,9 +213,10 @@ func (s service) GetReviewSiblings(ctx context.Context, id uuid.UUID, opt usecas
 
 	where = append(where, "r.deleted_at IS NULL")
 
-	// Determine if we need the borrowings join
-	needBorrowings := opt.BookID != uuid.Nil || opt.UserID != uuid.Nil
+	// Determine if we need the joins
+	needBorrowings := opt.BookID != uuid.Nil || opt.UserID != uuid.Nil || opt.LibraryID != uuid.Nil
 	needSubscriptions := opt.UserID != uuid.Nil
+	needBooks := opt.LibraryID != uuid.Nil
 
 	if needBorrowings {
 		joins = append(joins, "JOIN borrowings b ON b.id = r.borrowing_id AND b.deleted_at IS NULL")
@@ -203,6 +224,10 @@ func (s service) GetReviewSiblings(ctx context.Context, id uuid.UUID, opt usecas
 
 	if needSubscriptions {
 		joins = append(joins, "JOIN subscriptions s ON s.id = b.subscription_id")
+	}
+
+	if needBooks {
+		joins = append(joins, "JOIN books bk ON bk.id = b.book_id")
 	}
 
 	if opt.BorrowingID != uuid.Nil {
@@ -218,6 +243,11 @@ func (s service) GetReviewSiblings(ctx context.Context, id uuid.UUID, opt usecas
 	if opt.UserID != uuid.Nil {
 		where = append(where, "s.user_id = ?")
 		args = append(args, opt.UserID)
+	}
+
+	if opt.LibraryID != uuid.Nil {
+		where = append(where, "bk.library_id = ?")
+		args = append(args, opt.LibraryID)
 	}
 
 	if opt.Rating != nil {

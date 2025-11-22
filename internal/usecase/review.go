@@ -30,6 +30,7 @@ type ReviewsOption struct {
 	BorrowingID uuid.UUID
 	UserID      uuid.UUID
 	BookID      uuid.UUID
+	LibraryID   uuid.UUID
 	Rating      *int
 	Comment     *string
 }

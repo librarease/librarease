@@ -31,6 +31,7 @@ type ReviewsOption struct {
 	BorrowingID string  `query:"borrowing_id" validate:"omitempty,uuid"`
 	UserID      string  `query:"user_id" validate:"omitempty,uuid"`
 	BookID      string  `query:"book_id" validate:"omitempty,uuid"`
+	LibraryID   string  `query:"library_id" validate:"omitempty,uuid"`
 	Rating      *int    `query:"rating" validate:"omitempty"`
 	Comment     *string `query:"comment" validate:"omitempty"`
 }
@@ -65,6 +66,11 @@ func (s *Server) ListReviews(ctx echo.Context) error {
 		bookID, _ = uuid.Parse(req.BookID)
 	}
 
+	var libID uuid.UUID
+	if req.LibraryID != "" {
+		libID, _ = uuid.Parse(req.LibraryID)
+	}
+
 	reviews, count, err := s.server.ListReviews(ctx.Request().Context(), usecase.ListReviewsOption{
 		Skip:  req.Skip,
 		Limit: req.Limit,
@@ -74,6 +80,7 @@ func (s *Server) ListReviews(ctx echo.Context) error {
 			BorrowingID: borrowingID,
 			BookID:      bookID,
 			UserID:      userID,
+			LibraryID:   libID,
 			Rating:      req.Rating,
 			Comment:     req.Comment,
 		},
