@@ -15,6 +15,8 @@ type Subscription struct {
 	ID           uuid.UUID
 	UserID       uuid.UUID
 	MembershipID uuid.UUID
+	Note         *string
+	SubscribedAt time.Time
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    *time.Time

@@ -18,6 +18,8 @@ type Subscription struct {
 	User         *User           `gorm:"foreignKey:UserID;references:ID"`
 	MembershipID uuid.UUID       `gorm:"column:membership_id;type:uuid;"`
 	Membership   *Membership     `gorm:"foreignKey:MembershipID;references:ID"`
+	SubscribedAt time.Time       `gorm:"column:subscribed_at;default:now()"`
+	Note         *string         `gorm:"column:note;type:text"`
 	CreatedAt    time.Time       `gorm:"column:created_at"`
 	UpdatedAt    time.Time       `gorm:"column:updated_at"`
 	DeletedAt    *gorm.DeletedAt `gorm:"column:deleted_at"`
@@ -260,5 +262,7 @@ func (s Subscription) ConvertToUsecase() usecase.Subscription {
 		LoanPeriod:      s.LoanPeriod,
 		ActiveLoanLimit: s.ActiveLoanLimit,
 		UsageLimit:      s.UsageLimit,
+		SubscribedAt:    s.SubscribedAt,
+		Note:            s.Note,
 	}
 }

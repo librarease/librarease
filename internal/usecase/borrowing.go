@@ -18,6 +18,7 @@ type Borrowing struct {
 	StaffID        uuid.UUID
 	BorrowedAt     time.Time
 	DueAt          time.Time
+	Note           *string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time

@@ -19,6 +19,7 @@ type Membership struct {
 	LoanPeriod      int
 	FinePerDay      int
 	Price           int
+	Description     *string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	DeletedAt       *time.Time

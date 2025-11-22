@@ -12,6 +12,7 @@ type Review struct {
 	BorrowingID uuid.UUID
 	Rating      int
 	Comment     *string
+	ReviewedAt  time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   *time.Time

@@ -19,16 +19,17 @@ const (
 )
 
 type Staff struct {
-	ID        uuid.UUID
-	Name      string
-	LibraryID uuid.UUID
-	UserID    uuid.UUID
-	Role      StaffRole
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeleteAt  *time.Time
-	User      *User
-	Library   *Library
+	ID         uuid.UUID
+	Name       string
+	LibraryID  uuid.UUID
+	UserID     uuid.UUID
+	Role       StaffRole
+	AssignedAt time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	DeleteAt   *time.Time
+	User       *User
+	Library    *Library
 	// Borrowings []Borrowing
 }
 

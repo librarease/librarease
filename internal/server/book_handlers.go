@@ -12,20 +12,21 @@ import (
 )
 
 type Book struct {
-	ID         string          `json:"id"`
-	Title      string          `json:"title"`
-	Author     string          `json:"author,omitempty"`
-	Year       int             `json:"year,omitempty"`
-	Code       string          `json:"code"`
-	Cover      string          `json:"cover,omitempty"`
-	Colors     json.RawMessage `json:"colors"`
-	LibraryID  string          `json:"library_id,omitempty"`
-	CreatedAt  string          `json:"created_at,omitempty"`
-	UpdatedAt  string          `json:"updated_at,omitempty"`
-	DeletedAt  *string         `json:"deleted_at,omitempty"`
-	Library    *Library        `json:"library,omitempty"`
-	Stats      *BookStats      `json:"stats,omitempty"`
-	Watchlists []Watchlist     `json:"watchlists,omitempty"`
+	ID          string          `json:"id"`
+	Title       string          `json:"title"`
+	Author      string          `json:"author,omitempty"`
+	Year        int             `json:"year,omitempty"`
+	Code        string          `json:"code"`
+	Cover       string          `json:"cover,omitempty"`
+	Colors      json.RawMessage `json:"colors"`
+	LibraryID   string          `json:"library_id,omitempty"`
+	Description *string         `json:"description,omitempty"`
+	CreatedAt   string          `json:"created_at,omitempty"`
+	UpdatedAt   string          `json:"updated_at,omitempty"`
+	DeletedAt   *string         `json:"deleted_at,omitempty"`
+	Library     *Library        `json:"library,omitempty"`
+	Stats       *BookStats      `json:"stats,omitempty"`
+	Watchlists  []Watchlist     `json:"watchlists,omitempty"`
 }
 
 type BookStats struct {
@@ -96,17 +97,18 @@ func (s *Server) ListBooks(ctx echo.Context) error {
 			d = &ds
 		}
 		book := Book{
-			ID:        b.ID.String(),
-			Title:     b.Title,
-			Author:    b.Author,
-			Year:      b.Year,
-			Code:      b.Code,
-			Cover:     b.Cover,
-			LibraryID: b.LibraryID.String(),
-			CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
-			UpdatedAt: b.UpdatedAt.UTC().Format(time.RFC3339),
-			DeletedAt: d,
-			Colors:    b.Colors,
+			ID:          b.ID.String(),
+			Title:       b.Title,
+			Author:      b.Author,
+			Year:        b.Year,
+			Code:        b.Code,
+			Cover:       b.Cover,
+			LibraryID:   b.LibraryID.String(),
+			CreatedAt:   b.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:   b.UpdatedAt.UTC().Format(time.RFC3339),
+			DeletedAt:   d,
+			Colors:      b.Colors,
+			Description: b.Description,
 		}
 
 		// Include stats if they are available
@@ -194,17 +196,18 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 		d = &ds
 	}
 	book := Book{
-		ID:        b.ID.String(),
-		Title:     b.Title,
-		Author:    b.Author,
-		Year:      b.Year,
-		Code:      b.Code,
-		Cover:     b.Cover,
-		Colors:    b.Colors,
-		LibraryID: b.LibraryID.String(),
-		CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt: b.UpdatedAt.UTC().Format(time.RFC3339),
-		DeletedAt: d,
+		ID:          b.ID.String(),
+		Title:       b.Title,
+		Author:      b.Author,
+		Year:        b.Year,
+		Code:        b.Code,
+		Cover:       b.Cover,
+		Colors:      b.Colors,
+		LibraryID:   b.LibraryID.String(),
+		Description: b.Description,
+		CreatedAt:   b.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:   b.UpdatedAt.UTC().Format(time.RFC3339),
+		DeletedAt:   d,
 	}
 	if b.Library != nil {
 		lib := Library{
@@ -260,14 +263,15 @@ func (s *Server) GetBookByID(ctx echo.Context) error {
 }
 
 type CreateBookRequest struct {
-	Title     string          `json:"title" validate:"required"`
-	Author    string          `json:"author" validate:"required"`
-	Year      int             `json:"year" validate:"required,gte=1500"`
-	Code      string          `json:"code" validate:"required"`
-	Count     int             `json:"count" validate:"omitempty,gte=0"`
-	Cover     string          `json:"cover"`
-	LibraryID string          `json:"library_id" validate:"required,uuid"`
-	Colors    json.RawMessage `json:"colors"`
+	Title       string          `json:"title" validate:"required"`
+	Author      string          `json:"author" validate:"required"`
+	Year        int             `json:"year" validate:"required,gte=1500"`
+	Code        string          `json:"code" validate:"required"`
+	Count       int             `json:"count" validate:"omitempty,gte=0"`
+	Cover       string          `json:"cover"`
+	LibraryID   string          `json:"library_id" validate:"required,uuid"`
+	Colors      json.RawMessage `json:"colors"`
+	Description *string         `json:"description"`
 }
 
 func (s *Server) CreateBook(ctx echo.Context) error {
@@ -281,13 +285,14 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 
 	libID, _ := uuid.Parse(req.LibraryID)
 	b, err := s.server.CreateBook(ctx.Request().Context(), usecase.Book{
-		Title:     req.Title,
-		Author:    req.Author,
-		Year:      req.Year,
-		Code:      req.Code,
-		Cover:     req.Cover,
-		Colors:    req.Colors,
-		LibraryID: libID,
+		Title:       req.Title,
+		Author:      req.Author,
+		Year:        req.Year,
+		Code:        req.Code,
+		Cover:       req.Cover,
+		Colors:      req.Colors,
+		LibraryID:   libID,
+		Description: req.Description,
 	})
 
 	if err != nil {
@@ -300,16 +305,17 @@ func (s *Server) CreateBook(ctx echo.Context) error {
 		d = &ds
 	}
 	return ctx.JSON(201, Res{Data: Book{
-		ID:        b.ID.String(),
-		Title:     b.Title,
-		Author:    b.Author,
-		Year:      b.Year,
-		Code:      b.Code,
-		Cover:     b.Cover,
-		LibraryID: b.LibraryID.String(),
-		CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt: b.UpdatedAt.UTC().Format(time.RFC3339),
-		DeletedAt: d,
+		ID:          b.ID.String(),
+		Title:       b.Title,
+		Author:      b.Author,
+		Year:        b.Year,
+		Code:        b.Code,
+		Cover:       b.Cover,
+		Description: b.Description,
+		LibraryID:   b.LibraryID.String(),
+		CreatedAt:   b.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:   b.UpdatedAt.UTC().Format(time.RFC3339),
+		DeletedAt:   d,
 	}})
 }
 
@@ -323,6 +329,7 @@ type UpdateBookRequest struct {
 	LibraryID   string          `json:"library_id" validate:"omitempty,uuid"`
 	UpdateCover *string         `json:"update_cover" validate:"omitempty"`
 	Colors      json.RawMessage `json:"colors"`
+	Description *string         `json:"description"`
 }
 
 func (s *Server) UpdateBook(ctx echo.Context) error {
@@ -345,6 +352,7 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		LibraryID:   libID,
 		UpdateCover: req.UpdateCover,
 		Colors:      req.Colors,
+		Description: req.Description,
 	})
 
 	if err != nil {
@@ -357,16 +365,17 @@ func (s *Server) UpdateBook(ctx echo.Context) error {
 		d = &ds
 	}
 	return ctx.JSON(201, Res{Data: Book{
-		ID:        b.ID.String(),
-		Title:     b.Title,
-		Author:    b.Author,
-		Year:      b.Year,
-		Code:      b.Code,
-		Cover:     b.Cover,
-		LibraryID: b.LibraryID.String(),
-		CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt: b.UpdatedAt.UTC().Format(time.RFC3339),
-		DeletedAt: d,
+		ID:          b.ID.String(),
+		Title:       b.Title,
+		Author:      b.Author,
+		Year:        b.Year,
+		Code:        b.Code,
+		Cover:       b.Cover,
+		Description: b.Description,
+		LibraryID:   b.LibraryID.String(),
+		CreatedAt:   b.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:   b.UpdatedAt.UTC().Format(time.RFC3339),
+		DeletedAt:   d,
 	}})
 }
 

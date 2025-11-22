@@ -19,6 +19,7 @@ type Returning struct {
 	StaffID     uuid.UUID
 	ReturnedAt  time.Time
 	Fine        int
+	Note        *string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   *time.Time

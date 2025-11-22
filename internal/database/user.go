@@ -16,6 +16,7 @@ type User struct {
 	Name      string          `gorm:"column:name;type:varchar(255)"`
 	Email     string          `gorm:"column:email;type:varchar(255)"`
 	Phone     string          `gorm:"column:phone;type:varchar(255)"`
+	JoinedAt  time.Time       `gorm:"column:joined_at;default:now()"`
 	CreatedAt time.Time       `gorm:"column:created_at"`
 	UpdatedAt time.Time       `gorm:"column:updated_at"`
 	DeletedAt *gorm.DeletedAt `gorm:"column:deleted_at"`

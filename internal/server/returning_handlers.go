@@ -16,6 +16,7 @@ type Returning struct {
 	StaffID     string    `json:"staff_id"`
 	ReturnedAt  time.Time `json:"returned_at"`
 	Fine        int       `json:"fine"`
+	Note        *string   `json:"note,omitempty"`
 	CreatedAt   string    `json:"created_at,omitempty"`
 	UpdatedAt   string    `json:"updated_at,omitempty"`
 	DeletedAt   *string   `json:"deleted_at,omitempty"`
@@ -29,6 +30,7 @@ type ReturnBorrowingRequest struct {
 	StaffID     string     `json:"staff_id" validate:"omitempty,uuid"`
 	ReturnedAt  *time.Time `json:"returned_at" validate:"omitempty"`
 	Fine        *int       `json:"fine" validate:"omitempty"`
+	Note        *string    `json:"note" validate:"omitempty"`
 }
 
 func (s *Server) ReturnBorrowing(ctx echo.Context) error {
@@ -63,6 +65,7 @@ func (s *Server) ReturnBorrowing(ctx echo.Context) error {
 		StaffID:    staffID,
 		ReturnedAt: returnedAt,
 		Fine:       fine,
+		Note:       req.Note,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -76,6 +79,7 @@ func (s *Server) ReturnBorrowing(ctx echo.Context) error {
 			StaffID:     borrow.Returning.StaffID.String(),
 			ReturnedAt:  borrow.Returning.ReturnedAt,
 			Fine:        borrow.Returning.Fine,
+			Note:        borrow.Returning.Note,
 			CreatedAt:   borrow.Returning.CreatedAt.UTC().Format(time.RFC3339),
 			UpdatedAt:   borrow.Returning.UpdatedAt.UTC().Format(time.RFC3339),
 			// DeletedAt:   borrow.Returning.DeletedAt,

@@ -26,6 +26,7 @@ type Borrowing struct {
 	Staff          *Staff        `gorm:"foreignKey:StaffID;references:ID"`
 	BorrowedAt     time.Time     `gorm:"column:borrowed_at;default:now()"`
 	DueAt          time.Time     `gorm:"column:due_at"`
+	Note           *string       `gorm:"column:note;type:text"`
 	CreatedAt      time.Time     `gorm:"column:created_at"`
 	UpdatedAt      time.Time     `gorm:"column:updated_at"`
 	DeletedAt      *gorm.DeletedAt
@@ -381,8 +382,7 @@ func (s *service) CreateBorrowing(ctx context.Context, b usecase.Borrowing) (use
 		StaffID:        b.StaffID,
 		BorrowedAt:     b.BorrowedAt,
 		DueAt:          b.DueAt,
-		// FIXME: accept returning id / create returning
-		// ReturnedAt:     b.ReturnedAt,
+		Note:           b.Note,
 	}
 
 	if err := s.db.
@@ -404,8 +404,7 @@ func (s *service) UpdateBorrowing(ctx context.Context, b usecase.Borrowing) (use
 		StaffID:        b.StaffID,
 		BorrowedAt:     b.BorrowedAt,
 		DueAt:          b.DueAt,
-		// FIXME: accept returning id / create returning
-		// ReturnedAt:     b.ReturnedAt,
+		Note:           b.Note,
 	}
 
 	err := s.db.WithContext(ctx).Updates(&borrow).Error
@@ -589,6 +588,7 @@ func (b Borrowing) ConvertToUsecase() usecase.Borrowing {
 		StaffID:        b.StaffID,
 		BorrowedAt:     b.BorrowedAt,
 		DueAt:          b.DueAt,
+		Note:           b.Note,
 		CreatedAt:      b.CreatedAt,
 		UpdatedAt:      b.UpdatedAt,
 		DeletedAt:      d,

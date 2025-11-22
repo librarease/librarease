@@ -19,6 +19,7 @@ type Returning struct {
 	Staff       *Staff     `gorm:"foreignKey:StaffID;references:ID"`
 	ReturnedAt  time.Time  `gorm:"column:returned_at;default:now()"`
 	Fine        int        `gorm:"column:fine;type:int"`
+	Note        *string    `gorm:"column:note;type:text"`
 	CreatedAt   time.Time  `gorm:"column:created_at"`
 	UpdatedAt   time.Time  `gorm:"column:updated_at"`
 	DeletedAt   *gorm.DeletedAt
@@ -72,6 +73,7 @@ func (s *service) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r 
 		StaffID:     r.StaffID,
 		ReturnedAt:  r.ReturnedAt,
 		Fine:        r.Fine,
+		Note:        r.Note,
 	}
 
 	err := s.db.WithContext(ctx).
@@ -109,6 +111,7 @@ func (r Returning) ConvertToUsecase() usecase.Returning {
 		StaffID:     r.StaffID,
 		ReturnedAt:  r.ReturnedAt,
 		Fine:        r.Fine,
+		Note:        r.Note,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,
 		DeletedAt:   d,
@@ -130,6 +133,7 @@ func (s service) UpdateReturn(ctx context.Context, id uuid.UUID, r usecase.Retur
 		StaffID:     r.StaffID,
 		ReturnedAt:  r.ReturnedAt,
 		Fine:        r.Fine,
+		Note:        r.Note,
 	}
 
 	return s.db.WithContext(ctx).

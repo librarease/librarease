@@ -20,6 +20,7 @@ type Review struct {
 	Borrowing   *Borrowing `gorm:"foreignKey:BorrowingID;references:ID"`
 	Rating      int        `gorm:"column:rating;not null"`
 	Comment     *string    `gorm:"column:comment;type:text"`
+	ReviewedAt  time.Time  `gorm:"column:reviewed_at;default:now()"`
 	CreatedAt   time.Time  `gorm:"column:created_at"`
 	UpdatedAt   time.Time  `gorm:"column:updated_at"`
 	DeletedAt   *gorm.DeletedAt
@@ -144,6 +145,7 @@ func (m Review) ConvertToUsecase() usecase.Review {
 		BorrowingID: m.BorrowingID,
 		Rating:      m.Rating,
 		Comment:     m.Comment,
+		ReviewedAt:  m.ReviewedAt,
 		CreatedAt:   m.CreatedAt,
 		UpdatedAt:   m.UpdatedAt,
 		DeletedAt:   d,

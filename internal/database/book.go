@@ -13,20 +13,21 @@ import (
 )
 
 type Book struct {
-	ID         uuid.UUID       `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
-	Title      string          `gorm:"column:title;type:varchar(255)"`
-	Author     string          `gorm:"column:author;type:varchar(255)"`
-	Year       int             `gorm:"column:year;type:int"`
-	Code       string          `gorm:"column:code;type:varchar(255);uniqueIndex:idx_lib_code,where:deleted_at IS NULL"`
-	Cover      string          `gorm:"column:cover;type:varchar(255)"`
-	Colors     datatypes.JSON  `gorm:"column:colors"`
-	CreatedAt  time.Time       `gorm:"column:created_at"`
-	UpdatedAt  time.Time       `gorm:"column:updated_at"`
-	DeletedAt  *gorm.DeletedAt `gorm:"column:deleted_at"`
-	LibraryID  uuid.UUID       `gorm:"uniqueIndex:idx_lib_code,where:deleted_at IS NULL"`
-	Library    *Library        `gorm:"foreignKey:LibraryID;"`
-	Borrowings []Borrowing
-	Watchlists []Watchlist
+	ID          uuid.UUID       `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
+	Title       string          `gorm:"column:title;type:varchar(255)"`
+	Author      string          `gorm:"column:author;type:varchar(255)"`
+	Year        int             `gorm:"column:year;type:int"`
+	Code        string          `gorm:"column:code;type:varchar(255);uniqueIndex:idx_lib_code,where:deleted_at IS NULL"`
+	Cover       string          `gorm:"column:cover;type:varchar(255)"`
+	Colors      datatypes.JSON  `gorm:"column:colors"`
+	Description *string         `gorm:"column:description;type:text"`
+	CreatedAt   time.Time       `gorm:"column:created_at"`
+	UpdatedAt   time.Time       `gorm:"column:updated_at"`
+	DeletedAt   *gorm.DeletedAt `gorm:"column:deleted_at"`
+	LibraryID   uuid.UUID       `gorm:"uniqueIndex:idx_lib_code,where:deleted_at IS NULL"`
+	Library     *Library        `gorm:"foreignKey:LibraryID;"`
+	Borrowings  []Borrowing
+	Watchlists  []Watchlist
 }
 
 func (Book) TableName() string {
@@ -297,14 +298,15 @@ func (s *service) GetBookByID(ctx context.Context, id uuid.UUID) (usecase.Book, 
 
 func (s *service) CreateBook(ctx context.Context, book usecase.Book) (usecase.Book, error) {
 	b := Book{
-		ID:        book.ID,
-		Title:     book.Title,
-		Author:    book.Author,
-		Year:      book.Year,
-		Code:      book.Code,
-		Cover:     book.Cover,
-		LibraryID: book.LibraryID,
-		Colors:    []byte(book.Colors),
+		ID:          book.ID,
+		Title:       book.Title,
+		Author:      book.Author,
+		Year:        book.Year,
+		Code:        book.Code,
+		Cover:       book.Cover,
+		LibraryID:   book.LibraryID,
+		Colors:      []byte(book.Colors),
+		Description: book.Description,
 	}
 
 	err := s.db.WithContext(ctx).Create(&b).Error
@@ -316,13 +318,14 @@ func (s *service) CreateBook(ctx context.Context, book usecase.Book) (usecase.Bo
 
 func (s *service) UpdateBook(ctx context.Context, id uuid.UUID, book usecase.Book) (usecase.Book, error) {
 	b := Book{
-		Title:     book.Title,
-		Author:    book.Author,
-		Year:      book.Year,
-		Code:      book.Code,
-		Cover:     book.Cover,
-		LibraryID: book.LibraryID,
-		Colors:    []byte(book.Colors),
+		Title:       book.Title,
+		Author:      book.Author,
+		Year:        book.Year,
+		Code:        book.Code,
+		Cover:       book.Cover,
+		LibraryID:   book.LibraryID,
+		Colors:      []byte(book.Colors),
+		Description: book.Description,
 	}
 
 	err := s.db.
@@ -349,16 +352,17 @@ func (b Book) ConvertToUsecase() usecase.Book {
 		d = &b.DeletedAt.Time
 	}
 	return usecase.Book{
-		ID:        b.ID,
-		Title:     b.Title,
-		Author:    b.Author,
-		Year:      b.Year,
-		Code:      b.Code,
-		Cover:     b.Cover,
-		LibraryID: b.LibraryID,
-		CreatedAt: b.CreatedAt,
-		UpdatedAt: b.UpdatedAt,
-		Colors:    []byte(b.Colors),
-		DeletedAt: d,
+		ID:          b.ID,
+		Title:       b.Title,
+		Author:      b.Author,
+		Year:        b.Year,
+		Code:        b.Code,
+		Cover:       b.Cover,
+		LibraryID:   b.LibraryID,
+		CreatedAt:   b.CreatedAt,
+		UpdatedAt:   b.UpdatedAt,
+		Colors:      []byte(b.Colors),
+		Description: b.Description,
+		DeletedAt:   d,
 	}
 }

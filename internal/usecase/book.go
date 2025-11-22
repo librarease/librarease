@@ -20,19 +20,20 @@ type BookStats struct {
 }
 
 type Book struct {
-	ID        uuid.UUID
-	Title     string
-	Author    string
-	Year      int
-	Code      string
-	Cover     string
-	LibraryID uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
-	Library   *Library
-	Stats     *BookStats
-	Colors    json.RawMessage
+	ID          uuid.UUID
+	Title       string
+	Author      string
+	Year        int
+	Code        string
+	Cover       string
+	LibraryID   uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   *time.Time
+	Library     *Library
+	Stats       *BookStats
+	Colors      json.RawMessage
+	Description *string
 
 	// UpdateCover is used to update cover
 	UpdateCover *string

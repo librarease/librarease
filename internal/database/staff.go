@@ -17,6 +17,7 @@ type Staff struct {
 	Library    *Library        `gorm:"foreignKey:LibraryID;references:ID"`
 	UserID     uuid.UUID       `gorm:"column:user_id;type:uuid;uniqueIndex:idx_user_library,where:deleted_at IS NULL"`
 	User       *User           `gorm:"foreignKey:UserID;references:ID"`
+	AssignedAt time.Time       `gorm:"column:assigned_at;default:now()"`
 	CreatedAt  time.Time       `gorm:"column:created_at"`
 	UpdatedAt  time.Time       `gorm:"column:updated_at"`
 	DeletedAt  *gorm.DeletedAt `gorm:"column:deleted_at;"`
@@ -163,13 +164,14 @@ func (st Staff) ConvertToUsecase() usecase.Staff {
 		d = &st.DeletedAt.Time
 	}
 	return usecase.Staff{
-		ID:        st.ID,
-		Name:      st.Name,
-		LibraryID: st.LibraryID,
-		UserID:    st.UserID,
-		Role:      usecase.StaffRole(st.Role),
-		CreatedAt: st.CreatedAt,
-		UpdatedAt: st.UpdatedAt,
-		DeleteAt:  d,
+		ID:         st.ID,
+		Name:       st.Name,
+		LibraryID:  st.LibraryID,
+		UserID:     st.UserID,
+		Role:       usecase.StaffRole(st.Role),
+		AssignedAt: st.AssignedAt,
+		CreatedAt:  st.CreatedAt,
+		UpdatedAt:  st.UpdatedAt,
+		DeleteAt:   d,
 	}
 }

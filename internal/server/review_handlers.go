@@ -13,6 +13,7 @@ type Review struct {
 	BorrowingID string  `json:"borrowing_id"`
 	Rating      int     `json:"rating"`
 	Comment     *string `json:"comment,omitempty"`
+	ReviewedAt  string  `json:"reviewed_at"`
 	CreatedAt   string  `json:"created_at"`
 	UpdatedAt   string  `json:"updated_at"`
 	DeletedAt   *string `json:"deleted_at,omitempty"`

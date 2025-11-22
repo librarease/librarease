@@ -13,6 +13,7 @@ type Subscription struct {
 	ID           string      `json:"id"`
 	UserID       string      `json:"user_id"`
 	MembershipID string      `json:"membership_id"`
+	Note         *string     `json:"note,omitempty"`
 	CreatedAt    string      `json:"created_at,omitempty"`
 	UpdatedAt    string      `json:"updated_at,omitempty"`
 	DeletedAt    *string     `json:"deleted_at,omitempty"`
@@ -91,6 +92,7 @@ func (s *Server) ListSubscriptions(ctx echo.Context) error {
 			ID:              sub.ID.String(),
 			UserID:          sub.UserID.String(),
 			MembershipID:    sub.MembershipID.String(),
+			Note:            sub.Note,
 			CreatedAt:       sub.CreatedAt.UTC().Format(time.RFC3339),
 			UpdatedAt:       sub.UpdatedAt.UTC().Format(time.RFC3339),
 			DeletedAt:       d,
@@ -163,6 +165,7 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 		ID:              sub.ID.String(),
 		UserID:          sub.UserID.String(),
 		MembershipID:    sub.MembershipID.String(),
+		Note:            sub.Note,
 		CreatedAt:       sub.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:       sub.UpdatedAt.UTC().Format(time.RFC3339),
 		DeletedAt:       d,
@@ -192,6 +195,7 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 			LoanPeriod:      sub.Membership.LoanPeriod,
 			FinePerDay:      sub.Membership.FinePerDay,
 			Price:           sub.Membership.Price,
+			Description:     sub.Membership.Description,
 			CreatedAt:       sub.Membership.CreatedAt.UTC().Format(time.RFC3339),
 			UpdatedAt:       sub.Membership.UpdatedAt.UTC().Format(time.RFC3339),
 		}
@@ -208,8 +212,9 @@ func (s *Server) GetSubscriptionByID(ctx echo.Context) error {
 }
 
 type CreateSubscriptionRequest struct {
-	UserID       string `json:"user_id" validate:"required,uuid"`
-	MembershipID string `json:"membership_id" validate:"required,uuid"`
+	UserID       string  `json:"user_id" validate:"required,uuid"`
+	MembershipID string  `json:"membership_id" validate:"required,uuid"`
+	Note         *string `json:"note,omitempty"`
 }
 
 func (s *Server) CreateSubscription(ctx echo.Context) error {
@@ -227,6 +232,7 @@ func (s *Server) CreateSubscription(ctx echo.Context) error {
 	id, err := s.server.CreateSubscription(ctx.Request().Context(), usecase.Subscription{
 		UserID:       userID,
 		MembershipID: membershipID,
+		Note:         req.Note,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -237,15 +243,16 @@ func (s *Server) CreateSubscription(ctx echo.Context) error {
 }
 
 type UpdateSubscriptionRequest struct {
-	ID              string `param:"id" validate:"required,uuid"`
-	UserID          string `json:"user_id" validate:"omitempty,uuid"`
-	MembershipID    string `json:"membership_id" validate:"omitempty,uuid"`
-	ExpiresAt       string `json:"expires_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
-	Amount          int    `json:"amount" validate:"omitempty,number"`
-	FinePerDay      int    `json:"fine_per_day" validate:"omitempty,number"`
-	LoanPeriod      int    `json:"loan_period" validate:"omitempty,number"`
-	ActiveLoanLimit int    `json:"active_loan_limit" validate:"omitempty,number"`
-	UsageLimit      int    `json:"usage_limit" validate:"omitempty,number"`
+	ID              string  `param:"id" validate:"required,uuid"`
+	UserID          string  `json:"user_id" validate:"omitempty,uuid"`
+	MembershipID    string  `json:"membership_id" validate:"omitempty,uuid"`
+	ExpiresAt       string  `json:"expires_at" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	Amount          int     `json:"amount" validate:"omitempty,number"`
+	FinePerDay      int     `json:"fine_per_day" validate:"omitempty,number"`
+	LoanPeriod      int     `json:"loan_period" validate:"omitempty,number"`
+	ActiveLoanLimit int     `json:"active_loan_limit" validate:"omitempty,number"`
+	UsageLimit      int     `json:"usage_limit" validate:"omitempty,number"`
+	Note            *string `json:"note,omitempty"`
 }
 
 func (s *Server) UpdateSubscription(ctx echo.Context) error {
@@ -282,6 +289,7 @@ func (s *Server) UpdateSubscription(ctx echo.Context) error {
 		LoanPeriod:      req.LoanPeriod,
 		ActiveLoanLimit: req.ActiveLoanLimit,
 		UsageLimit:      req.UsageLimit,
+		Note:            req.Note,
 	})
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -299,6 +307,7 @@ func (s *Server) UpdateSubscription(ctx echo.Context) error {
 		LoanPeriod:      sub.LoanPeriod,
 		ActiveLoanLimit: sub.ActiveLoanLimit,
 		UsageLimit:      sub.UsageLimit,
+		Note:            sub.Note,
 	}})
 }
 
