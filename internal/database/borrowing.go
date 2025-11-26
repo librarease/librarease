@@ -107,6 +107,9 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 	if opt.BorrowedAtTo != nil {
 		db = db.Where("borrowed_at <= ?", opt.BorrowedAtTo)
 	}
+	if opt.IncludeReview {
+		db = db.Preload("Review")
+	}
 
 	var (
 		orderIn = "DESC"
@@ -186,6 +189,10 @@ func (s *service) ListBorrowings(ctx context.Context, opt usecase.ListBorrowings
 		if b.Staff != nil {
 			staff := b.Staff.ConvertToUsecase()
 			ub.Staff = &staff
+		}
+		if b.Review != nil {
+			review := b.Review.ConvertToUsecase()
+			ub.Review = &review
 		}
 		uborrows = append(uborrows, ub)
 	}
@@ -342,6 +349,11 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt usecas
 		ub.Book = &book
 	}
 
+	if b.Review != nil {
+		review := b.Review.ConvertToUsecase()
+		ub.Review = &review
+	}
+
 	if b.Subscription != nil {
 		sub := b.Subscription.ConvertToUsecase()
 		ub.Subscription = &sub
@@ -365,11 +377,6 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt usecas
 	if b.Staff != nil {
 		staff := b.Staff.ConvertToUsecase()
 		ub.Staff = &staff
-	}
-
-	if b.Review != nil {
-		review := b.Review.ConvertToUsecase()
-		ub.Review = &review
 	}
 
 	return ub, nil

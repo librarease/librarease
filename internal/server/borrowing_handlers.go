@@ -57,8 +57,9 @@ type BorrowingsOption struct {
 }
 
 type ListBorrowingsOption struct {
-	Skip  int `query:"skip"`
-	Limit int `query:"limit" validate:"required,gte=1,lte=100"`
+	Skip          int  `query:"skip"`
+	Limit         int  `query:"limit" validate:"required,gte=1,lte=100"`
+	IncludeReview bool `query:"include_review"`
 	BorrowingsOption
 }
 
@@ -158,8 +159,9 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 	}
 
 	borrows, total, err := s.server.ListBorrowings(ctx.Request().Context(), usecase.ListBorrowingsOption{
-		Skip:  req.Skip,
-		Limit: req.Limit,
+		Skip:          req.Skip,
+		Limit:         req.Limit,
+		IncludeReview: req.IncludeReview,
 		BorrowingsOption: usecase.BorrowingsOption{
 			SortBy:          req.SortBy,
 			SortIn:          req.SortIn,
@@ -269,6 +271,17 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 			m.Staff = &staff
 		}
 
+		if borrow.Review != nil {
+			m.Review = &Review{
+				ID:         borrow.Review.ID.String(),
+				Rating:     borrow.Review.Rating,
+				Comment:    borrow.Review.Comment,
+				ReviewedAt: borrow.Review.ReviewedAt.UTC().Format(time.RFC3339),
+				CreatedAt:  borrow.Review.CreatedAt.UTC().Format(time.RFC3339),
+				UpdatedAt:  borrow.Review.UpdatedAt.UTC().Format(time.RFC3339),
+			}
+		}
+
 		if borrow.Subscription != nil {
 			sub := Subscription{
 				ID:           borrow.SubscriptionID.String(),
@@ -276,11 +289,18 @@ func (s *Server) ListBorrowings(ctx echo.Context) error {
 				MembershipID: borrow.Subscription.MembershipID.String(),
 			}
 			if borrow.Subscription.User != nil {
-				sub.User = &User{
+				user := User{
 					ID:   borrow.Subscription.User.ID.String(),
 					Name: borrow.Subscription.User.Name,
 				}
+				sub.User = &user
+
+				// Populalte review user
+				if m.Review != nil {
+					m.Review.User = &user
+				}
 			}
+
 			if borrow.Subscription.Membership != nil {
 				m := Membership{
 					ID:        borrow.Subscription.Membership.ID.String(),

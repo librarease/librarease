@@ -76,8 +76,9 @@ type BorrowingsOption struct {
 }
 
 type ListBorrowingsOption struct {
-	Skip  int
-	Limit int
+	Skip          int
+	Limit         int
+	IncludeReview bool
 	BorrowingsOption
 }
 
