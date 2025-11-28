@@ -43,11 +43,29 @@ type ListReviewsOption struct {
 }
 
 func (u Usecase) ListReviews(ctx context.Context, opt ListReviewsOption) ([]Review, int, error) {
-	return u.repo.ListReviews(ctx, opt)
+
+	reviews, total, err := u.repo.ListReviews(ctx, opt)
+	if err != nil {
+		return nil, 0, err
+	}
+	for _, review := range reviews {
+		if review.Book != nil && review.Book.Cover != "" {
+			review.Book.Cover = u.fileStorageProvider.GetPublicURL(review.Book.Cover)
+		}
+	}
+	return reviews, total, nil
 }
 
 func (u Usecase) GetReview(ctx context.Context, id uuid.UUID, opt ReviewsOption) (Review, error) {
-	return u.repo.GetReview(ctx, id, opt)
+	review, err := u.repo.GetReview(ctx, id, opt)
+	if err != nil {
+		return Review{}, err
+	}
+	if review.Book != nil && review.Book.Cover != "" {
+		review.Book.Cover = u.fileStorageProvider.GetPublicURL(review.Book.Cover)
+	}
+	return review, nil
+
 }
 
 func (u Usecase) CreateReview(ctx context.Context, review Review) (Review, error) {
