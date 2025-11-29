@@ -2,16 +2,18 @@ package config
 
 // Server constants.
 const (
-	ENV_KEY_PORT = "PORT"
+	ENV_KEY_PORT      = "PORT"
+	ENV_KEY_LOG_LEVEL = "LOG_LEVEL"
 )
 
 // DB constants.
 const (
-	ENV_KEY_DB_HOST     = "DB_HOST"
-	ENV_KEY_DB_PORT     = "DB_PORT"
-	ENV_KEY_DB_DATABASE = "DB_DATABASE"
-	ENV_KEY_DB_USER     = "DB_USER"
-	ENV_KEY_DB_PASSWORD = "DB_PASSWORD"
+	ENV_KEY_DB_HOST         = "DB_HOST"
+	ENV_KEY_DB_PORT         = "DB_PORT"
+	ENV_KEY_DB_DATABASE     = "DB_DATABASE"
+	ENV_KEY_DB_USER         = "DB_USER"
+	ENV_KEY_DB_PASSWORD     = "DB_PASSWORD"
+	ENV_KEY_DB_AUTO_MIGRATE = "DB_AUTO_MIGRATE"
 )
 
 // Header constants.

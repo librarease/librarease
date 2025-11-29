@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -91,13 +92,13 @@ func (u Usecase) CreateBook(ctx context.Context, book Book) (Book, error) {
 
 	switch role {
 	case "SUPERADMIN":
-		fmt.Println("[DEBUG] global superadmin")
+		u.logger.InfoContext(ctx, "[DEBUG] global superadmin")
 		// ALLOW ALL
 	case "ADMIN":
-		fmt.Println("[DEBUG] global admin")
+		u.logger.InfoContext(ctx, "[DEBUG] global admin")
 		// ALLOW ALL
 	case "USER":
-		fmt.Println("[DEBUG] global user")
+		u.logger.InfoContext(ctx, "[DEBUG] global user")
 		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
 			UserID:     userID.String(),
 			LibraryIDs: uuid.UUIDs{book.LibraryID},
@@ -117,7 +118,10 @@ func (u Usecase) CreateBook(ctx context.Context, book Book) (Book, error) {
 		coverPath := fmt.Sprintf("public/books/%s/cover", book.ID.String())
 		book.Cover, err = u.fileStorageProvider.CopyFilePreserveFilename(ctx, book.Cover, coverPath)
 		if err != nil {
-			log.Printf("CreateBook: copy cover for book %s failed: %v", book.ID, err)
+			u.logger.ErrorContext(ctx, "CreateBook: copy cover failed",
+				slog.String("book_id", book.ID.String()),
+				slog.String("err", err.Error()),
+			)
 			// don't save cover if copy failed
 			book.Cover = ""
 		}

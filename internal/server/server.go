@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -16,7 +17,6 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"gorm.io/plugin/opentelemetry/tracing"
 
 	"github.com/librarease/librarease/internal/config"
@@ -162,6 +162,7 @@ type Server struct {
 
 	server    Service
 	validator *validator.Validate
+	logger    *slog.Logger
 }
 
 type App struct {
@@ -170,6 +171,7 @@ type App struct {
 	sqlDB       *sql.DB
 	notifyConn  *pgx.Conn
 	otelCleanup func(context.Context) error
+	logger      *slog.Logger
 }
 
 func (a *App) ListenAndServe() error {
@@ -205,7 +207,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func NewApp() (*App, error) {
+func NewApp(logger *slog.Logger) (*App, error) {
 
 	var (
 		dbname = os.Getenv(config.ENV_KEY_DB_DATABASE)
@@ -232,7 +234,7 @@ func NewApp() (*App, error) {
 	gormDB, err := gorm.Open(postgres.New(postgres.Config{
 		Conn: sqlDB,
 	}), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: database.NewSlogGormLogger(logger),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open gorm database connection: %w", err)
@@ -294,7 +296,7 @@ func NewApp() (*App, error) {
 	// })
 	qc := queue.NewClient(redisAddr, redisPassword)
 
-	sv := usecase.New(repo, fb, fsp, mp, dp, qc)
+	sv := usecase.New(repo, fb, fsp, mp, dp, qc, logger.With(slog.String("component", "usecase")))
 	v := validator.New()
 
 	port, _ := strconv.Atoi(os.Getenv(config.ENV_KEY_PORT))
@@ -302,6 +304,7 @@ func NewApp() (*App, error) {
 		port:      port,
 		server:    sv,
 		validator: v,
+		logger:    logger.With(slog.String("component", "server")),
 	}
 
 	// Set up OpenTelemetry.
@@ -326,5 +329,6 @@ func NewApp() (*App, error) {
 		sqlDB:       sqlDB,
 		notifyConn:  notifyConn,
 		otelCleanup: otelShutdown,
+		logger:      logger,
 	}, nil
 }

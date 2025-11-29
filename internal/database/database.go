@@ -5,8 +5,11 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"time"
+
+	"github.com/librarease/librarease/internal/config"
 
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -40,29 +43,31 @@ func New(gormDB *gorm.DB, noti *pgx.Conn, redis *redis.Client) (*service, error)
 	}
 
 	// migrate the schema
-	err = gormDB.AutoMigrate(
-		User{},
-		AuthUser{},
-		Library{},
-		Staff{},
-		Book{},
-		Membership{},
-		Subscription{},
-		Returning{},
-		Lost{},
-		Borrowing{},
-		Notification{},
-		PushToken{},
-		Watchlist{},
-		Collection{},
-		Asset{},
-		CollectionBooks{},
-		// CollectionFollowers{},
-		Job{},
-		Review{},
-	)
-	if err != nil {
-		return nil, err
+	if os.Getenv(config.ENV_KEY_DB_AUTO_MIGRATE) != "false" {
+		err = gormDB.AutoMigrate(
+			User{},
+			AuthUser{},
+			Library{},
+			Staff{},
+			Book{},
+			Membership{},
+			Subscription{},
+			Returning{},
+			Lost{},
+			Borrowing{},
+			Notification{},
+			PushToken{},
+			Watchlist{},
+			Collection{},
+			Asset{},
+			CollectionBooks{},
+			// CollectionFollowers{},
+			Job{},
+			Review{},
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if _, err := db.Exec(notificationSQL); err != nil {

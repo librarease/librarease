@@ -1,6 +1,7 @@
 package server
 
 import (
+	_ "embed"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -9,9 +10,12 @@ import (
 	"golang.org/x/time/rate"
 )
 
+//go:embed favicon.ico
+var faviconData []byte
+
 func (s *Server) RegisterRoutes() http.Handler {
 	e := echo.New()
-	e.Use(middleware.Logger())
+	e.Use(NewEchoLogger(*s.logger))
 	e.Use(middleware.Recover())
 	e.Use(otelecho.Middleware("librarease"))
 
@@ -28,8 +32,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(64))))
 
 	e.GET("/api", s.HelloWorldHandler)
-	e.GET("/api/favicon.ico", func(c echo.Context) error {
-		return c.File("favicon.ico")
+	e.GET("favicon.ico", func(c echo.Context) error {
+		return c.Blob(http.StatusOK, "image/x-icon", faviconData)
 	})
 
 	e.GET("/api/health", s.healthHandler)

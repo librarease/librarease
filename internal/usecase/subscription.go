@@ -64,13 +64,13 @@ func (u Usecase) ListSubscriptions(ctx context.Context, opt ListSubscriptionsOpt
 
 	switch role {
 	case "SUPERADMIN":
-		fmt.Println("[DEBUG] global superadmin")
+		u.logger.InfoContext(ctx, "[DEBUG] global superadmin")
 		// ALLOW ALL
 	case "ADMIN":
-		fmt.Println("[DEBUG] global admin")
+		u.logger.InfoContext(ctx, "[DEBUG] global admin")
 		// ALLOW ALL
 	case "USER":
-		fmt.Println("[DEBUG] global user")
+		u.logger.InfoContext(ctx, "[DEBUG] global user")
 		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
 			UserID: userID.String(),
 			// Using a limit of 500 for now, adjust as needed based on expected data size
@@ -81,13 +81,13 @@ func (u Usecase) ListSubscriptions(ctx context.Context, opt ListSubscriptionsOpt
 		}
 		// user is not staff
 		if len(staffs) == 0 {
-			fmt.Println("[DEBUG] user is not staff, filtering by user id")
+			u.logger.InfoContext(ctx, "[DEBUG] user is not staff, filtering by user id")
 			opt.UserID = userID.String()
 			break
 		}
 
 		// user is staff
-		fmt.Println("[DEBUG] user is staff")
+		u.logger.InfoContext(ctx, "[DEBUG] user is staff")
 		var staffLibIDs uuid.UUIDs
 		for _, staff := range staffs {
 			staffLibIDs = append(staffLibIDs, staff.LibraryID)
@@ -95,12 +95,12 @@ func (u Usecase) ListSubscriptions(ctx context.Context, opt ListSubscriptionsOpt
 		// user is staff, filtering by library ids
 		if len(opt.LibraryIDs) == 0 {
 			// user is staff, filters default to assigned libraries
-			fmt.Println("[DEBUG] filtering by default assigned libraries")
+			u.logger.InfoContext(ctx, "[DEBUG] filtering by default assigned libraries")
 			opt.LibraryIDs = staffLibIDs
 			break
 		}
 
-		fmt.Println("[DEBUG] filtering by library ids query")
+		u.logger.InfoContext(ctx, "[DEBUG] filtering by library ids query")
 		var intersectLibIDs uuid.UUIDs
 		for _, id := range opt.LibraryIDs {
 			// filter out library ids that are not assigned to the staff
@@ -111,13 +111,13 @@ func (u Usecase) ListSubscriptions(ctx context.Context, opt ListSubscriptionsOpt
 
 		if len(intersectLibIDs) == 0 {
 			// user is filtering by library ids but none of the ids are assigned to the staff
-			fmt.Println("[DEBUG] staff filters by lib ids but none assigned")
+			u.logger.InfoContext(ctx, "[DEBUG] staff filters by lib ids but none assigned")
 			opt.LibraryIDs = staffLibIDs
 			break
 		}
 
 		// user is filtering by library ids and some of the ids are assigned to the staff
-		fmt.Println("[DEBUG] staff filters by lib ids and some assigned")
+		u.logger.InfoContext(ctx, "[DEBUG] staff filters by lib ids and some assigned")
 		opt.LibraryIDs = intersectLibIDs
 	}
 	return u.repo.ListSubscriptions(ctx, opt)

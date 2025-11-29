@@ -1,5 +1,7 @@
 x-shared-env: &shared-env
   APP_ENV: production
+  LOG_LEVEL: INFO
+  DB_AUTO_MIGRATE: false
   CLIENT_ID: client-id-example
   SESSION_COOKIE_NAME: session
   PORT: 8080
@@ -66,6 +68,7 @@ services:
       - /home/ubuntu/deploy/path-to-firebase-adminsdk.json:/app/path-to-firebase-adminsdk.json
     environment:
       <<: *shared-env
+      DB_AUTO_MIGRATE: true
       OTEL_RESOURCE_ATTRIBUTES: service.name=librarease-api,service.namespace=librarease,deployment.environment=development
     depends_on: 
       - db 

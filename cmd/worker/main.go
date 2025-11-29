@@ -2,41 +2,66 @@ package main
 
 import (
 	"flag"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/librarease/librarease/internal/config"
 	"github.com/librarease/librarease/internal/queue"
+	"github.com/librarease/librarease/internal/telemetry"
 )
 
 func main() {
 	var mode = flag.String("mode", "worker", "Mode to run: 'worker', 'scheduler'")
 	flag.Parse()
 
+	level := slog.LevelInfo
+	if lvl := os.Getenv(config.ENV_KEY_LOG_LEVEL); lvl != "" {
+		switch lvl {
+		case "DEBUG":
+			level = slog.LevelDebug
+		case "INFO":
+			level = slog.LevelInfo
+		case "WARN":
+			level = slog.LevelWarn
+		case "ERROR":
+			level = slog.LevelError
+		default:
+			level = slog.LevelInfo
+		}
+	}
+
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	})
+	logger := slog.New(telemetry.NewTraceHandler(jsonHandler))
+
 	switch *mode {
 	case "worker":
-		runWorker()
+		runWorker(logger)
 	case "scheduler":
-		runScheduler()
+		runScheduler(logger)
 	default:
-		log.Fatalf("Invalid mode: %s. Use 'worker' or 'scheduler'", *mode)
+		logger.Error("Invalid mode. Use 'worker' or 'scheduler'", slog.String("mode", *mode))
+		os.Exit(1)
 	}
 }
 
-func runWorker() {
-	log.Println("Starting in WORKER mode...")
+func runWorker(logger *slog.Logger) {
+	logger.Info("Starting in WORKER mode...")
 
-	worker, err := queue.NewWorker()
+	worker, err := queue.NewWorker(logger)
 	if err != nil {
-		log.Fatalf("Failed to create worker: %v", err)
+		logger.Error("Failed to create worker", slog.String("err", err.Error()))
+		os.Exit(1)
 	}
 
 	// Start worker in goroutine
 	go func() {
-		log.Println("Starting Asynq worker...")
+		logger.Info("Starting Asynq worker...")
 		if err := worker.Start(); err != nil {
-			log.Printf("Worker error: %v", err)
+			logger.Error("Worker error", slog.String("err", err.Error()))
 		}
 	}()
 
@@ -45,24 +70,25 @@ func runWorker() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down worker...")
+	logger.Info("Shutting down worker...")
 	worker.Stop()
-	log.Println("Worker exited properly")
+	logger.Info("Worker exited properly")
 }
 
-func runScheduler() {
-	log.Println("Starting in SCHEDULER mode...")
+func runScheduler(logger *slog.Logger) {
+	logger.Info("Starting in SCHEDULER mode...")
 
-	scheduler, err := queue.NewScheduler()
+	scheduler, err := queue.NewScheduler(logger)
 	if err != nil {
-		log.Fatalf("Failed to create scheduler: %v", err)
+		logger.Error("Failed to create scheduler", slog.String("err", err.Error()))
+		os.Exit(1)
 	}
 
 	// Start scheduler in goroutine
 	go func() {
-		log.Println("Starting Asynq scheduler...")
+		logger.Info("Starting Asynq scheduler...")
 		if err := scheduler.Start(); err != nil {
-			log.Printf("Scheduler error: %v", err)
+			logger.Error("Scheduler error", slog.String("err", err.Error()))
 		}
 	}()
 
@@ -71,7 +97,7 @@ func runScheduler() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down scheduler...")
+	logger.Info("Shutting down scheduler...")
 	scheduler.Stop()
-	log.Println("Scheduler exited properly")
+	logger.Info("Scheduler exited properly")
 }

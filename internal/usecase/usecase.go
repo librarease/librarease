@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"io"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,6 +16,7 @@ func New(
 	mp Mailer,
 	dp Dispatcher,
 	qc QueueClient,
+	logger *slog.Logger,
 ) Usecase {
 	return Usecase{
 		repo:                repo,
@@ -23,6 +25,7 @@ func New(
 		mailer:              mp,
 		dispatcher:          dp,
 		queueClient:         qc,
+		logger:              logger,
 	}
 }
 
@@ -196,6 +199,7 @@ type Usecase struct {
 	mailer              Mailer
 	dispatcher          Dispatcher
 	queueClient         QueueClient
+	logger              *slog.Logger
 }
 
 func (u Usecase) Health() map[string]string {

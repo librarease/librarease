@@ -2,26 +2,50 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/librarease/librarease/internal/config"
 	"github.com/librarease/librarease/internal/server"
+	"github.com/librarease/librarease/internal/telemetry"
 )
 
 func main() {
-	app, err := server.NewApp()
+	level := slog.LevelInfo
+	if lvl := os.Getenv(config.ENV_KEY_LOG_LEVEL); lvl != "" {
+		switch lvl {
+		case "DEBUG":
+			level = slog.LevelDebug
+		case "INFO":
+			level = slog.LevelInfo
+		case "WARN":
+			level = slog.LevelWarn
+		case "ERROR":
+			level = slog.LevelError
+		default:
+			level = slog.LevelInfo
+		}
+	}
+
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	})
+	logger := slog.New(telemetry.NewTraceHandler(jsonHandler))
+	app, err := server.NewApp(logger)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("Failed to create app", slog.String("err", err.Error()))
+		os.Exit(1)
 	}
 
 	// Server startup
 	go func() {
-		log.Printf("API server starting on %s", app.Addr())
+		logger.Info("API server starting", slog.String("addr", app.Addr()))
+
 		if err := app.ListenAndServe(); err != nil {
-			log.Printf("Server error: %v", err)
+			logger.Error("Server error", slog.String("err", err.Error()))
 		}
 	}()
 
@@ -30,15 +54,15 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down API server...")
+	logger.Info("Shutting down API server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := app.Shutdown(ctx); err != nil {
-		log.Printf("Shutdown error: %v", err)
+		logger.Error("Shutdown error", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
 
-	log.Println("API server exited properly")
+	logger.Info("API server exited properly")
 }

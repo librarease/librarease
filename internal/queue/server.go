@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 
 	"github.com/hibiken/asynq"
 	_ "github.com/joho/godotenv/autoload"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 
 	"github.com/librarease/librarease/internal/config"
 	"github.com/librarease/librarease/internal/database"
@@ -34,6 +34,7 @@ type Server struct {
 
 // Worker represents a worker application with all its dependencies
 type Worker struct {
+	logger      *slog.Logger
 	server      *Server
 	otelCleanup func(context.Context) error
 }
@@ -45,8 +46,8 @@ type Scheduler struct {
 }
 
 // NewWorker creates a fully configured worker with all dependencies
-func NewWorker() (*Worker, error) {
-	log.Println("Initializing worker dependencies...")
+func NewWorker(logger *slog.Logger) (*Worker, error) {
+	logger.Info("Initializing worker dependencies...")
 
 	// Setup database connection
 	var (
@@ -67,7 +68,7 @@ func NewWorker() (*Worker, error) {
 	gormDB, err := gorm.Open(postgres.New(postgres.Config{
 		Conn: sqlDB,
 	}), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: database.NewSlogGormLogger(logger),
 	})
 	if err != nil {
 		sqlDB.Close()
@@ -103,7 +104,7 @@ func NewWorker() (*Worker, error) {
 	dp := push.NewPushDispatcher(fb)
 
 	// Create usecase without queue client (workers don't need to enqueue)
-	uc := usecase.New(repo, fb, fsp, mp, dp, nil)
+	uc := usecase.New(repo, fb, fsp, mp, dp, nil, logger.With(slog.String("component", "usecase")))
 
 	// Setup Asynq server
 	redisAddr := fmt.Sprintf("%s:%s",
@@ -142,10 +143,9 @@ func NewWorker() (*Worker, error) {
 	mux.HandleFunc("notification:check-overdue", h.HandleCheckOverdue)
 	mux.HandleFunc("import:books", h.HandleImportBooks)
 
-	log.Println("Worker registered handlers:")
-	log.Println(" - export:borrowings")
-	log.Println(" - notification:check-overdue")
-	log.Println(" - import:books")
+	logger.Info("Worker registered handlers:",
+		slog.String("handlers", "export:borrowings, notification:check-overdue, import:books"),
+	)
 
 	// Set up OpenTelemetry
 	otelShutdown, err := telemetry.SetupOTelSDK(context.Background())
@@ -164,18 +164,19 @@ func NewWorker() (*Worker, error) {
 	return &Worker{
 		server:      server,
 		otelCleanup: otelShutdown,
+		logger:      logger,
 	}, nil
 }
 
 // Start starts the worker server
 func (w *Worker) Start() error {
-	log.Println("Worker started successfully")
+	w.logger.Info("worker started successfully ")
 	return w.server.asynqServer.Start(w.server.mux)
 }
 
 // Stop stops the worker server gracefully
 func (w *Worker) Stop() {
-	log.Println("Stopping worker...")
+	w.logger.Info("Stopping worker...")
 	w.server.asynqServer.Shutdown()
 
 	// Close database connections
@@ -195,8 +196,8 @@ func (w *Worker) Stop() {
 }
 
 // NewScheduler creates a fully configured scheduler with all dependencies
-func NewScheduler() (*Scheduler, error) {
-	log.Println("Initializing scheduler...")
+func NewScheduler(logger *slog.Logger) (*Scheduler, error) {
+	logger.Info("Initializing scheduler...")
 
 	// Setup Redis connection (same as worker)
 	redisAddr := fmt.Sprintf("%s:%s",
@@ -217,7 +218,7 @@ func NewScheduler() (*Scheduler, error) {
 	)
 
 	// Register periodic tasks
-	if err := registerPeriodicTasks(asynqScheduler); err != nil {
+	if err := registerPeriodicTasks(asynqScheduler, logger); err != nil {
 		return nil, fmt.Errorf("failed to register periodic tasks: %w", err)
 	}
 
@@ -227,7 +228,7 @@ func NewScheduler() (*Scheduler, error) {
 		return nil, fmt.Errorf("failed to set up OpenTelemetry: %w", err)
 	}
 
-	log.Println("Scheduler initialized successfully")
+	logger.Info("Scheduler initialized successfully")
 
 	return &Scheduler{
 		scheduler:   asynqScheduler,
@@ -236,8 +237,8 @@ func NewScheduler() (*Scheduler, error) {
 }
 
 // registerPeriodicTasks registers all scheduled tasks
-func registerPeriodicTasks(scheduler *asynq.Scheduler) error {
-	log.Println("Registering periodic tasks...")
+func registerPeriodicTasks(scheduler *asynq.Scheduler, logger *slog.Logger) error {
+	logger.Info("Registering periodic tasks...")
 
 	// Recurring every hour
 	entryID, err := scheduler.Register(
@@ -253,7 +254,7 @@ func registerPeriodicTasks(scheduler *asynq.Scheduler) error {
 		return fmt.Errorf("failed to register overdue check task: %w", err)
 	}
 
-	log.Printf("Registered overdue check task with ID: %s", entryID)
+	logger.Info("Registered overdue check task", slog.String("entry_id", entryID))
 
 	// You can add more periodic tasks here:
 	//
@@ -267,8 +268,7 @@ func registerPeriodicTasks(scheduler *asynq.Scheduler) error {
 	//     return fmt.Errorf("failed to register weekly analytics task: %w", err)
 	// }
 
-	log.Println("Periodic tasks registered:")
-	log.Println("  - notification:check-overdue (every hour)")
+	logger.Info("Periodic tasks registered:", slog.String("tasks", "notification:check-overdue (every hour)"))
 
 	return nil
 }

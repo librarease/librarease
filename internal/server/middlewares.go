@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/librarease/librarease/internal/config"
@@ -23,7 +24,7 @@ func (s *Server) AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		uid, err := s.getUID(c)
 
 		if err != nil {
-			fmt.Printf("[AuthMiddleware] error: %v\n", err)
+			s.logger.ErrorContext(ctx, "AuthMiddleware: failed to get UID", slog.String("error", err.Error()))
 			return c.JSON(401, map[string]string{
 				"error":   err.Error(),
 				"message": "Invalid token",
@@ -49,6 +50,7 @@ func (s *Server) AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 // helper method to get uid from token
 func (s *Server) getUID(c echo.Context) (string, error) {
+	ctx := c.Request().Context()
 
 	var (
 		reqClientID = c.Request().Header.Get(config.HEADER_KEY_X_CLIENT_ID)
@@ -56,15 +58,17 @@ func (s *Server) getUID(c echo.Context) (string, error) {
 		clientID    = os.Getenv(config.ENV_KEY_CLIENT_ID)
 	)
 
-	fmt.Printf("[AuthMiddleware] reqClientID: %s\n", reqClientID)
-	fmt.Printf("[AuthMiddleware] reqUID: %s\n", reqUID)
-	fmt.Printf("[AuthMiddleware] clientID: %s\n", clientID)
+	s.logger.DebugContext(ctx, "auth middleware check",
+		slog.String("req_client_id", reqClientID),
+		slog.String("req_uid", reqUID),
+		slog.String("env_client_id", clientID),
+	)
 
 	if reqClientID != "" &&
 		reqUID != "" &&
 		reqClientID == clientID {
 
-		fmt.Printf("[AuthMiddleware] internal client request: %s\n", reqUID)
+		s.logger.InfoContext(ctx, "internal client request authenticated", slog.String("uid", reqUID))
 		return reqUID, nil
 	}
 
@@ -74,7 +78,7 @@ func (s *Server) getUID(c echo.Context) (string, error) {
 	if len(authH) >= len("Bearer ") {
 		token := authH[len("Bearer "):]
 		// FIXME: potential panic
-		fmt.Printf("[AuthMiddleware] token: %s...\n", token[:10])
+		s.logger.DebugContext(ctx, "verifying bearer token", slog.String("token_prefix", token[:10]))
 
 		return s.server.VerifyIDToken(c.Request().Context(), token)
 	}
@@ -83,7 +87,7 @@ func (s *Server) getUID(c echo.Context) (string, error) {
 	cname := os.Getenv(config.ENV_KEY_SESSION_COOKIE)
 	authC, err := c.Request().Cookie(cname)
 	if err != nil {
-		fmt.Printf("[AuthMiddleware] cookie: %s not found\n", cname)
+		s.logger.DebugContext(ctx, "session cookie not found", slog.String("cookie_name", cname), slog.String("err", err.Error()))
 		return "", fmt.Errorf("cookie %s not found: %v", cname, err)
 	}
 

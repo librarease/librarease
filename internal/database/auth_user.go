@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/librarease/librarease/internal/usecase"
@@ -31,8 +30,6 @@ func (s *service) CreateAuthUser(ctx context.Context, au usecase.AuthUser) (usec
 		UserID:     au.UserID,
 		GlobalRole: au.GlobalRole,
 	}
-	// remove me
-	fmt.Println("Creating idk", u, u.CreateAt, u.UpdatedAt)
 	err := s.db.WithContext(ctx).Create(&u).Error
 	if err != nil {
 		return usecase.AuthUser{}, err
