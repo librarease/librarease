@@ -47,6 +47,20 @@ func (s *service) ListSubscriptions(ctx context.Context, opt usecase.ListSubscri
 
 	db := s.db.Model([]Subscription{}).WithContext(ctx)
 
+	var (
+		now                time.Time
+		usageCountSubQuery *gorm.DB
+	)
+	if opt.IsActive || opt.IsExpired {
+		now = time.Now()
+		usageCountSubQuery = s.db.
+			WithContext(ctx).
+			Model(&Borrowing{}).
+			Select("COUNT(*)").
+			Where("borrowings.subscription_id = subscriptions.id").
+			Where("borrowings.deleted_at IS NULL")
+	}
+
 	if opt.ID != "" {
 		db = db.Where("subscriptions.id::text ILIKE ?", "%"+opt.ID+"%")
 	}
@@ -58,10 +72,10 @@ func (s *service) ListSubscriptions(ctx context.Context, opt usecase.ListSubscri
 		db = db.Where("membership_id = ?", opt.MembershipID)
 	}
 	if opt.IsActive {
-		db = db.Where("expires_at > ?", time.Now())
+		db = db.Where("(expires_at > ?) AND (subscriptions.usage_limit <= 0 OR (subscriptions.usage_limit > 0 AND (?) < subscriptions.usage_limit))", now, usageCountSubQuery)
 	}
 	if opt.IsExpired {
-		db = db.Where("expires_at <= ?", time.Now())
+		db = db.Where("(expires_at <= ?) OR (subscriptions.usage_limit > 0 AND (?) >= subscriptions.usage_limit)", now, usageCountSubQuery)
 	}
 	if len(opt.LibraryIDs) > 0 {
 		db = db.Joins("Membership").
@@ -184,8 +198,10 @@ func (s *service) GetSubscriptionByID(ctx context.Context, id uuid.UUID) (usecas
 		Select("COUNT(b.id)").
 		Joins("JOIN borrowings b ON s.id = b.subscription_id").
 		Joins("LEFT JOIN returnings r ON b.id = r.borrowing_id AND r.deleted_at IS NULL").
+		Joins("LEFT JOIN losts l ON b.id = l.borrowing_id AND l.deleted_at IS NULL").
 		Where("s.id = ?", id).
 		Where("r.id IS NULL").
+		Where("l.id IS NULL").
 		Scan(&activeLoanCount).
 		Error; err != nil {
 		return usecase.Subscription{}, err
