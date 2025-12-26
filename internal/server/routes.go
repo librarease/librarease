@@ -19,12 +19,27 @@ func (s *Server) RegisterRoutes() http.Handler {
 	e.Use(middleware.Recover())
 	e.Use(otelecho.Middleware("librarease"))
 
+	// e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+	// 	AllowOrigins:     []string{"https://*.librarease.org"},
+	// 	AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+	// 	AllowHeaders:     []string{"Accept", "Content-Type"},
+	// 	AllowCredentials: true,
+	// 	MaxAge:           300,
+	// }))
+
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"https://*.librarease.org"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowOriginFunc: func(origin string) (bool, error) {
+			switch origin {
+			case "https://localhost:3000",
+				"https://librarease.org":
+				return true, nil
+			default:
+				return false, nil
+			}
+		},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowHeaders:     []string{"Accept", "Content-Type"},
 		AllowCredentials: true,
-		MaxAge:           300,
 	}))
 
 	e.Use(middleware.Secure())
