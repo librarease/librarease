@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/librarease/librarease/internal/config"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -21,9 +23,25 @@ type SlogGormLogger struct {
 }
 
 func NewSlogGormLogger(l *slog.Logger) *SlogGormLogger {
+	// Map slog level to gorm logger level based on ENV_KEY_LOG_LEVEL
+	gormLevel := logger.Info // default: log all SQL queries
+
+	if lvl := os.Getenv(config.ENV_KEY_LOG_LEVEL); lvl != "" {
+		switch lvl {
+		case "DEBUG":
+			gormLevel = logger.Info // log all SQL queries
+		case "INFO":
+			gormLevel = logger.Info // log all SQL queries
+		case "WARN":
+			gormLevel = logger.Warn // log only SQL errors
+		case "ERROR":
+			gormLevel = logger.Error // log only SQL errors
+		}
+	}
+
 	return &SlogGormLogger{
 		Logger:        l,
-		LogLevel:      logger.Info,
+		LogLevel:      gormLevel,
 		SlowThreshold: 200 * time.Millisecond,
 	}
 }

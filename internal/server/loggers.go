@@ -3,9 +3,11 @@ package server
 import (
 	"log/slog"
 	"slices"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/librarease/librarease/internal/config"
 )
 
 func skipper(c echo.Context) bool {
@@ -15,7 +17,7 @@ func skipper(c echo.Context) bool {
 	}, c.Request().URL.Path)
 }
 
-func NewEchoLogger(l slog.Logger) echo.MiddlewareFunc {
+func NewEchoLogger(l *slog.Logger) echo.MiddlewareFunc {
 
 	return middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogStatus:        true,
@@ -40,7 +42,7 @@ func NewEchoLogger(l slog.Logger) echo.MiddlewareFunc {
 			}
 
 			attrs := []slog.Attr{
-				slog.String("id", v.RequestID),
+				slog.String("request_id", v.RequestID),
 				slog.String("remote_ip", v.RemoteIP),
 				slog.String("host", v.Host),
 				slog.String("method", v.Method),
@@ -51,6 +53,9 @@ func NewEchoLogger(l slog.Logger) echo.MiddlewareFunc {
 				slog.String("latency_human", v.Latency.String()),
 				slog.String("bytes_in", v.ContentLength),
 				slog.Int64("bytes_out", v.ResponseSize),
+				slog.String("protocol", c.Request().Proto),
+				slog.String("uid", strings.Join(v.Headers[config.HEADER_KEY_X_UID], ",")),
+				slog.String("client_id", strings.Join(v.Headers[config.HEADER_KEY_X_CLIENT_ID], ",")),
 			}
 
 			if v.Error != nil {

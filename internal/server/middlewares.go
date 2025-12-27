@@ -58,12 +58,6 @@ func (s *Server) getUID(c echo.Context) (string, error) {
 		clientID    = os.Getenv(config.ENV_KEY_CLIENT_ID)
 	)
 
-	s.logger.DebugContext(ctx, "auth middleware check",
-		slog.String("req_client_id", reqClientID),
-		slog.String("req_uid", reqUID),
-		slog.String("env_client_id", clientID),
-	)
-
 	if reqClientID != "" &&
 		reqUID != "" &&
 		reqClientID == clientID {

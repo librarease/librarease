@@ -18,9 +18,9 @@ var faviconData []byte
 
 func (s *Server) RegisterRoutes() http.Handler {
 	e := echo.New()
-	e.Use(NewEchoLogger(*s.logger))
 	e.Use(middleware.Recover())
 	e.Use(otelecho.Middleware("librarease"))
+	e.Use(NewEchoLogger(s.logger))
 
 	origins := strings.Split(os.Getenv(config.ENV_KEY_CORS_ALLOWED_ORIGINS), ",")
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
