@@ -3,9 +3,12 @@ package server
 import (
 	_ "embed"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/librarease/librarease/internal/config"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 	"golang.org/x/time/rate"
 )
@@ -19,25 +22,10 @@ func (s *Server) RegisterRoutes() http.Handler {
 	e.Use(middleware.Recover())
 	e.Use(otelecho.Middleware("librarease"))
 
-	// e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-	// 	AllowOrigins:     []string{"https://*.librarease.org"},
-	// 	AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-	// 	AllowHeaders:     []string{"Accept", "Content-Type"},
-	// 	AllowCredentials: true,
-	// 	MaxAge:           300,
-	// }))
-
+	origins := strings.Split(os.Getenv(config.ENV_KEY_CORS_ALLOWED_ORIGINS), ",")
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOriginFunc: func(origin string) (bool, error) {
-			switch origin {
-			case "https://localhost:3000",
-				"https://librarease.org":
-				return true, nil
-			default:
-				return false, nil
-			}
-		},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowOrigins:     origins,
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowHeaders:     []string{"Accept", "Content-Type"},
 		AllowCredentials: true,
 	}))
