@@ -24,17 +24,16 @@ type SlogGormLogger struct {
 
 func NewSlogGormLogger(l *slog.Logger) *SlogGormLogger {
 	// Map slog level to gorm logger level based on ENV_KEY_LOG_LEVEL
-	gormLevel := logger.Info // default: log all SQL queries
+	// GORM is one level quieter than app logger to reduce verbosity
+	gormLevel := logger.Warn // default: log only slow queries and errors
 
 	if lvl := os.Getenv(config.ENV_KEY_LOG_LEVEL); lvl != "" {
 		switch lvl {
 		case "DEBUG":
 			gormLevel = logger.Info // log all SQL queries
 		case "INFO":
-			gormLevel = logger.Info // log all SQL queries
-		case "WARN":
-			gormLevel = logger.Warn // log only SQL errors
-		case "ERROR":
+			gormLevel = logger.Warn // log only slow queries and errors
+		case "WARN", "ERROR":
 			gormLevel = logger.Error // log only SQL errors
 		}
 	}
