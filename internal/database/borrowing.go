@@ -576,7 +576,7 @@ SELECT prev_id, next_id FROM ordered WHERE id = ?
 		PrevID *uuid.UUID
 		NextID *uuid.UUID
 	}
-	if err := s.db.Raw(sql, args...).Scan(&out).Error; err != nil {
+	if err := s.db.WithContext(ctx).Raw(sql, args...).Scan(&out).Error; err != nil {
 		return nil, nil, err
 	}
 	return out.PrevID, out.NextID, nil
