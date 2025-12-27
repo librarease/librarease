@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/librarease/librarease/internal/config"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func skipper(c echo.Context) bool {
@@ -32,7 +33,9 @@ func NewEchoLogger(l *slog.Logger) echo.MiddlewareFunc {
 		LogLatency:       true,
 		LogContentLength: true,
 		LogResponseSize:  true,
+		LogHeaders:       []string{config.HEADER_KEY_X_UID, config.HEADER_KEY_X_CLIENT_ID},
 		Skipper:          skipper,
+
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			level := slog.LevelInfo
 			msg := "REQUEST"
@@ -42,20 +45,29 @@ func NewEchoLogger(l *slog.Logger) echo.MiddlewareFunc {
 			}
 
 			attrs := []slog.Attr{
-				slog.String("request_id", v.RequestID),
-				slog.String("remote_ip", v.RemoteIP),
-				slog.String("host", v.Host),
 				slog.String("method", v.Method),
 				slog.String("uri", v.URI),
-				slog.String("user_agent", v.UserAgent),
 				slog.Int("status", v.Status),
 				slog.Duration("latency", v.Latency),
-				slog.String("latency_human", v.Latency.String()),
-				slog.String("bytes_in", v.ContentLength),
 				slog.Int64("bytes_out", v.ResponseSize),
-				slog.String("protocol", c.Request().Proto),
-				slog.String("uid", strings.Join(v.Headers[config.HEADER_KEY_X_UID], ",")),
-				slog.String("client_id", strings.Join(v.Headers[config.HEADER_KEY_X_CLIENT_ID], ",")),
+				slog.String("remote_ip", v.RemoteIP),
+			}
+
+			// Add optional fields only if present
+			if uid := strings.Join(v.Headers[config.HEADER_KEY_X_UID], ","); uid != "" {
+				attrs = append(attrs, slog.String("uid", uid))
+			}
+			if clientID := strings.Join(v.Headers[config.HEADER_KEY_X_CLIENT_ID], ","); clientID != "" {
+				attrs = append(attrs, slog.String("client_id", clientID))
+			}
+
+			// Extract trace context from the request context
+			span := trace.SpanFromContext(c.Request().Context())
+			if span.SpanContext().IsValid() {
+				attrs = append(attrs,
+					slog.String("trace_id", span.SpanContext().TraceID().String()),
+					slog.String("span_id", span.SpanContext().SpanID().String()),
+				)
 			}
 
 			if v.Error != nil {
