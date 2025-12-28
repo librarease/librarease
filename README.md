@@ -2,147 +2,88 @@
 
 A library management system built with Go and PostgreSQL.
 
-## Architecture
+## License
 
-- **API Server**: HTTP REST API (runs by default)
-- **Worker Server**: Background job processor (runs with `-mode worker` flag)
-- Both modes use the same binary built from `cmd/api/main.go`
+This project is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).  
+**Commercial use is not permitted.**
 
-## Quick Start
+For educational, personal, and noncommercial use only. If you're interested in commercial use, contact: solidifyarmor@gmail.com
 
-```bash
-# Start infrastructure (PostgreSQL, Redis, MinIO)
-make docker-run
+## System Components
 
-# Run API server
-make run
+- **API Server** (`cmd/api/main.go`) - HTTP REST API
+- **Worker** (`cmd/worker/main.go`) - Background job processor
+- **Scheduler** (`cmd/worker/main.go -mode scheduler`) - Periodic task scheduler
 
-# Run worker (in another terminal)
-make run-worker
-```
+## Prerequisites
 
-## Development
+- Go 1.25+
+- PostgreSQL 16+
+- Redis
+- MinIO or S3
+- Firebase service account
 
-### Build
+## Quick Setup
 
-```bash
-make build          # Builds ./main binary
-```
-
-### Run
+### 1. Configure Environment
 
 ```bash
-# API mode (default)
-./main
-
-# Worker mode
-./main -mode worker
-
-# Or use make commands
-make run            # API
-make run-worker     # Worker
+cp .env.example .env
 ```
 
-### Live Reload
+Edit `.env` with required values. Reference `docker-compose.example.yml` (excluding `frontend-service`) for all environment variables:
+
+- **Database**: `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USER`, `DB_PASSWORD`
+- **Redis**: `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`
+- **MinIO/S3**: `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET_NAME`
+- **Firebase**: `FIREBASE_SERVICE_ACCOUNT_KEY_PATH`
+- **SMTP**: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`
+
+### 2. Start Infrastructure
+
+Run PostgreSQL, and Redis locally.
+
+### 3. Run with Live Reload
 
 ```bash
-make watch          # API with auto-reload
-make watch-worker   # Worker with auto-reload
+make watch
 ```
 
-### Testing
+This installs [air](https://github.com/air-verse/air) if needed and runs all components with hot reload.
+
+## Development Commands
 
 ```bash
-make test           # Unit tests
-make itest          # Integration tests
-make all            # Build + test
+make build           # Build binaries
+make run             # Run API server
+make run-worker      # Run worker
+make run-scheduler   # Run scheduler
+make watch           # API with live reload
+make watch-worker    # Worker with live reload
+make test            # Unit tests
+make itest           # Integration tests
+make clean           # Remove binaries
 ```
-
-## Docker
-
-### Development
-
-```bash
-make docker-run     # Start PostgreSQL, Redis, MinIO
-make docker-down    # Stop infrastructure
-make docker-logs    # View logs
-```
-
-### Production
-
-```bash
-# Build image
-docker build -t librarease:latest .
-
-# Run API
-docker run -p 8080:8080 librarease:latest
-
-# Run Worker
-docker run librarease:latest ./main -mode worker
-
-# Or use docker-compose
-docker compose up -d
-```
-
-## Environment Variables
-
-```bash
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_DATABASE=librarease
-DB_USER=postgres
-DB_PASSWORD=postgres
-
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# Worker
-WORKER_CONCURRENCY=10
-
-# MinIO/S3
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-
-# SMTP
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your-email
-SMTP_PASSWORD=your-password
-```
-
-See `.env.example` for full configuration.
 
 ## Project Structure
 
 ```
-cmd/api/main.go     # Single entry point with -mode flag
+cmd/
+  api/main.go       # API server entry point
+  worker/main.go    # Worker/scheduler entry point
 internal/
-  server/           # HTTP handlers
+  server/           # HTTP handlers (Echo)
   usecase/          # Business logic
-  database/         # GORM repositories  
-  queue/            # Background jobs
+  database/         # GORM repositories
+  queue/            # Background job handlers
+  config/           # Environment constants
 ```
 
-## Background Jobs
+## Architecture
 
-Worker processes jobs from Redis queue:
-- `export:borrowings` - Export borrowing records
-- Add more handlers in `internal/queue/handlers/`
+Clean architecture with three layers:
+- **Handlers** - HTTP API endpoints
+- **Usecases** - Business logic with interface injection
+- **Database** - GORM repository implementations
 
-## Makefile Commands
-
-```bash
-make build          # Build binary
-make run            # Run API
-make run-worker     # Run worker
-make watch          # API with live reload
-make watch-worker   # Worker with live reload
-make test           # Unit tests
-make itest          # Integration tests
-make docker-run     # Start infrastructure
-make docker-down    # Stop infrastructure
-make clean          # Remove binary
-```
+All requests follow a bind → validate → usecase pattern with structured JSON responses.

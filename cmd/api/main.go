@@ -1,3 +1,11 @@
+// Copyright (c) 2025 [LibrarEase]
+//
+// This software is licensed under the PolyForm Noncommercial License 1.0.0
+// See LICENSE file in the project root for full license terms.
+//
+// For commercial licensing inquiries, contact: solidifyarmor@gmail.com
+// https://github.com/librarease/librarease
+
 package main
 
 import (
