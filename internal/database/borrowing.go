@@ -445,7 +445,9 @@ func (s *service) UpdateBorrowing(ctx context.Context, b usecase.Borrowing) (use
 
 	// Invalidate cache
 	pattern := fmt.Sprintf("borrowing:%s:*", b.ID.String())
-	s.cache.Del(ctx, pattern)
+	if keys, err := s.cache.Keys(ctx, pattern).Result(); err == nil && len(keys) > 0 {
+		s.cache.Del(ctx, keys...)
+	}
 
 	return result, nil
 }
@@ -458,7 +460,9 @@ func (s *service) DeleteBorrowing(ctx context.Context, id uuid.UUID) error {
 
 	// Invalidate cache
 	pattern := fmt.Sprintf("borrowing:%s:*", id.String())
-	s.cache.Del(ctx, pattern)
+	if keys, err := s.cache.Keys(ctx, pattern).Result(); err == nil && len(keys) > 0 {
+		s.cache.Del(ctx, keys...)
+	}
 
 	return nil
 }

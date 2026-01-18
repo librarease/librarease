@@ -56,7 +56,9 @@ func (s *service) CreateLost(ctx context.Context, l usecase.Lost) (usecase.Lost,
 
 	// Invalidate borrowing cache
 	pattern := fmt.Sprintf("borrowing:%s:*", l.BorrowingID.String())
-	s.cache.Del(ctx, pattern)
+	if keys, err := s.cache.Keys(ctx, pattern).Result(); err == nil && len(keys) > 0 {
+		s.cache.Del(ctx, keys...)
+	}
 
 	return lost.ConvertToUsecase(), nil
 }
@@ -74,7 +76,9 @@ func (s *service) DeleteLost(ctx context.Context, id uuid.UUID) error {
 
 	// Invalidate borrowing cache
 	pattern := fmt.Sprintf("borrowing:%s:*", lost.BorrowingID.String())
-	s.cache.Del(ctx, pattern)
+	if keys, err := s.cache.Keys(ctx, pattern).Result(); err == nil && len(keys) > 0 {
+		s.cache.Del(ctx, keys...)
+	}
 
 	return nil
 }
@@ -97,7 +101,9 @@ func (s *service) UpdateLost(ctx context.Context, id uuid.UUID, l usecase.Lost) 
 
 	// Invalidate borrowing cache
 	pattern := fmt.Sprintf("borrowing:%s:*", l.BorrowingID.String())
-	s.cache.Del(ctx, pattern)
+	if keys, err := s.cache.Keys(ctx, pattern).Result(); err == nil && len(keys) > 0 {
+		s.cache.Del(ctx, keys...)
+	}
 
 	return nil
 }
