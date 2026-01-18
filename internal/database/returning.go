@@ -86,15 +86,6 @@ func (s *service) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r 
 		return usecase.Borrowing{}, err
 	}
 
-	// Invalidate borrowing cache
-	trackingKey := fmt.Sprintf("borrowing:keys:%s", borrowingID.String())
-	if keys, err := s.cache.SMembers(ctx, trackingKey).Result(); err == nil && len(keys) > 0 {
-		pipe := s.cache.Pipeline()
-		pipe.Unlink(ctx, keys...)     // Delete all cache entries at once
-		pipe.Unlink(ctx, trackingKey) // Delete tracking set
-		pipe.Exec(ctx)
-	}
-
 	var borrowing Borrowing
 	err = s.db.WithContext(ctx).
 		Model(&Borrowing{}).
@@ -105,6 +96,10 @@ func (s *service) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r 
 	if err != nil {
 		return usecase.Borrowing{}, err
 	}
+
+	// Invalidate borrowing cache
+	pattern := fmt.Sprintf("borrowing:%s:*", returning.BorrowingID.String())
+	s.cache.Del(ctx, pattern)
 
 	return borrowing.ConvertToUsecase(), nil
 }

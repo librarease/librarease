@@ -422,14 +422,6 @@ func (s *service) CreateBorrowing(ctx context.Context, b usecase.Borrowing) (use
 
 	result := borrow.ConvertToUsecase()
 
-	trackingKey := fmt.Sprintf("borrowing:keys:%s", result.ID.String())
-	if keys, err := s.cache.SMembers(ctx, trackingKey).Result(); err == nil && len(keys) > 0 {
-		pipe := s.cache.Pipeline()
-		pipe.Unlink(ctx, keys...)
-		pipe.Unlink(ctx, trackingKey)
-		pipe.Exec(ctx)
-	}
-
 	return result, nil
 }
 
@@ -451,13 +443,9 @@ func (s *service) UpdateBorrowing(ctx context.Context, b usecase.Borrowing) (use
 
 	result := borrow.ConvertToUsecase()
 
-	trackingKey := fmt.Sprintf("borrowing:keys:%s", result.ID.String())
-	if keys, err := s.cache.SMembers(ctx, trackingKey).Result(); err == nil && len(keys) > 0 {
-		pipe := s.cache.Pipeline()
-		pipe.Unlink(ctx, keys...)
-		pipe.Unlink(ctx, trackingKey)
-		pipe.Exec(ctx)
-	}
+	// Invalidate cache
+	pattern := fmt.Sprintf("borrowing:%s:*", b.ID.String())
+	s.cache.Del(ctx, pattern)
 
 	return result, nil
 }
