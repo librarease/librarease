@@ -3,12 +3,10 @@ package server
 import (
 	"log/slog"
 	"slices"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/librarease/librarease/internal/config"
-	"go.opentelemetry.io/otel/trace"
 )
 
 func skipper(c echo.Context) bool {
@@ -51,23 +49,6 @@ func NewEchoLogger(l *slog.Logger) echo.MiddlewareFunc {
 				slog.Duration("latency", v.Latency),
 				slog.Int64("bytes_out", v.ResponseSize),
 				slog.String("remote_ip", v.RemoteIP),
-			}
-
-			// Add optional fields only if present
-			if uid := strings.Join(v.Headers[config.HEADER_KEY_X_UID], ","); uid != "" {
-				attrs = append(attrs, slog.String("uid", uid))
-			}
-			if clientID := strings.Join(v.Headers[config.HEADER_KEY_X_CLIENT_ID], ","); clientID != "" {
-				attrs = append(attrs, slog.String("client_id", clientID))
-			}
-
-			// Extract trace context from the request context
-			span := trace.SpanFromContext(c.Request().Context())
-			if span.SpanContext().IsValid() {
-				attrs = append(attrs,
-					slog.String("trace_id", span.SpanContext().TraceID().String()),
-					slog.String("span_id", span.SpanContext().SpanID().String()),
-				)
 			}
 
 			if v.Error != nil {
