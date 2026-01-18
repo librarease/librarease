@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/plugin/opentelemetry/tracing"
@@ -223,12 +224,30 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
 
-	var maxOpenConnections int
-	if m, err := strconv.Atoi(
-		os.Getenv("DB_MAX_OPEN_CONNECTIONS")); err == nil {
+	// Configure connection pool
+	maxOpenConnections := 25
+	if m, err := strconv.Atoi(os.Getenv(config.ENV_KEY_DB_MAX_OPEN_CONNECTIONS)); err == nil && m > 0 {
 		maxOpenConnections = m
 	}
 	sqlDB.SetMaxOpenConns(maxOpenConnections)
+
+	maxIdleConnections := 10
+	if m, err := strconv.Atoi(os.Getenv(config.ENV_KEY_DB_MAX_IDLE_CONNECTIONS)); err == nil && m > 0 {
+		maxIdleConnections = m
+	}
+	sqlDB.SetMaxIdleConns(maxIdleConnections)
+
+	connMaxLifetime := 5 * time.Minute
+	if m, err := strconv.Atoi(os.Getenv(config.ENV_KEY_DB_CONN_MAX_LIFETIME_MINUTES)); err == nil && m > 0 {
+		connMaxLifetime = time.Duration(m) * time.Minute
+	}
+	sqlDB.SetConnMaxLifetime(connMaxLifetime)
+
+	connMaxIdleTime := 2 * time.Minute
+	if m, err := strconv.Atoi(os.Getenv(config.ENV_KEY_DB_CONN_MAX_IDLE_TIME_MINUTES)); err == nil && m > 0 {
+		connMaxIdleTime = time.Duration(m) * time.Minute
+	}
+	sqlDB.SetConnMaxIdleTime(connMaxIdleTime)
 
 	// Create GORM DB with the configured sql.DB
 	gormDB, err := gorm.Open(postgres.New(postgres.Config{
@@ -249,8 +268,18 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		sqlDB.Close() // cleanup previous connection
 		return nil, fmt.Errorf("failed to connect to database for notification: %w", err)
 	}
+	var (
+		redisAddr     = os.Getenv(config.ENV_KEY_REDIS_HOST) + ":" + os.Getenv(config.ENV_KEY_REDIS_PORT)
+		redisPassword = os.Getenv(config.ENV_KEY_REDIS_PASSWORD)
+	)
 
-	repo, err := database.New(gormDB, notifyConn, nil)
+	redis := redis.NewClient(&redis.Options{
+		Addr:     redisAddr,
+		Password: redisPassword,
+		DB:       0, // use default DB
+	})
+
+	repo, err := database.New(gormDB, notifyConn, redis)
 	if err != nil {
 		sqlDB.Close()
 		notifyConn.Close(context.Background())
@@ -284,16 +313,6 @@ func NewApp(logger *slog.Logger) (*App, error) {
 
 	dp := push.NewPushDispatcher(fb)
 
-	var (
-		redisAddr     = os.Getenv(config.ENV_KEY_REDIS_HOST) + ":" + os.Getenv(config.ENV_KEY_REDIS_PORT)
-		redisPassword = os.Getenv(config.ENV_KEY_REDIS_PASSWORD)
-	)
-
-	// redis := redis.NewClient(&redis.Options{
-	// 	Addr:     redisAddr,
-	// 	Password: redisPassword,
-	// 	DB:       0, // use default DB
-	// })
 	qc := queue.NewClient(redisAddr, redisPassword)
 
 	sv := usecase.New(repo, fb, fsp, mp, dp, qc, logger.With(slog.String("component", "usecase")))

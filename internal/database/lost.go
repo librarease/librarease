@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -52,22 +53,35 @@ func (s *service) CreateLost(ctx context.Context, l usecase.Lost) (usecase.Lost,
 	if err := s.db.WithContext(ctx).Create(lost).Error; err != nil {
 		return usecase.Lost{}, err
 	}
+
+	// Invalidate borrowing cache
+	pattern := fmt.Sprintf("borrowing:%s:*", l.BorrowingID.String())
+	s.cache.Del(ctx, pattern)
+
 	return lost.ConvertToUsecase(), nil
 }
 
 func (s *service) DeleteLost(ctx context.Context, id uuid.UUID) error {
-	lost := &Lost{
-		ID: id,
-	}
-	if err := s.db.Clauses(clause.Returning{}).Delete(lost).Error; err != nil {
+	// Get borrowing ID before deleting
+	var lost Lost
+	if err := s.db.WithContext(ctx).First(&lost, "id = ?", id).Error; err != nil {
 		return err
 	}
+
+	if err := s.db.Clauses(clause.Returning{}).Delete(&Lost{ID: id}).Error; err != nil {
+		return err
+	}
+
+	// Invalidate borrowing cache
+	pattern := fmt.Sprintf("borrowing:%s:*", lost.BorrowingID.String())
+	s.cache.Del(ctx, pattern)
+
 	return nil
 }
 
 func (s *service) UpdateLost(ctx context.Context, id uuid.UUID, l usecase.Lost) error {
 
-	return s.db.
+	err := s.db.
 		WithContext(ctx).
 		Model(&Lost{}).
 		Where("id = ?", id).
@@ -76,4 +90,14 @@ func (s *service) UpdateLost(ctx context.Context, id uuid.UUID, l usecase.Lost) 
 			Fine:       l.Fine,
 			Note:       l.Note,
 		}).Error
+
+	if err != nil {
+		return err
+	}
+
+	// Invalidate borrowing cache
+	pattern := fmt.Sprintf("borrowing:%s:*", l.BorrowingID.String())
+	s.cache.Del(ctx, pattern)
+
+	return nil
 }

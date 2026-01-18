@@ -8,12 +8,16 @@ const (
 
 // DB constants.
 const (
-	ENV_KEY_DB_HOST         = "DB_HOST"
-	ENV_KEY_DB_PORT         = "DB_PORT"
-	ENV_KEY_DB_DATABASE     = "DB_DATABASE"
-	ENV_KEY_DB_USER         = "DB_USER"
-	ENV_KEY_DB_PASSWORD     = "DB_PASSWORD"
-	ENV_KEY_DB_AUTO_MIGRATE = "DB_AUTO_MIGRATE"
+	ENV_KEY_DB_HOST                       = "DB_HOST"
+	ENV_KEY_DB_PORT                       = "DB_PORT"
+	ENV_KEY_DB_DATABASE                   = "DB_DATABASE"
+	ENV_KEY_DB_USER                       = "DB_USER"
+	ENV_KEY_DB_PASSWORD                   = "DB_PASSWORD"
+	ENV_KEY_DB_AUTO_MIGRATE               = "DB_AUTO_MIGRATE"
+	ENV_KEY_DB_MAX_OPEN_CONNECTIONS       = "DB_MAX_OPEN_CONNECTIONS"
+	ENV_KEY_DB_MAX_IDLE_CONNECTIONS       = "DB_MAX_IDLE_CONNECTIONS"
+	ENV_KEY_DB_CONN_MAX_LIFETIME_MINUTES  = "DB_CONN_MAX_LIFETIME_MINUTES"
+	ENV_KEY_DB_CONN_MAX_IDLE_TIME_MINUTES = "DB_CONN_MAX_IDLE_TIME_MINUTES"
 )
 
 // Header constants.
@@ -66,4 +70,9 @@ const (
 
 const (
 	ENV_KEY_WORKER_CONCURRENCY = "WORKER_CONCURRENCY"
+)
+
+// Cache TTL constants (in minutes)
+const (
+	CACHE_TTL_BORROWING = 3 // Cache borrowing details for 3 minutes
 )

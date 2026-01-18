@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/librarease/librarease/internal/usecase"
@@ -85,6 +86,15 @@ func (s *service) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r 
 		return usecase.Borrowing{}, err
 	}
 
+	// Invalidate borrowing cache
+	trackingKey := fmt.Sprintf("borrowing:keys:%s", borrowingID.String())
+	if keys, err := s.cache.SMembers(ctx, trackingKey).Result(); err == nil && len(keys) > 0 {
+		pipe := s.cache.Pipeline()
+		pipe.Unlink(ctx, keys...)     // Delete all cache entries at once
+		pipe.Unlink(ctx, trackingKey) // Delete tracking set
+		pipe.Exec(ctx)
+	}
+
 	var borrowing Borrowing
 	err = s.db.WithContext(ctx).
 		Model(&Borrowing{}).
@@ -119,11 +129,25 @@ func (r Returning) ConvertToUsecase() usecase.Returning {
 }
 
 func (s service) DeleteReturn(ctx context.Context, id uuid.UUID) error {
-	return s.db.WithContext(ctx).
+	// Get borrowing ID before deleting
+	var returning Returning
+	if err := s.db.WithContext(ctx).First(&returning, "id = ?", id).Error; err != nil {
+		return err
+	}
+
+	if err := s.db.WithContext(ctx).
 		Delete(&Returning{
 			ID: id,
 		}).
-		Error
+		Error; err != nil {
+		return err
+	}
+
+	// Invalidate borrowing cache
+	pattern := fmt.Sprintf("borrowing:%s:*", returning.BorrowingID.String())
+	s.cache.Del(ctx, pattern)
+
+	return nil
 }
 
 func (s service) UpdateReturn(ctx context.Context, id uuid.UUID, r usecase.Returning) error {
@@ -136,9 +160,16 @@ func (s service) UpdateReturn(ctx context.Context, id uuid.UUID, r usecase.Retur
 		Note:        r.Note,
 	}
 
-	return s.db.WithContext(ctx).
+	if err := s.db.WithContext(ctx).
 		Model(&Returning{}).
 		Where("id = ?", id).
 		Updates(&returning).
-		Error
+		Error; err != nil {
+		return err
+	}
+
+	pattern := fmt.Sprintf("borrowing:%s:*", r.BorrowingID.String())
+	s.cache.Del(ctx, pattern)
+
+	return nil
 }

@@ -2,12 +2,15 @@ package database
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/librarease/librarease/internal/config"
 	"github.com/librarease/librarease/internal/usecase"
 	"golang.org/x/sync/errgroup"
 
@@ -265,18 +268,29 @@ func (s *service) ListBorrowingSummariesForNotifications(ctx context.Context, op
 }
 
 func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt usecase.BorrowingsOption) (usecase.Borrowing, error) {
+	cacheKey := fmt.Sprintf("borrowing:%s:%s", id.String(), hashOptions(opt))
+
+	// Try cache first
+	if cached, err := s.cache.Get(ctx, cacheKey).Result(); err == nil {
+		var ub usecase.Borrowing
+		if err := json.Unmarshal([]byte(cached), &ub); err == nil {
+			// Cache hit - return immediately
+			return ub, nil
+		}
+	}
+	// Cache miss or error - fetch from database
 
 	var (
 		b              Borrowing
 		prevID, nextID *uuid.UUID
 	)
 
-	g, ctx := errgroup.WithContext(ctx)
+	g, gctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		err := s.db.
 			Model(Borrowing{}).
-			WithContext(ctx).
+			WithContext(gctx).
 			Preload("Returning").
 			Preload("Returning.Staff").
 			Preload("Lost").
@@ -306,7 +320,7 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt usecas
 
 	if !reflect.DeepEqual(opt, usecase.BorrowingsOption{}) {
 		g.Go(func() error {
-			p, n, err := s.GetBorrowingSiblings(ctx, id, opt)
+			p, n, err := s.GetBorrowingSiblings(gctx, id, opt)
 			if err != nil {
 				return err
 			}
@@ -379,6 +393,12 @@ func (s *service) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt usecas
 		ub.Staff = &staff
 	}
 
+	// Cache the result
+	if data, err := json.Marshal(ub); err == nil {
+		ttl := time.Duration(config.CACHE_TTL_BORROWING) * time.Minute
+		s.cache.Set(ctx, cacheKey, data, ttl)
+	}
+
 	return ub, nil
 }
 
@@ -400,7 +420,17 @@ func (s *service) CreateBorrowing(ctx context.Context, b usecase.Borrowing) (use
 		return usecase.Borrowing{}, err
 	}
 
-	return borrow.ConvertToUsecase(), nil
+	result := borrow.ConvertToUsecase()
+
+	trackingKey := fmt.Sprintf("borrowing:keys:%s", result.ID.String())
+	if keys, err := s.cache.SMembers(ctx, trackingKey).Result(); err == nil && len(keys) > 0 {
+		pipe := s.cache.Pipeline()
+		pipe.Unlink(ctx, keys...)
+		pipe.Unlink(ctx, trackingKey)
+		pipe.Exec(ctx)
+	}
+
+	return result, nil
 }
 
 func (s *service) UpdateBorrowing(ctx context.Context, b usecase.Borrowing) (usecase.Borrowing, error) {
@@ -419,11 +449,30 @@ func (s *service) UpdateBorrowing(ctx context.Context, b usecase.Borrowing) (use
 		return usecase.Borrowing{}, err
 	}
 
-	return borrow.ConvertToUsecase(), nil
+	result := borrow.ConvertToUsecase()
+
+	trackingKey := fmt.Sprintf("borrowing:keys:%s", result.ID.String())
+	if keys, err := s.cache.SMembers(ctx, trackingKey).Result(); err == nil && len(keys) > 0 {
+		pipe := s.cache.Pipeline()
+		pipe.Unlink(ctx, keys...)
+		pipe.Unlink(ctx, trackingKey)
+		pipe.Exec(ctx)
+	}
+
+	return result, nil
 }
 
 func (s *service) DeleteBorrowing(ctx context.Context, id uuid.UUID) error {
-	return s.db.WithContext(ctx).Where("id = ?", id).Delete(&Borrowing{}).Error
+	err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&Borrowing{}).Error
+	if err != nil {
+		return err
+	}
+
+	// Invalidate cache
+	pattern := fmt.Sprintf("borrowing:%s:*", id.String())
+	s.cache.Del(ctx, pattern)
+
+	return nil
 }
 
 type BorrowingSiblings struct {
@@ -610,4 +659,15 @@ func placeholders(n int) string {
 		p[i] = "?"
 	}
 	return strings.Join(p, ",")
+}
+
+// hashOptions creates a fast hash of the options for cache key uniqueness using FNV-1a
+func hashOptions(opt usecase.BorrowingsOption) string {
+	if reflect.DeepEqual(opt, usecase.BorrowingsOption{}) {
+		return "default"
+	}
+	data, _ := json.Marshal(opt)
+	h := fnv.New64a()
+	h.Write(data)
+	return fmt.Sprintf("%x", h.Sum64())
 }
