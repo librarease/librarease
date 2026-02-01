@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -278,6 +279,20 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		Password: redisPassword,
 		DB:       0, // use default DB
 	})
+
+	// Enable OpenTelemetry tracing for Redis
+	if err := redisotel.InstrumentTracing(redis); err != nil {
+		sqlDB.Close()
+		notifyConn.Close(context.Background())
+		return nil, fmt.Errorf("failed to instrument redis tracing: %w", err)
+	}
+
+	// Optional: Enable metrics
+	if err := redisotel.InstrumentMetrics(redis); err != nil {
+		sqlDB.Close()
+		notifyConn.Close(context.Background())
+		return nil, fmt.Errorf("failed to instrument redis metrics: %w", err)
+	}
 
 	repo, err := database.New(gormDB, notifyConn, redis)
 	if err != nil {

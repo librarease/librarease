@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -96,13 +97,13 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 
 	switch role {
 	case "SUPERADMIN":
-		fmt.Println("[DEBUG] global superadmin")
+		u.logger.DebugContext(ctx, "role authorization check", slog.String("role", "SUPERADMIN"), slog.String("access", "allow_all"))
 		// ALLOW ALL
 	case "ADMIN":
-		fmt.Println("[DEBUG] global admin")
+		u.logger.DebugContext(ctx, "role authorization check", slog.String("role", "ADMIN"), slog.String("access", "allow_all"))
 		// ALLOW ALL
 	case "USER":
-		fmt.Println("[DEBUG] global user")
+		u.logger.DebugContext(ctx, "role authorization check", slog.String("role", "USER"))
 		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
 			UserID: userID.String(),
 			// Using a limit of 500 for now, adjust as needed based on expected data size
@@ -113,13 +114,13 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 		}
 		// user is not staff
 		if len(staffs) == 0 {
-			fmt.Println("[DEBUG] user is not staff, filtering by user id")
+			u.logger.DebugContext(ctx, "filtering borrowings by user", slog.String("filter_type", "user_not_staff"), slog.String("user_id", userID.String()))
 			opt.UserIDs = uuid.UUIDs{userID}
 			break
 		}
 
 		// user is staff
-		fmt.Println("[DEBUG] user is staff")
+		u.logger.DebugContext(ctx, "user is staff member", slog.Int("staff_count", len(staffs)))
 		var staffLibIDs uuid.UUIDs
 		for _, staff := range staffs {
 			staffLibIDs = append(staffLibIDs, staff.LibraryID)
@@ -127,12 +128,12 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 		// user is staff, filtering by library ids
 		if len(opt.LibraryIDs) == 0 {
 			// user is staff, filters default to assigned libraries
-			fmt.Println("[DEBUG] filtering by default assigned libraries")
+			u.logger.DebugContext(ctx, "filtering by staff assigned libraries", slog.Int("library_count", len(staffLibIDs)))
 			opt.LibraryIDs = staffLibIDs
 			break
 		}
 
-		fmt.Println("[DEBUG] filtering by library ids query")
+		u.logger.DebugContext(ctx, "filtering by library query parameters", slog.Int("requested_libraries", len(opt.LibraryIDs)), slog.Int("assigned_libraries", len(staffLibIDs)))
 		var intersectLibIDs uuid.UUIDs
 		for _, id := range opt.LibraryIDs {
 			// filter out library ids that are not assigned to the staff
@@ -143,13 +144,13 @@ func (u Usecase) ListBorrowings(ctx context.Context, opt ListBorrowingsOption) (
 
 		if len(intersectLibIDs) == 0 {
 			// user is filtering by library ids but none of the ids are assigned to the staff
-			fmt.Println("[DEBUG] staff filters by lib ids but none assigned")
+			u.logger.DebugContext(ctx, "no matching libraries found", slog.String("fallback", "assigned_libraries"))
 			opt.LibraryIDs = staffLibIDs
 			break
 		}
 
 		// user is filtering by library ids and some of the ids are assigned to the staff
-		fmt.Println("[DEBUG] staff filters by lib ids and some assigned")
+		u.logger.DebugContext(ctx, "filtering by matched libraries", slog.Int("matched_count", len(intersectLibIDs)))
 		opt.LibraryIDs = intersectLibIDs
 	}
 
@@ -189,13 +190,13 @@ func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt Borrowi
 
 	switch role {
 	case "SUPERADMIN":
-		fmt.Println("[DEBUG] global superadmin")
+		u.logger.DebugContext(ctx, "role authorization check", slog.String("role", "SUPERADMIN"), slog.String("access", "allow_all"))
 		// ALLOW ALL
 	case "ADMIN":
-		fmt.Println("[DEBUG] global admin")
+		u.logger.DebugContext(ctx, "role authorization check", slog.String("role", "ADMIN"), slog.String("access", "allow_all"))
 		// ALLOW ALL
 	case "USER":
-		fmt.Println("[DEBUG] global user")
+		u.logger.DebugContext(ctx, "role authorization check", slog.String("role", "USER"))
 		staffs, _, err := u.repo.ListStaffs(ctx, ListStaffsOption{
 			UserID: userID.String(),
 			// Using a limit of 500 for now, adjust as needed based on expected data size
@@ -206,13 +207,13 @@ func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt Borrowi
 		}
 		// user is not staff
 		if len(staffs) == 0 {
-			fmt.Println("[DEBUG] user is not staff, filtering by user id")
+			u.logger.DebugContext(ctx, "filtering borrowing by user", slog.String("filter_type", "user_not_staff"), slog.String("user_id", userID.String()))
 			opt.UserIDs = uuid.UUIDs{userID}
 			break
 		}
 
 		// user is staff
-		fmt.Println("[DEBUG] user is staff")
+		u.logger.DebugContext(ctx, "user is staff member", slog.Int("staff_count", len(staffs)))
 		var staffLibIDs uuid.UUIDs
 		for _, staff := range staffs {
 			staffLibIDs = append(staffLibIDs, staff.LibraryID)
@@ -220,12 +221,12 @@ func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt Borrowi
 		// user is staff, filtering by library ids
 		if len(opt.LibraryIDs) == 0 {
 			// user is staff, filters default to assigned libraries
-			fmt.Println("[DEBUG] filtering by default assigned libraries")
+			u.logger.DebugContext(ctx, "filtering by staff assigned libraries", slog.Int("library_count", len(staffLibIDs)))
 			opt.LibraryIDs = staffLibIDs
 			break
 		}
 
-		fmt.Println("[DEBUG] filtering by library ids query")
+		u.logger.DebugContext(ctx, "filtering by library query parameters", slog.Int("requested_libraries", len(opt.LibraryIDs)), slog.Int("assigned_libraries", len(staffLibIDs)))
 		var intersectLibIDs uuid.UUIDs
 		for _, id := range opt.LibraryIDs {
 			// filter out library ids that are not assigned to the staff
@@ -236,13 +237,13 @@ func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt Borrowi
 
 		if len(intersectLibIDs) == 0 {
 			// user is filtering by library ids but none of the ids are assigned to the staff
-			fmt.Println("[DEBUG] staff filters by lib ids but none assigned")
+			u.logger.DebugContext(ctx, "no matching libraries found", slog.String("fallback", "assigned_libraries"))
 			opt.LibraryIDs = staffLibIDs
 			break
 		}
 
 		// user is filtering by library ids and some of the ids are assigned to the staff
-		fmt.Println("[DEBUG] staff filters by lib ids and some assigned")
+		u.logger.DebugContext(ctx, "filtering by matched libraries", slog.Int("matched_count", len(intersectLibIDs)))
 		opt.LibraryIDs = intersectLibIDs
 	}
 	borrow, err := u.repo.GetBorrowingByID(ctx, id, opt)
@@ -273,7 +274,10 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	}
 	// TODO: ErrMembershipExpired
 	if s.ExpiresAt.Before(time.Now()) {
-		fmt.Println(s.ExpiresAt, time.Now())
+		u.logger.WarnContext(ctx, "subscription expired",
+			slog.String("subscription_id", s.ID.String()),
+			slog.Time("expires_at", s.ExpiresAt),
+			slog.Time("current_time", time.Now()))
 		return Borrowing{}, fmt.Errorf("membership subscription %s expired", s.ID)
 	}
 
