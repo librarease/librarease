@@ -17,6 +17,7 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9/maintnotifications"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/plugin/opentelemetry/tracing"
@@ -278,6 +279,9 @@ func NewApp(logger *slog.Logger) (*App, error) {
 		Addr:     redisAddr,
 		Password: redisPassword,
 		DB:       0, // use default DB
+		MaintNotificationsConfig: &maintnotifications.Config{
+			Mode: maintnotifications.ModeDisabled,
+		},
 	})
 
 	// Enable OpenTelemetry tracing for Redis
