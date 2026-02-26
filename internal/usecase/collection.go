@@ -3,16 +3,13 @@ package usecase
 import (
 	"context"
 	"encoding/json"
-	"image"
+	"fmt"
 	"log"
-	"net/http"
+	"strings"
 	"time"
 
-	"github.com/cenkalti/dominantcolor"
 	"github.com/google/uuid"
-
-	_ "image/jpeg"
-	_ "image/png"
+	"github.com/librarease/librarease/internal/config"
 )
 
 // Collection structures
@@ -20,16 +17,22 @@ type Collection struct {
 	ID          uuid.UUID
 	LibraryID   uuid.UUID
 	Title       string
-	Cover       *Asset
+	Cover       string
+	Colors      json.RawMessage
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Description string
 
 	Library *Library
+	Stats   *CollectionStats
 
 	BookCount     int
 	FollowerCount int
 	BookIDs       []uuid.UUID
+}
+
+type CollectionStats struct {
+	FollowedAt *time.Time
 }
 
 type ListCollectionsOption struct {
@@ -40,12 +43,16 @@ type ListCollectionsOption struct {
 	IncludeLibrary   bool
 	IncludeBooks     bool
 	IncludeFollowers bool
+	IncludeStats     bool
+	FollowedUserID   uuid.UUID
 	SortBy           string
 	SortIn           string
 }
 
 type GetCollectionOption struct {
 	IncludeBookIDs bool
+	IncludeStats   bool
+	FollowedUserID uuid.UUID
 }
 
 // CollectionBook structures
@@ -95,6 +102,23 @@ type ListCollectionFollowersOption struct {
 
 // Collection usecase methods
 func (u Usecase) ListCollections(ctx context.Context, opt ListCollectionsOption) ([]Collection, int, error) {
+	if opt.IncludeStats {
+		role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+		if !ok {
+			return nil, 0, fmt.Errorf("user role not found in context")
+		}
+		userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+		if !ok {
+			return nil, 0, fmt.Errorf("user id not found in context")
+		}
+		switch role {
+		case "SUPERADMIN", "ADMIN", "USER":
+			opt.FollowedUserID = userID
+		default:
+			return nil, 0, fmt.Errorf("invalid user role: %s", role)
+		}
+	}
+
 	collections, count, err := u.repo.ListCollections(ctx, opt)
 	if err != nil {
 		return nil, 0, err
@@ -102,8 +126,8 @@ func (u Usecase) ListCollections(ctx context.Context, opt ListCollectionsOption)
 
 	var list []Collection
 	for _, c := range collections {
-		if c.Cover != nil {
-			c.Cover.Path = u.fileStorageProvider.GetPublicURL(c.Cover.Path)
+		if c.Cover != "" {
+			c.Cover = u.fileStorageProvider.GetPublicURL(c.Cover)
 		}
 		list = append(list, c)
 	}
@@ -112,31 +136,49 @@ func (u Usecase) ListCollections(ctx context.Context, opt ListCollectionsOption)
 }
 
 func (u Usecase) GetCollectionByID(ctx context.Context, id uuid.UUID, opt GetCollectionOption) (Collection, error) {
+	if opt.IncludeStats {
+		role, ok := ctx.Value(config.CTX_KEY_USER_ROLE).(string)
+		if !ok {
+			return Collection{}, fmt.Errorf("user role not found in context")
+		}
+		userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+		if !ok {
+			return Collection{}, fmt.Errorf("user id not found in context")
+		}
+		switch role {
+		case "SUPERADMIN", "ADMIN", "USER":
+			opt.FollowedUserID = userID
+		default:
+			return Collection{}, fmt.Errorf("invalid user role: %s", role)
+		}
+	}
+
 	collection, err := u.repo.GetCollectionByID(ctx, id, opt)
 	if err != nil {
 		return Collection{}, err
 	}
 
-	if collection.Cover != nil {
-		collection.Cover.Path = u.fileStorageProvider.GetPublicURL(collection.Cover.Path)
+	if collection.Cover != "" {
+		collection.Cover = u.fileStorageProvider.GetPublicURL(collection.Cover)
 	}
 
 	return collection, nil
 }
 
 func (u Usecase) CreateCollection(ctx context.Context, c Collection) (Collection, error) {
+	if c.Cover != "" {
+		if c.ID == uuid.Nil {
+			c.ID = uuid.New()
+		}
 
-	if c.Cover != nil {
-		temp := u.fileStorageProvider.TempPath()
-		url, err := u.fileStorageProvider.GetPresignedURL(ctx, temp+"/"+c.Cover.Path)
+		coverPath := fmt.Sprintf("public/collections/%s/cover", c.ID.String())
+		storedCoverPath, err := u.fileStorageProvider.CopyFilePreserveFilename(ctx, c.Cover, coverPath)
 		if err != nil {
-			return Collection{}, err
+			log.Printf("CreateCollection: copy cover for collection %s failed: %v", c.ID, err)
+			c.Cover = ""
+		} else {
+			c.Cover = storedCoverPath
 		}
-		colors, err := ExtractColors(ctx, url)
-		if err != nil {
-			return Collection{}, err
-		}
-		c.Cover.Colors = colors
 	}
 
 	col, err := u.repo.CreateCollection(ctx, c)
@@ -144,12 +186,8 @@ func (u Usecase) CreateCollection(ctx context.Context, c Collection) (Collection
 		return Collection{}, err
 	}
 
-	if c.Cover != nil {
-		if err := u.fileStorageProvider.MoveTempFilePublic(ctx, c.Cover.Path, "collections/covers"); err != nil {
-			log.Printf("err_CreateCollection_fileStorageProvider.MoveTempFilePublic: %v", err)
-			return col, nil
-		}
-
+	if col.Cover != "" {
+		col.Cover = u.fileStorageProvider.GetPublicURL(col.Cover)
 	}
 	return col, nil
 }
@@ -158,28 +196,30 @@ type UpdateCollectionRequest struct {
 	Title       string
 	Description string
 	UpdateCover *string
-	Cover       *Asset
+	Cover       *string
+	Colors      json.RawMessage
 }
 
 func (u Usecase) UpdateCollection(ctx context.Context, id uuid.UUID, req UpdateCollectionRequest) (Collection, error) {
 	if req.UpdateCover != nil {
-		err := u.fileStorageProvider.MoveTempFilePublic(ctx, *req.UpdateCover, "collections/covers")
+		coverPath := fmt.Sprintf("public/collections/%s/cover", id.String())
+		storedCoverPath, err := u.fileStorageProvider.CopyFilePreserveFilename(ctx, *req.UpdateCover, coverPath)
 		if err != nil {
-			log.Printf("err_UpdateCollection_fileStorageProvider.MoveTempFilePublic: %v", err)
-			return Collection{}, err
-		}
-
-		colors, err := ExtractColors(ctx, u.fileStorageProvider.GetPublicURL(*req.UpdateCover))
-		if err != nil {
-			log.Printf("err_UpdateCollection_ExtractColors: %v", err)
-			return Collection{}, err
-		}
-		req.Cover = &Asset{
-			Path:   *req.UpdateCover,
-			Colors: colors,
+			log.Printf("err_UpdateCollection_fileStorageProvider.CopyFilePreserveFilename: %v", err)
+			req.Cover = nil
+		} else {
+			req.Cover = &storedCoverPath
 		}
 	}
-	return u.repo.UpdateCollection(ctx, id, req)
+
+	c, err := u.repo.UpdateCollection(ctx, id, req)
+	if err != nil {
+		return Collection{}, err
+	}
+	if c.Cover != "" {
+		c.Cover = u.fileStorageProvider.GetPublicURL(c.Cover)
+	}
+	return c, nil
 }
 
 func (u Usecase) DeleteCollection(ctx context.Context, id uuid.UUID) error {
@@ -218,6 +258,13 @@ func (u Usecase) UpdateCollectionBooks(ctx context.Context, id uuid.UUID, bookID
 		existingIDs[e.BookID] = struct{}{}
 	}
 
+	addedIDs := make([]uuid.UUID, 0)
+	for nid := range newIDs {
+		if _, found := existingIDs[nid]; !found {
+			addedIDs = append(addedIDs, nid)
+		}
+	}
+
 	removedIDs := make([]uuid.UUID, 0)
 	for eid := range existingIDs {
 		if _, found := newIDs[eid]; !found {
@@ -231,43 +278,99 @@ func (u Usecase) UpdateCollectionBooks(ctx context.Context, id uuid.UUID, bookID
 		}
 	}
 
+	var created []CollectionBook
 	if len(bookIDs) > 0 {
-		return u.repo.UpdateCollectionBooks(ctx, id, bookIDs)
+		created, err = u.repo.UpdateCollectionBooks(ctx, id, bookIDs)
+		if err != nil {
+			return nil, err
+		}
 	}
 
+	if len(addedIDs) > 0 {
+		go func(collectionID uuid.UUID, added []uuid.UUID) {
+			bg := context.Background()
+
+			collection, err := u.repo.GetCollectionByID(bg, collectionID, GetCollectionOption{})
+			if err != nil {
+				log.Printf("err_UpdateCollectionBooks_GetCollectionByID: %v", err)
+				return
+			}
+
+			books, _, err := u.repo.ListBooks(bg, ListBooksOption{
+				IDs: added,
+			})
+			if err != nil {
+				log.Printf("err_UpdateCollectionBooks_ListBooks: %v", err)
+				return
+			}
+
+			followers, _, err := u.repo.ListCollectionFollowers(bg, ListCollectionFollowersOption{
+				CollectionID: collectionID,
+			})
+			if err != nil {
+				log.Printf("err_UpdateCollectionBooks_ListCollectionFollowers: %v", err)
+				return
+			}
+
+			titles := make([]string, 0, len(books))
+			for _, b := range books {
+				if b.Title != "" {
+					titles = append(titles, b.Title)
+				}
+			}
+
+			for _, follower := range followers {
+				message := ""
+				if len(titles) > 0 && len(titles) <= 3 {
+					message = "New books added to " + collection.Title + ": " + strings.Join(titles, ", ")
+				} else if len(titles) > 3 {
+					message = fmt.Sprintf("New books added to %s: %d new books", collection.Title, len(titles))
+				} else {
+					message = fmt.Sprintf("New books added to %s", collection.Title)
+				}
+
+				if err := u.CreateNotification(bg, Notification{
+					Title:         "Collection Updated",
+					Message:       message,
+					UserID:        follower.UserID,
+					ReferenceID:   &collectionID,
+					ReferenceType: "COLLECTION",
+				}); err != nil {
+					log.Printf("err_UpdateCollectionBooks_CreateNotification: %v", err)
+				}
+			}
+		}(id, addedIDs)
+	}
+
+	if len(created) > 0 {
+		return created, nil
+	}
 	return nil, nil
 }
 
-// // CollectionFollower usecase methods
-// func (u Usecase) ListCollectionFollowers(ctx context.Context, opt ListCollectionFollowersOption) ([]CollectionFollower, int, error) {
-// 	return u.repo.ListCollectionFollowers(ctx, opt)
-// }
+// CollectionFollower usecase methods
+func (u Usecase) ListCollectionFollowers(ctx context.Context, opt ListCollectionFollowersOption) ([]CollectionFollower, int, error) {
+	return u.repo.ListCollectionFollowers(ctx, opt)
+}
 
-// func (u Usecase) CreateCollectionFollower(ctx context.Context, cf CollectionFollower) (CollectionFollower, error) {
-// 	return u.repo.CreateCollectionFollower(ctx, cf)
-// }
-
-// func (u Usecase) DeleteCollectionFollower(ctx context.Context, id uuid.UUID) error {
-// 	return u.repo.DeleteCollectionFollower(ctx, id)
-// }
-
-func ExtractColors(ctx context.Context, url string) ([]byte, error) {
-	f, err := http.Get(url)
-	if err != nil {
-		return nil, err
+func (u Usecase) CreateCollectionFollower(ctx context.Context, collectionID uuid.UUID) (CollectionFollower, error) {
+	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return CollectionFollower{}, fmt.Errorf("user id not found in context")
 	}
-	defer f.Body.Close()
+	return u.repo.CreateCollectionFollower(ctx, CollectionFollower{
+		CollectionID: collectionID,
+		UserID:       userID,
+	})
+}
 
-	img, _, err := image.Decode(f.Body)
-	if err != nil {
-		return nil, err
+func (u Usecase) DeleteCollectionFollower(ctx context.Context, collectionID uuid.UUID) error {
+	userID, ok := ctx.Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return fmt.Errorf("user id not found in context")
 	}
-
-	colors := make(map[int][4]uint8)
-	dColors := dominantcolor.FindN(img, 4)
-	for i, color := range dColors {
-		colors[i] = [4]uint8{color.R, color.G, color.B, color.A}
-	}
-
-	return json.Marshal(colors)
+	return u.repo.DeleteCollectionFollower(ctx, CollectionFollower{
+		CollectionID: collectionID,
+		UserID:       userID,
+	})
 }

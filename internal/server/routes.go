@@ -130,14 +130,16 @@ func (s *Server) RegisterRoutes() http.Handler {
 	notificationGroup.GET("/stream", s.StreamNotifications)
 
 	var collectionGroup = e.Group("/api/v1/collections")
-	collectionGroup.GET("", s.ListCollections)
-	collectionGroup.GET("/:id", s.GetCollectionByID)
+	collectionGroup.GET("", s.ListCollections, s.AuthMiddleware)
+	collectionGroup.GET("/:id", s.GetCollectionByID, s.AuthMiddleware)
 	collectionGroup.POST("", s.CreateCollection, s.AuthMiddleware)
 	collectionGroup.PUT("/:id", s.UpdateCollection, s.AuthMiddleware)
 	collectionGroup.DELETE("/:id", s.DeleteCollection, s.AuthMiddleware)
 
 	collectionGroup.GET("/:collection_id/books", s.ListCollectionBooks)
 	collectionGroup.PUT("/:collection_id/books", s.UpdateCollectionBooks, s.AuthMiddleware)
+	collectionGroup.POST("/:collection_id/follow", s.FollowCollection, s.AuthMiddleware)
+	collectionGroup.DELETE("/:collection_id/follow", s.UnfollowCollection, s.AuthMiddleware)
 
 	// collectionGroup.GET("/:collection_id/followers", s.ListCollectionFollowers)
 	// collectionGroup.POST("/:collection_id/followers", s.CreateCollectionFollower, s.AuthMiddleware)

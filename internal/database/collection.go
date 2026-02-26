@@ -7,6 +7,7 @@ import (
 	"github.com/librarease/librarease/internal/usecase"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -15,6 +16,8 @@ type Collection struct {
 	ID          uuid.UUID       `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
 	LibraryID   uuid.UUID       `gorm:"column:library_id;type:uuid;not null"`
 	Title       string          `gorm:"column:title;type:varchar(255);not null"`
+	Cover       string          `gorm:"column:cover;type:varchar(255)"`
+	Colors      datatypes.JSON  `gorm:"column:colors"`
 	Description string          `gorm:"column:description;type:text"`
 	CreatedAt   time.Time       `gorm:"column:created_at"`
 	UpdatedAt   time.Time       `gorm:"column:updated_at"`
@@ -24,10 +27,9 @@ type Collection struct {
 	Books     []CollectionBooks     `gorm:"foreignKey:CollectionID"`
 	Followers []CollectionFollowers `gorm:"foreignKey:CollectionID"`
 
-	Cover *Asset `gorm:"polymorphicType:OwnerType;polymorphicId:OwnerID;polymorphicValue:collections"`
-
-	BookCount     int `gorm:"->;-:migration"`
-	FollowerCount int `gorm:"->;-:migration"`
+	BookCount     int        `gorm:"->;-:migration"`
+	FollowerCount int        `gorm:"->;-:migration"`
+	FollowedAt    *time.Time `gorm:"column:followed_at;->;-:migration"`
 }
 
 func (Collection) TableName() string {
@@ -51,12 +53,11 @@ func (CollectionBooks) TableName() string {
 }
 
 type CollectionFollowers struct {
-	ID           uuid.UUID       `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
-	CollectionID uuid.UUID       `gorm:"column:collection_id;type:uuid;not null;uniqueIndex:idx_collection_follower,where:deleted_at IS NULL"`
-	UserID       uuid.UUID       `gorm:"column:user_id;type:uuid;not null;uniqueIndex:idx_collection_follower,where:deleted_at IS NULL"`
-	CreatedAt    time.Time       `gorm:"column:created_at"`
-	UpdatedAt    time.Time       `gorm:"column:updated_at"`
-	DeletedAt    *gorm.DeletedAt `gorm:"column:deleted_at"`
+	ID           uuid.UUID `gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
+	CollectionID uuid.UUID `gorm:"column:collection_id;type:uuid;not null;uniqueIndex:idx_collection_follower"`
+	UserID       uuid.UUID `gorm:"column:user_id;type:uuid;not null;uniqueIndex:idx_collection_follower"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at"`
 
 	Collection *Collection `gorm:"foreignKey:CollectionID;references:ID"`
 	User       *User       `gorm:"foreignKey:UserID;references:ID"`
@@ -77,11 +78,18 @@ func (s *service) ListCollections(ctx context.Context, opt usecase.ListCollectio
 	db := s.db.
 		Model(&Collection{}).
 		WithContext(ctx).
-		Preload("Cover", func(db *gorm.DB) *gorm.DB {
-			return db.Order("updated_at DESC")
-		}).
 		Select(`*,
-			(SELECT COUNT(*) FROM collection_books WHERE collection_books.collection_id = collections.id AND collection_books.deleted_at IS NULL) AS book_count`)
+			(SELECT COUNT(*) FROM collection_books WHERE collection_books.collection_id = collections.id AND collection_books.deleted_at IS NULL) AS book_count,
+			(SELECT COUNT(*) FROM collection_followers WHERE collection_followers.collection_id = collections.id) AS follower_count`)
+	if opt.IncludeStats && opt.FollowedUserID != uuid.Nil {
+		db = db.Select(`*,
+			(SELECT COUNT(*) FROM collection_books WHERE collection_books.collection_id = collections.id AND collection_books.deleted_at IS NULL) AS book_count,
+			(SELECT COUNT(*) FROM collection_followers WHERE collection_followers.collection_id = collections.id) AS follower_count,
+			(SELECT created_at FROM collection_followers
+			 WHERE collection_followers.collection_id = collections.id
+			   AND collection_followers.user_id = ?
+			 LIMIT 1) AS followed_at`, opt.FollowedUserID)
+	}
 
 	if opt.LibraryID != uuid.Nil {
 		db = db.Where("library_id = ?", opt.LibraryID)
@@ -136,6 +144,8 @@ func (s *service) ListCollections(ctx context.Context, opt usecase.ListCollectio
 			ID:            c.ID,
 			LibraryID:     c.LibraryID,
 			Title:         c.Title,
+			Cover:         c.Cover,
+			Colors:        []byte(c.Colors),
 			Description:   c.Description,
 			CreatedAt:     c.CreatedAt,
 			UpdatedAt:     c.UpdatedAt,
@@ -153,19 +163,9 @@ func (s *service) ListCollections(ctx context.Context, opt usecase.ListCollectio
 				UpdatedAt: c.Library.UpdatedAt,
 			}
 		}
-
-		if c.Cover != nil {
-			uc.Cover = &usecase.Asset{
-				ID:        c.Cover.ID,
-				Path:      c.Cover.Path,
-				Colors:    c.Cover.Colors,
-				OwnerID:   c.Cover.OwnerID,
-				OwnerType: c.Cover.OwnerType,
-				Kind:      c.Cover.Kind,
-				IsPrimary: c.Cover.IsPrimary,
-				Position:  c.Cover.Position,
-				CreatedAt: c.Cover.CreatedAt,
-				UpdatedAt: c.Cover.UpdatedAt,
+		if opt.IncludeStats {
+			uc.Stats = &usecase.CollectionStats{
+				FollowedAt: c.FollowedAt,
 			}
 		}
 
@@ -187,11 +187,18 @@ func (s *service) GetCollectionByID(
 	db := s.db.
 		WithContext(ctx).
 		Preload("Library").
-		Preload("Cover", func(db *gorm.DB) *gorm.DB {
-			return db.Order("updated_at DESC")
-		}).
 		Select(`*,
-			(SELECT COUNT(*) FROM collection_books WHERE collection_books.collection_id = collections.id AND collection_books.deleted_at IS NULL) AS book_count`)
+			(SELECT COUNT(*) FROM collection_books WHERE collection_books.collection_id = collections.id AND collection_books.deleted_at IS NULL) AS book_count,
+			(SELECT COUNT(*) FROM collection_followers WHERE collection_followers.collection_id = collections.id) AS follower_count`)
+	if opt.IncludeStats && opt.FollowedUserID != uuid.Nil {
+		db = db.Select(`*,
+			(SELECT COUNT(*) FROM collection_books WHERE collection_books.collection_id = collections.id AND collection_books.deleted_at IS NULL) AS book_count,
+			(SELECT COUNT(*) FROM collection_followers WHERE collection_followers.collection_id = collections.id) AS follower_count,
+			(SELECT created_at FROM collection_followers
+			 WHERE collection_followers.collection_id = collections.id
+			   AND collection_followers.user_id = ?
+			 LIMIT 1) AS followed_at`, opt.FollowedUserID)
+	}
 
 	if err := db.First(&collection, id).Error; err != nil {
 		return usecase.Collection{}, err
@@ -212,6 +219,8 @@ func (s *service) GetCollectionByID(
 		ID:            collection.ID,
 		LibraryID:     collection.LibraryID,
 		Title:         collection.Title,
+		Cover:         collection.Cover,
+		Colors:        []byte(collection.Colors),
 		Description:   collection.Description,
 		CreatedAt:     collection.CreatedAt,
 		UpdatedAt:     collection.UpdatedAt,
@@ -230,19 +239,9 @@ func (s *service) GetCollectionByID(
 			UpdatedAt: collection.Library.UpdatedAt,
 		}
 	}
-
-	if collection.Cover != nil {
-		uc.Cover = &usecase.Asset{
-			ID:        collection.Cover.ID,
-			Path:      collection.Cover.Path,
-			Colors:    collection.Cover.Colors,
-			OwnerID:   collection.Cover.OwnerID,
-			OwnerType: collection.Cover.OwnerType,
-			Kind:      collection.Cover.Kind,
-			IsPrimary: collection.Cover.IsPrimary,
-			Position:  collection.Cover.Position,
-			CreatedAt: collection.Cover.CreatedAt,
-			UpdatedAt: collection.Cover.UpdatedAt,
+	if opt.IncludeStats {
+		uc.Stats = &usecase.CollectionStats{
+			FollowedAt: collection.FollowedAt,
 		}
 	}
 
@@ -251,17 +250,12 @@ func (s *service) GetCollectionByID(
 
 // CreateCollection creates a new collection
 func (s *service) CreateCollection(ctx context.Context, c usecase.Collection) (usecase.Collection, error) {
-	var cover *Asset
-	if c.Cover != nil {
-		cover = &Asset{
-			Path:   c.Cover.Path,
-			Colors: c.Cover.Colors,
-		}
-	}
 	collection := Collection{
+		ID:          c.ID,
 		LibraryID:   c.LibraryID,
 		Title:       c.Title,
-		Cover:       cover,
+		Cover:       c.Cover,
+		Colors:      datatypes.JSON(c.Colors),
 		Description: c.Description,
 	}
 
@@ -274,47 +268,57 @@ func (s *service) CreateCollection(ctx context.Context, c usecase.Collection) (u
 	}
 
 	return usecase.Collection{
-		ID:        collection.ID,
-		LibraryID: collection.LibraryID,
-		Title:     collection.Title,
-		CreatedAt: collection.CreatedAt,
-		UpdatedAt: collection.UpdatedAt,
+		ID:          collection.ID,
+		LibraryID:   collection.LibraryID,
+		Title:       collection.Title,
+		Cover:       collection.Cover,
+		Colors:      []byte(collection.Colors),
+		Description: collection.Description,
+		CreatedAt:   collection.CreatedAt,
+		UpdatedAt:   collection.UpdatedAt,
 	}, nil
 }
 
 // UpdateCollection updates an existing collection
 func (s *service) UpdateCollection(ctx context.Context, id uuid.UUID, req usecase.UpdateCollectionRequest) (usecase.Collection, error) {
-
-	var cover *Asset
+	update := map[string]interface{}{
+		"id": id,
+	}
+	if req.Title != "" {
+		update["title"] = req.Title
+	}
+	if req.Description != "" {
+		update["description"] = req.Description
+	}
 	if req.Cover != nil {
-		cover = &Asset{
-			Path:   req.Cover.Path,
-			Colors: req.Cover.Colors,
-		}
+		update["cover"] = *req.Cover
+	}
+	if req.Colors != nil {
+		update["colors"] = req.Colors
 	}
 
-	update := Collection{
-		ID:          id,
-		Title:       req.Title,
-		Description: req.Description,
-		Cover:       cover,
-	}
+	var collection Collection
 
 	if err := s.db.
 		WithContext(ctx).
 		Clauses(clause.Returning{}).
-		Updates(&update).
+		Model(&Collection{}).
+		Where("id = ?", id).
+		Updates(update).
+		First(&collection).
 		Error; err != nil {
 		return usecase.Collection{}, err
 	}
 
 	return usecase.Collection{
-		ID:          update.ID,
-		LibraryID:   update.LibraryID,
-		Title:       update.Title,
-		Description: update.Description,
-		CreatedAt:   update.CreatedAt,
-		UpdatedAt:   update.UpdatedAt,
+		ID:          collection.ID,
+		LibraryID:   collection.LibraryID,
+		Title:       collection.Title,
+		Cover:       collection.Cover,
+		Colors:      []byte(collection.Colors),
+		Description: collection.Description,
+		CreatedAt:   collection.CreatedAt,
+		UpdatedAt:   collection.UpdatedAt,
 	}, nil
 }
 
@@ -599,7 +603,9 @@ func (s *service) CreateCollectionFollower(ctx context.Context, cf usecase.Colle
 		UserID:       cf.UserID,
 	}
 
-	if err := s.db.WithContext(ctx).Create(&collectionFollower).Error; err != nil {
+	if err := s.db.WithContext(ctx).
+		Where("collection_id = ? AND user_id = ?", cf.CollectionID, cf.UserID).
+		FirstOrCreate(&collectionFollower).Error; err != nil {
 		return usecase.CollectionFollower{}, err
 	}
 
@@ -613,6 +619,9 @@ func (s *service) CreateCollectionFollower(ctx context.Context, cf usecase.Colle
 }
 
 // DeleteCollectionFollower removes a follower from a collection
-func (s *service) DeleteCollectionFollower(ctx context.Context, id uuid.UUID) error {
-	return s.db.WithContext(ctx).Delete(&CollectionFollowers{}, id).Error
+func (s *service) DeleteCollectionFollower(ctx context.Context, cf usecase.CollectionFollower) error {
+	return s.db.WithContext(ctx).
+		Where("collection_id = ? AND user_id = ?", cf.CollectionID, cf.UserID).
+		Delete(&CollectionFollowers{}).
+		Error
 }

@@ -139,9 +139,9 @@ type Service interface {
 	UpdateCollectionBooks(context.Context, uuid.UUID, []uuid.UUID) ([]usecase.CollectionBook, error)
 
 	// collection followers
-	// ListCollectionFollowers(context.Context, usecase.ListCollectionFollowersOption) ([]usecase.CollectionFollower, int, error)
-	// CreateCollectionFollower(context.Context, usecase.CollectionFollower) (usecase.CollectionFollower, error)
-	// DeleteCollectionFollower(context.Context, uuid.UUID) error
+	ListCollectionFollowers(context.Context, usecase.ListCollectionFollowersOption) ([]usecase.CollectionFollower, int, error)
+	CreateCollectionFollower(context.Context, uuid.UUID) (usecase.CollectionFollower, error)
+	DeleteCollectionFollower(context.Context, uuid.UUID) error
 
 	// job
 	ListJobs(context.Context, usecase.ListJobsOption) ([]usecase.Job, int, error)

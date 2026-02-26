@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -22,11 +21,6 @@ type CollectionBook struct {
 	Book         *Book       `json:"book,omitempty"`
 }
 
-// Collection Follower request/response structures
-type CreateCollectionFollowerRequest struct {
-	UserID uuid.UUID `json:"user_id" validate:"required"`
-}
-
 type CollectionFollower struct {
 	ID           string      `json:"id"`
 	CollectionID string      `json:"collection_id"`
@@ -38,17 +32,23 @@ type CollectionFollower struct {
 }
 
 type Collection struct {
-	ID            string   `json:"id"`
-	LibraryID     string   `json:"library_id"`
-	Title         string   `json:"title"`
-	Description   string   `json:"description,omitempty"`
-	CreatedAt     string   `json:"created_at"`
-	UpdatedAt     string   `json:"updated_at"`
-	Library       *Library `json:"library,omitempty"`
-	Cover         *Asset   `json:"cover,omitempty"`
-	BookCount     int      `json:"book_count"`
-	FollowerCount int      `json:"follower_count"`
-	BookIDs       []string `json:"book_ids"`
+	ID            string           `json:"id"`
+	LibraryID     string           `json:"library_id"`
+	Title         string           `json:"title"`
+	Cover         string           `json:"cover,omitempty"`
+	Colors        json.RawMessage  `json:"colors,omitempty"`
+	Description   string           `json:"description,omitempty"`
+	CreatedAt     string           `json:"created_at"`
+	UpdatedAt     string           `json:"updated_at"`
+	Library       *Library         `json:"library,omitempty"`
+	Stats         *CollectionStats `json:"stats,omitempty"`
+	BookCount     int              `json:"book_count"`
+	FollowerCount int              `json:"follower_count"`
+	BookIDs       []string         `json:"book_ids"`
+}
+
+type CollectionStats struct {
+	FollowedAt *string `json:"followed_at,omitempty"`
 }
 
 type ListCollectionsRequest struct {
@@ -58,6 +58,7 @@ type ListCollectionsRequest struct {
 	Limit          int    `query:"limit"`
 	Skip           int    `query:"offset"`
 	IncludeLibrary bool   `query:"include_library"`
+	IncludeStats   bool   `query:"include_stats"`
 	SortBy         string `query:"sort_by" validate:"omitempty,oneof=created_at updated_at title"`
 	SortIn         string `query:"sort_in" validate:"omitempty,oneof=asc desc"`
 }
@@ -79,6 +80,7 @@ func (s *Server) ListCollections(ctx echo.Context) error {
 			Limit:          req.Limit,
 			Offset:         req.Skip,
 			IncludeLibrary: req.IncludeLibrary,
+			IncludeStats:   req.IncludeStats,
 			// BookTitle:      req.BookTitle,
 			SortBy: req.SortBy,
 			SortIn: req.SortIn,
@@ -93,6 +95,8 @@ func (s *Server) ListCollections(ctx echo.Context) error {
 			ID:            c.ID.String(),
 			LibraryID:     c.LibraryID.String(),
 			Title:         c.Title,
+			Cover:         c.Cover,
+			Colors:        c.Colors,
 			Description:   c.Description,
 			BookCount:     c.BookCount,
 			FollowerCount: c.FollowerCount,
@@ -110,17 +114,14 @@ func (s *Server) ListCollections(ctx echo.Context) error {
 				UpdatedAt: c.Library.UpdatedAt.UTC().Format(time.RFC3339),
 			}
 		}
-
-		if c.Cover != nil {
-			colors := make(map[int][4]uint8)
-			if err := json.Unmarshal([]byte(c.Cover.Colors), &colors); err != nil {
-				log.Printf("err_ListCollections_json.Unmarshal: %v", err)
-				continue
+		if c.Stats != nil {
+			var followedAt *string
+			if c.Stats.FollowedAt != nil {
+				v := c.Stats.FollowedAt.UTC().Format(time.RFC3339)
+				followedAt = &v
 			}
-			cr.Cover = &Asset{
-				ID:     c.Cover.ID.String(),
-				Path:   c.Cover.Path,
-				Colors: colors,
+			cr.Stats = &CollectionStats{
+				FollowedAt: followedAt,
 			}
 		}
 
@@ -138,6 +139,7 @@ type GetCollectionByIDRequest struct {
 	ID string `param:"id" validate:"required,uuid"`
 
 	IncludeBookIDs bool `query:"include_book_ids"`
+	IncludeStats   bool `query:"include_stats"`
 }
 
 func (s *Server) GetCollectionByID(ctx echo.Context) error {
@@ -153,22 +155,10 @@ func (s *Server) GetCollectionByID(ctx echo.Context) error {
 
 	col, err := s.server.GetCollectionByID(ctx.Request().Context(), id, usecase.GetCollectionOption{
 		IncludeBookIDs: req.IncludeBookIDs,
+		IncludeStats:   req.IncludeStats,
 	})
 	if err != nil {
 		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "collection not found"})
-	}
-
-	var asset *Asset
-	if col.Cover != nil {
-		colors := make(map[int][4]uint8)
-		if err := json.Unmarshal([]byte(col.Cover.Colors), &colors); err != nil {
-			log.Printf("err_GetCollectionByID_json.Unmarshal: %v", err)
-		}
-		asset = &Asset{
-			ID:     col.Cover.ID.String(),
-			Path:   col.Cover.Path,
-			Colors: colors,
-		}
 	}
 
 	var lib *Library
@@ -191,24 +181,36 @@ func (s *Server) GetCollectionByID(ctx echo.Context) error {
 		ID:            col.ID.String(),
 		LibraryID:     col.LibraryID.String(),
 		Title:         col.Title,
+		Cover:         col.Cover,
+		Colors:        col.Colors,
 		Description:   col.Description,
 		BookCount:     col.BookCount,
 		FollowerCount: col.FollowerCount,
 		CreatedAt:     col.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:     col.UpdatedAt.UTC().Format(time.RFC3339),
-		Cover:         asset,
 		Library:       lib,
 		BookIDs:       bookIDs,
+	}
+	if col.Stats != nil {
+		var followedAt *string
+		if col.Stats.FollowedAt != nil {
+			v := col.Stats.FollowedAt.UTC().Format(time.RFC3339)
+			followedAt = &v
+		}
+		collection.Stats = &CollectionStats{
+			FollowedAt: followedAt,
+		}
 	}
 
 	return ctx.JSON(http.StatusOK, Res{Data: collection})
 }
 
 type CreateCollectionRequest struct {
-	LibraryID   uuid.UUID `json:"library_id" validate:"required,uuid"`
-	Title       string    `json:"title" validate:"required"`
-	Cover       *string   `json:"cover,omitempty"`
-	Description string    `json:"description,omitempty"`
+	LibraryID   uuid.UUID       `json:"library_id" validate:"required,uuid"`
+	Title       string          `json:"title" validate:"required"`
+	Cover       *string         `json:"cover,omitempty"`
+	Colors      json.RawMessage `json:"colors"`
+	Description string          `json:"description,omitempty"`
 }
 
 func (s *Server) CreateCollection(ctx echo.Context) error {
@@ -220,17 +222,16 @@ func (s *Server) CreateCollection(ctx echo.Context) error {
 		return ctx.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	}
 
-	var asset *usecase.Asset
+	var cover string
 	if req.Cover != nil {
-		asset = &usecase.Asset{
-			Path: *req.Cover,
-		}
+		cover = *req.Cover
 	}
 
 	created, err := s.server.CreateCollection(ctx.Request().Context(), usecase.Collection{
 		LibraryID:   req.LibraryID,
 		Title:       req.Title,
-		Cover:       asset,
+		Cover:       cover,
+		Colors:      req.Colors,
 		Description: req.Description,
 	})
 	if err != nil {
@@ -250,9 +251,10 @@ func (s *Server) CreateCollection(ctx echo.Context) error {
 type UpdateCollectionRequest struct {
 	ID string `param:"id" validate:"required,uuid"`
 
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	UpdateCover *string `json:"update_cover"`
+	Title       string          `json:"title"`
+	Description string          `json:"description"`
+	UpdateCover *string         `json:"update_cover"`
+	Colors      json.RawMessage `json:"colors"`
 }
 
 func (s *Server) UpdateCollection(ctx echo.Context) error {
@@ -271,6 +273,7 @@ func (s *Server) UpdateCollection(ctx echo.Context) error {
 		Title:       req.Title,
 		Description: req.Description,
 		UpdateCover: req.UpdateCover,
+		Colors:      req.Colors,
 	})
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -445,6 +448,57 @@ func (s *Server) UpdateCollectionBooks(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusCreated, Res{Data: data})
+}
+
+type FollowCollectionRequest struct {
+	CollectionID string `param:"collection_id" validate:"required,uuid"`
+}
+
+func (s *Server) FollowCollection(ctx echo.Context) error {
+	var req FollowCollectionRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+	}
+
+	collectionID, _ := uuid.Parse(req.CollectionID)
+	created, err := s.server.CreateCollectionFollower(ctx.Request().Context(), collectionID)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	response := CollectionFollower{
+		ID:           created.ID.String(),
+		CollectionID: created.CollectionID.String(),
+		UserID:       created.UserID.String(),
+		CreatedAt:    created.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:    created.UpdatedAt.UTC().Format(time.RFC3339),
+	}
+
+	return ctx.JSON(http.StatusOK, response)
+}
+
+type UnfollowCollectionRequest struct {
+	CollectionID string `param:"collection_id" validate:"required,uuid"`
+}
+
+func (s *Server) UnfollowCollection(ctx echo.Context) error {
+	var req UnfollowCollectionRequest
+	if err := ctx.Bind(&req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	if err := s.validator.Struct(req); err != nil {
+		return ctx.JSON(http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+	}
+
+	collectionID, _ := uuid.Parse(req.CollectionID)
+	if err := s.server.DeleteCollectionFollower(ctx.Request().Context(), collectionID); err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]string{"message": "collection unfollowed successfully"})
 }
 
 // // DeleteCollectionBook handles DELETE /collections/:collection_id/books/:id

@@ -139,9 +139,9 @@ type Repository interface {
 	DeleteCollectionBooks(context.Context, uuid.UUID, []uuid.UUID) error
 
 	// collection followers
-	// ListCollectionFollowers(context.Context, ListCollectionFollowersOption) ([]CollectionFollower, int, error)
-	// CreateCollectionFollower(context.Context, CollectionFollower) (CollectionFollower, error)
-	// DeleteCollectionFollower(context.Context, uuid.UUID) error
+	ListCollectionFollowers(context.Context, ListCollectionFollowersOption) ([]CollectionFollower, int, error)
+	CreateCollectionFollower(context.Context, CollectionFollower) (CollectionFollower, error)
+	DeleteCollectionFollower(context.Context, CollectionFollower) error
 
 	// job
 	ListJobs(context.Context, ListJobsOption) ([]Job, int, error)

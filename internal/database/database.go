@@ -59,9 +59,8 @@ func New(gormDB *gorm.DB, noti *pgx.Conn, redis *redis.Client) (*service, error)
 			PushToken{},
 			Watchlist{},
 			Collection{},
-			Asset{},
 			CollectionBooks{},
-			// CollectionFollowers{},
+			CollectionFollowers{},
 			Job{},
 			Review{},
 		)
