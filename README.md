@@ -35,9 +35,16 @@ Edit `.env` with required values. Reference `docker-compose.example.yml` (exclud
 
 - **Database**: `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USER`, `DB_PASSWORD`
 - **Redis**: `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`
-- **MinIO/S3**: `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET_NAME`
+- **Storage (MinIO active)**: `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET_NAME`
+- **Storage (AWS S3 compatible provider)**: `AWS_S3_BUCKET_NAME`, `AWS_S3_BUCKET_TEMP_PATH`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 - **Firebase**: `FIREBASE_SERVICE_ACCOUNT_KEY_PATH`
 - **SMTP**: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`
+
+### Storage Provider Notes
+
+- Runtime wiring currently uses the MinIO provider in API server and worker startup.
+- The S3 provider is maintained with the same `FileStorageProvider` behavior and can be swapped in without usecase changes.
+- S3 provider configuration uses `AWS_S3_BUCKET_NAME`, `AWS_S3_BUCKET_TEMP_PATH`, plus standard AWS SDK environment variables (`AWS_REGION`, credentials).
 
 ### 2. Start Infrastructure
 

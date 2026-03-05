@@ -317,6 +317,7 @@ func NewApp(logger *slog.Logger) (*App, error) {
 	// 	bucket   = os.Getenv(config.ENV_KEY_S3_BUCKET)
 	// 	tempPath = os.Getenv(config.ENV_KEY_S3_TEMP_PATH)
 	// )
+
 	// fsp := filestorage.NewS3Storage(bucket, tempPath)
 
 	// MinIO (S3 compatible)
