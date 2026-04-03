@@ -104,7 +104,7 @@ require (
 	cloud.google.com/go/longrunning v0.8.0 // indirect
 	cloud.google.com/go/storage v1.59.2 // indirect
 	github.com/MicahParks/keyfunc v1.9.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.41.1 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.41.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.7
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.0
 	github.com/felixge/httpsnoop v1.0.4 // indirect
