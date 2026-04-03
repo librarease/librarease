@@ -1,7 +1,9 @@
 package cli
 
+import "strings"
+
 func p(name string, kind ParamKind, required bool, help string) ParamSpec {
-	return ParamSpec{Name: name, Kind: kind, Required: required, Help: help}
+	return ParamSpec{Name: name, Flag: strings.ReplaceAll(name, "_", "-"), Kind: kind, Required: required, Help: help}
 }
 
 func endpointSpecs() map[string][]CommandSpec {
@@ -281,26 +283,35 @@ func endpointSpecs() map[string][]CommandSpec {
 			}},
 			{Use: "read <id>", Short: "POST /api/v1/notifications/:id/read", Method: "POST", Path: "/api/v1/notifications/{id}/read", PathParamNames: []string{"id"}, ExpectEnvelope: false, NoContentSuccessText: "notification marked read"},
 			{Use: "read-all", Short: "POST /api/v1/notifications/read", Method: "POST", Path: "/api/v1/notifications/read", ExpectEnvelope: false, NoContentSuccessText: "all notifications marked read"},
-			{Use: "stream", Short: "GET /api/v1/notifications/stream", Method: "GET", Path: "/api/v1/notifications/stream", ExpectEnvelope: false, QueryParams: []ParamSpec{
-				p("user_id", ParamString, true, "User ID"),
-			}},
 		},
-		"collections": append(crudSpecs("/api/v1/collections", []ParamSpec{
-			p("library_id", ParamString, true, "Library ID"),
-			p("title", ParamString, true, "Title"),
-			p("cover", ParamString, false, "Cover"),
-			p("description", ParamString, false, "Description"),
-		}, []ParamSpec{
-			p("library_id", ParamString, false, "Library ID"),
-			p("title", ParamString, false, "Title"),
-			p("book_title", ParamString, false, "Book title"),
-			p("limit", ParamInt, false, "Limit"),
-			p("offset", ParamInt, false, "Offset"),
-			p("include_library", ParamBool, false, "Include library"),
-			p("include_stats", ParamBool, false, "Include stats"),
-			p("sort_by", ParamString, false, "Sort by"),
-			p("sort_in", ParamString, false, "Sort in"),
-		}), []CommandSpec{
+		"collections": {
+			{Use: "list", Short: "GET /api/v1/collections", Method: "GET", Path: "/api/v1/collections", ExpectEnvelope: true, QueryParams: []ParamSpec{
+				p("library_id", ParamString, false, "Library ID"),
+				p("title", ParamString, false, "Title"),
+				p("book_title", ParamString, false, "Book title"),
+				p("limit", ParamInt, false, "Limit"),
+				p("offset", ParamInt, false, "Offset"),
+				p("include_library", ParamBool, false, "Include library"),
+				p("include_stats", ParamBool, false, "Include stats"),
+				p("sort_by", ParamString, false, "Sort by"),
+				p("sort_in", ParamString, false, "Sort in"),
+			}},
+			{Use: "create", Short: "POST /api/v1/collections", Method: "POST", Path: "/api/v1/collections", ExpectEnvelope: true, BodyParams: []ParamSpec{
+				p("library_id", ParamString, true, "Library ID"),
+				p("title", ParamString, true, "Title"),
+				p("cover", ParamString, false, "Cover"),
+				p("description", ParamString, false, "Description"),
+			}},
+			{Use: "delete <id>", Short: "DELETE /api/v1/collections/:id", Method: "DELETE", Path: "/api/v1/collections/{id}", PathParamNames: []string{"id"}, ExpectEnvelope: false},
+			{Use: "get <id>", Short: "GET /api/v1/collections/:id", Method: "GET", Path: "/api/v1/collections/{id}", PathParamNames: []string{"id"}, ExpectEnvelope: true, QueryParams: []ParamSpec{
+				p("include_book_ids", ParamBool, false, "Include book ids"),
+				p("include_stats", ParamBool, false, "Include stats"),
+			}},
+			{Use: "update <id>", Short: "PUT /api/v1/collections/:id", Method: "PUT", Path: "/api/v1/collections/{id}", PathParamNames: []string{"id"}, ExpectEnvelope: true, BodyParams: []ParamSpec{
+				p("title", ParamString, false, "Title"),
+				p("description", ParamString, false, "Description"),
+				p("update_cover", ParamString, false, "Update cover"),
+			}},
 			{Use: "books-list <collection_id>", Short: "GET /api/v1/collections/:collection_id/books", Method: "GET", Path: "/api/v1/collections/{collection_id}/books", PathParamNames: []string{"collection_id"}, ExpectEnvelope: true, QueryParams: []ParamSpec{
 				p("include_book", ParamBool, false, "Include book"),
 				p("book_title", ParamString, false, "Book title"),
@@ -316,7 +327,7 @@ func endpointSpecs() map[string][]CommandSpec {
 			}},
 			{Use: "follow <collection_id>", Short: "POST /api/v1/collections/:collection_id/follow", Method: "POST", Path: "/api/v1/collections/{collection_id}/follow", PathParamNames: []string{"collection_id"}, ExpectEnvelope: false},
 			{Use: "unfollow <collection_id>", Short: "DELETE /api/v1/collections/:collection_id/follow", Method: "DELETE", Path: "/api/v1/collections/{collection_id}/follow", PathParamNames: []string{"collection_id"}, ExpectEnvelope: false},
-		}...),
+		},
 		"jobs": append(crudReadOnlySpecs("/api/v1/jobs", []ParamSpec{
 			p("skip", ParamInt, false, "Skip"),
 			p("limit", ParamInt, false, "Limit"),
@@ -333,6 +344,22 @@ func endpointSpecs() map[string][]CommandSpec {
 			Path:           "/api/v1/jobs/{id}/download",
 			PathParamNames: []string{"id"},
 			ExpectEnvelope: true,
+		}),
+		"reviews": crudSpecs("/api/v1/reviews", []ParamSpec{
+			p("borrowing_id", ParamString, true, "Borrowing ID"),
+			p("rating", ParamInt, true, "Rating 0-5"),
+			p("comment", ParamString, false, "Comment"),
+		}, []ParamSpec{
+			p("skip", ParamInt, false, "Skip"),
+			p("limit", ParamInt, false, "Limit"),
+			p("sort_by", ParamString, false, "Sort by"),
+			p("sort_in", ParamString, false, "Sort in"),
+			p("borrowing_id", ParamString, false, "Borrowing ID"),
+			p("user_id", ParamString, false, "User ID"),
+			p("book_id", ParamString, false, "Book ID"),
+			p("library_id", ParamString, false, "Library ID"),
+			p("rating", ParamInt, false, "Rating"),
+			p("comment", ParamString, false, "Comment"),
 		}),
 	}
 }
@@ -362,4 +389,3 @@ func optionalize(in []ParamSpec) []ParamSpec {
 	}
 	return out
 }
-

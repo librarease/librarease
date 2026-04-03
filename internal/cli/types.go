@@ -60,9 +60,9 @@ const (
 
 type ParamSpec struct {
 	Name       string
+	Flag       string
 	Kind       ParamKind
 	Required   bool
 	Positional bool
 	Help       string
 }
-

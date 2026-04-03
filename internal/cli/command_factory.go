@@ -49,16 +49,16 @@ func (b *commandBuilder) bindFlags(cmd *cobra.Command) {
 func (b *commandBuilder) bindParamFlag(cmd *cobra.Command, p ParamSpec) {
 	switch p.Kind {
 	case ParamInt:
-		cmd.Flags().Int(p.Name, 0, p.Help)
+		cmd.Flags().Int(p.Flag, 0, p.Help)
 	case ParamBool:
-		cmd.Flags().Bool(p.Name, false, p.Help)
+		cmd.Flags().Bool(p.Flag, false, p.Help)
 	case ParamSlice:
-		cmd.Flags().StringSlice(p.Name, nil, p.Help)
+		cmd.Flags().StringSlice(p.Flag, nil, p.Help)
 	default:
-		cmd.Flags().String(p.Name, "", p.Help)
+		cmd.Flags().String(p.Flag, "", p.Help)
 	}
 	if p.Required {
-		_ = cmd.MarkFlagRequired(p.Name)
+		_ = cmd.MarkFlagRequired(p.Flag)
 	}
 }
 
@@ -177,40 +177,39 @@ func (b *commandBuilder) run(cmd *cobra.Command, args []string) error {
 }
 
 func (b *commandBuilder) getFlagValue(cmd *cobra.Command, p ParamSpec) (flagValue, error) {
-	f := cmd.Flags().Lookup(p.Name)
+	f := cmd.Flags().Lookup(p.Flag)
 	if f == nil {
-		return flagValue{}, fmt.Errorf("flag not found: %s", p.Name)
+		return flagValue{}, fmt.Errorf("flag not found: %s", p.Flag)
 	}
 	v := flagValue{changed: f.Changed}
 	switch p.Kind {
 	case ParamInt:
-		n, err := cmd.Flags().GetInt(p.Name)
+		n, err := cmd.Flags().GetInt(p.Flag)
 		if err != nil {
 			return v, err
 		}
 		v.intVal = n
 	case ParamBool:
-		bv, err := cmd.Flags().GetBool(p.Name)
+		bv, err := cmd.Flags().GetBool(p.Flag)
 		if err != nil {
 			return v, err
 		}
 		v.boolVal = bv
 	case ParamSlice:
-		sv, err := cmd.Flags().GetStringSlice(p.Name)
+		sv, err := cmd.Flags().GetStringSlice(p.Flag)
 		if err != nil {
 			return v, err
 		}
 		v.sliceVal = sv
 	default:
-		sv, err := cmd.Flags().GetString(p.Name)
+		sv, err := cmd.Flags().GetString(p.Flag)
 		if err != nil {
 			return v, err
 		}
 		v.stringVal = sv
-		if p.Name == "output-file" && sv != "" {
+		if p.Name == "output_file" && sv != "" {
 			v.stringVal, _ = filepath.Abs(sv)
 		}
 	}
 	return v, nil
 }
-
