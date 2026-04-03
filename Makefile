@@ -8,6 +8,8 @@ build:
 	@go build -o bin/api cmd/api/main.go
 	@echo "Building worker..."
 	@go build -o bin/worker cmd/worker/main.go
+	@echo "Building CLI..."
+	@go build -o bin/librarease cmd/cli/main.go
 	@echo "Build complete!"
 
 build-api:
@@ -17,6 +19,10 @@ build-api:
 build-worker:
 	@echo "Building worker..."
 	@go build -o bin/worker cmd/worker/main.go
+
+build-cli:
+	@echo "Building CLI..."
+	@go build -o bin/librarease cmd/cli/main.go
 
 # Run the application
 run:
@@ -64,7 +70,8 @@ docker-logs:
 test:
 	@echo "Testing..."
 	@go test -v ./internal/server/... \
-	./internal/usecase/...
+	./internal/usecase/... \
+	./internal/cli/...
 # Integrations Tests for the application
 itest:
 	@echo "Running integration tests..."
@@ -73,8 +80,11 @@ itest:
 # Clean the binary
 clean:
 	@echo "Cleaning..."
-	@rm -f bin/api bin/worker
+	@rm -f bin/api bin/worker bin/librarease
 	@rm -f main
+
+docs-cli:
+	@go run cmd/cli/main.go docs --out docs/cli
 
 # Live Reload
 watch:
@@ -121,4 +131,4 @@ debug-worker:
 	@echo "Starting worker debugger on :2346..."
 	@dlv debug cmd/worker/main.go --headless --listen=:2346 --api-version=2 --log
 
-.PHONY: all build build-prod run run-worker test clean watch watch-worker docker-run docker-down docker-logs itest debug debug-worker
+.PHONY: all build build-prod build-cli run run-worker test clean docs-cli watch watch-worker docker-run docker-down docker-logs itest debug debug-worker

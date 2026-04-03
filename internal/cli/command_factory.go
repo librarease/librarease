@@ -154,7 +154,7 @@ func (b *commandBuilder) run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if env.Error != "" {
-			return fmt.Errorf(env.Error)
+			return fmt.Errorf("%s", env.Error)
 		}
 		if err := printOutput(b.cfg, env.Data); err != nil {
 			return err

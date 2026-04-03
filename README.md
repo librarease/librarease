@@ -62,6 +62,8 @@ This installs [air](https://github.com/air-verse/air) if needed and runs all com
 
 ```bash
 make build           # Build binaries
+make build-cli       # Build CLI binary
+make docs-cli        # Generate CLI markdown docs
 make run             # Run API server
 make run-worker      # Run worker
 make run-scheduler   # Run scheduler
@@ -70,6 +72,48 @@ make watch-worker    # Worker with live reload
 make test            # Unit tests
 make itest           # Integration tests
 make clean           # Remove binaries
+```
+
+## CLI (HTTPS)
+
+The repository includes a Cobra + Viper CLI at `cmd/cli/main.go`.
+
+### Build
+
+```bash
+make build-cli
+./bin/librarease --help
+```
+
+### Configuration
+
+Precedence: **flags > environment variables > config file**.
+
+Supported environment variables:
+
+- `LIBRAREASE_BASE_URL`
+- `LIBRAREASE_TOKEN`
+- `LIBRAREASE_CLIENT_ID`
+- `LIBRAREASE_UID`
+- `LIBRAREASE_TIMEOUT`
+- `LIBRAREASE_OUTPUT`
+
+Common global flags:
+
+- `--base-url`
+- `--token`
+- `--client-id`, `--uid`
+- `--timeout`
+- `--output` (`json|yaml|table|raw`)
+- `--insecure-skip-verify`
+
+### Examples
+
+```bash
+./bin/librarease system health --base-url https://localhost:8080
+./bin/librarease users list --limit 20 --token "$TOKEN"
+./bin/librarease books create --title "Book" --author "A" --year 2024 --code C1 --library-id "$LIB_ID" --token "$TOKEN"
+./bin/librarease notifications stream --user-id "$USER_ID" --token "$TOKEN"
 ```
 
 ## Project Structure
