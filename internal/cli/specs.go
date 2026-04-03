@@ -98,7 +98,7 @@ func endpointSpecs() map[string][]CommandSpec {
 				p("name", ParamString, true, "Name"),
 				p("library_id", ParamString, true, "Library ID"),
 				p("user_id", ParamString, true, "User ID"),
-				p("staff", ParamString, false, "Role"),
+				{Name: "staff", Flag: "role", Kind: ParamString, Required: false, Help: "Role"},
 			}},
 			{Use: "update <id>", Short: "Update resource", Method: "PUT", Path: "/api/v1/staffs/{id}", PathParamNames: []string{"id"}, ExpectEnvelope: true, BodyParams: []ParamSpec{
 				p("name", ParamString, false, "Name"),

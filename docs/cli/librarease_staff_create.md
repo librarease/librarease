@@ -12,7 +12,7 @@ librarease staff create [flags]
   -h, --help                help for create
       --library-id string   Library ID
       --name string         Name
-      --staff string        Role
+      --role string         Role
       --user-id string      User ID
 ```
 
