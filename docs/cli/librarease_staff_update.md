@@ -9,11 +9,9 @@ librarease staff update <id> [flags]
 ### Options
 
 ```
-  -h, --help                help for update
-      --library-id string   Library ID
-      --name string         Name
-      --staff string        Role
-      --user-id string      User ID
+  -h, --help          help for update
+      --name string   Name
+      --role string   Role
 ```
 
 ### Options inherited from parent commands
