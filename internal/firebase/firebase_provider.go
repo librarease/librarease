@@ -101,16 +101,20 @@ func (s *Firebase) Send(ctx context.Context, tokens []usecase.PushToken, noti us
 	for k := range tokenMap {
 		fcmTokens = append(fcmTokens, k)
 	}
+	data := map[string]string{
+		"reference_type": noti.ReferenceType,
+	}
+	if noti.ReferenceID != nil {
+		data["reference_id"] = noti.ReferenceID.String()
+	}
+
 	message := &messaging.MulticastMessage{
 		Tokens: fcmTokens,
 		Notification: &messaging.Notification{
 			Title: noti.Title,
 			Body:  noti.Message,
 		},
-		Data: map[string]string{
-			"reference_id":   noti.ReferenceID.String(),
-			"reference_type": noti.ReferenceType,
-		},
+		Data: data,
 	}
 
 	bres, err := s.message.SendEachForMulticast(ctx, message)

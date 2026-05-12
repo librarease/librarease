@@ -127,7 +127,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	notificationGroup.POST("", s.CreateNotification, s.AuthMiddleware)
 	notificationGroup.POST("/read", s.ReadAllNotifications, s.AuthMiddleware)
 	notificationGroup.POST("/:id/read", s.ReadNotification, s.AuthMiddleware)
-	notificationGroup.GET("/stream", s.StreamNotifications)
+	notificationGroup.GET("/stream", s.StreamNotifications, s.AuthMiddleware)
 
 	var collectionGroup = e.Group("/api/v1/collections")
 	collectionGroup.GET("", s.ListCollections, s.AuthMiddleware)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/librarease/librarease/internal/config"
 	"github.com/librarease/librarease/internal/usecase"
 )
 
@@ -120,14 +121,10 @@ type StreamNotificationsRequest struct {
 
 // REF: https://echo.labstack.com/docs/cookbook/sse
 func (s *Server) StreamNotifications(ctx echo.Context) error {
-	var req StreamNotificationsRequest
-	if err := ctx.Bind(&req); err != nil {
-		return ctx.JSON(400, map[string]string{"error": err.Error()})
+	userID, ok := ctx.Request().Context().Value(config.CTX_KEY_USER_ID).(uuid.UUID)
+	if !ok {
+		return ctx.JSON(401, map[string]string{"error": "user id not found in context"})
 	}
-	if err := s.validator.Struct(req); err != nil {
-		return ctx.JSON(422, map[string]string{"error": err.Error()})
-	}
-	userID, _ := uuid.Parse(req.UserID)
 	ch, err := s.server.StreamNotifications(ctx.Request().Context(), userID)
 	if err != nil {
 		return ctx.JSON(500, map[string]string{"error": err.Error()})
@@ -214,11 +211,23 @@ func (s *Server) CreateNotification(ctx echo.Context) error {
 	}
 
 	userID, _ := uuid.Parse(req.UserID)
+	var referenceID *uuid.UUID
+	if req.ReferenceID != nil {
+		id, err := uuid.Parse(*req.ReferenceID)
+		if err != nil {
+			return ctx.JSON(422, map[string]string{"error": err.Error()})
+		}
+		referenceID = &id
+	}
 
 	notification := usecase.Notification{
-		Title:   req.Title,
-		Message: req.Message,
-		UserID:  userID,
+		Title:       req.Title,
+		Message:     req.Message,
+		UserID:      userID,
+		ReferenceID: referenceID,
+	}
+	if req.ReferenceType != nil {
+		notification.ReferenceType = *req.ReferenceType
 	}
 
 	err := s.server.CreateNotification(ctx.Request().Context(), notification)

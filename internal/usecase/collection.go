@@ -287,59 +287,57 @@ func (u Usecase) UpdateCollectionBooks(ctx context.Context, id uuid.UUID, bookID
 	}
 
 	if len(addedIDs) > 0 {
-		go func(collectionID uuid.UUID, added []uuid.UUID) {
-			bg := context.Background()
-
-			collection, err := u.repo.GetCollectionByID(bg, collectionID, GetCollectionOption{})
-			if err != nil {
-				log.Printf("err_UpdateCollectionBooks_GetCollectionByID: %v", err)
-				return
-			}
-
-			books, _, err := u.repo.ListBooks(bg, ListBooksOption{
-				IDs: added,
+		collection, err := u.repo.GetCollectionByID(ctx, id, GetCollectionOption{})
+		if err != nil {
+			log.Printf("err_UpdateCollectionBooks_GetCollectionByID: %v", err)
+		} else {
+			books, _, err := u.repo.ListBooks(ctx, ListBooksOption{
+				IDs: addedIDs,
 			})
 			if err != nil {
 				log.Printf("err_UpdateCollectionBooks_ListBooks: %v", err)
-				return
-			}
-
-			followers, _, err := u.repo.ListCollectionFollowers(bg, ListCollectionFollowersOption{
-				CollectionID: collectionID,
-			})
-			if err != nil {
-				log.Printf("err_UpdateCollectionBooks_ListCollectionFollowers: %v", err)
-				return
-			}
-
-			titles := make([]string, 0, len(books))
-			for _, b := range books {
-				if b.Title != "" {
-					titles = append(titles, b.Title)
-				}
-			}
-
-			for _, follower := range followers {
-				message := ""
-				if len(titles) > 0 && len(titles) <= 3 {
-					message = "New books added to " + collection.Title + ": " + strings.Join(titles, ", ")
-				} else if len(titles) > 3 {
-					message = fmt.Sprintf("New books added to %s: %d new books", collection.Title, len(titles))
+			} else {
+				followers, _, err := u.repo.ListCollectionFollowers(ctx, ListCollectionFollowersOption{
+					CollectionID: id,
+				})
+				if err != nil {
+					log.Printf("err_UpdateCollectionBooks_ListCollectionFollowers: %v", err)
 				} else {
-					message = fmt.Sprintf("New books added to %s", collection.Title)
-				}
+					titles := make([]string, 0, len(books))
+					for _, b := range books {
+						if b.Title != "" {
+							titles = append(titles, b.Title)
+						}
+					}
 
-				if err := u.CreateNotification(bg, Notification{
-					Title:         "Collection Updated",
-					Message:       message,
-					UserID:        follower.UserID,
-					ReferenceID:   &collectionID,
-					ReferenceType: "COLLECTION",
-				}); err != nil {
-					log.Printf("err_UpdateCollectionBooks_CreateNotification: %v", err)
+					message := ""
+					if len(titles) > 0 && len(titles) <= 3 {
+						message = "New books added to " + collection.Title + ": " + strings.Join(titles, ", ")
+					} else if len(titles) > 3 {
+						message = fmt.Sprintf("New books added to %s: %d new books", collection.Title, len(titles))
+					} else {
+						message = fmt.Sprintf("New books added to %s", collection.Title)
+					}
+
+					recipientIDs := make(uuid.UUIDs, 0, len(followers))
+					for _, follower := range followers {
+						recipientIDs = append(recipientIDs, follower.UserID)
+					}
+
+					if len(recipientIDs) > 0 {
+						if err := u.EnqueueNotification(ctx, Notification{
+							Title:         "Collection Updated",
+							Message:       message,
+							RecipientIDs:  recipientIDs,
+							ReferenceID:   &id,
+							ReferenceType: "COLLECTION",
+						}); err != nil {
+							log.Printf("err_UpdateCollectionBooks_EnqueueNotification: %v", err)
+						}
+					}
 				}
 			}
-		}(id, addedIDs)
+		}
 	}
 
 	if len(created) > 0 {

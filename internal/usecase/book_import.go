@@ -393,19 +393,17 @@ func (u Usecase) ProcessImportBooksJob(ctx context.Context, jobID uuid.UUID) err
 	}
 
 	// 6. Send notification to staff
-	go func() {
-		if job.Staff != nil {
-			if err := u.CreateNotification(context.Background(), Notification{
-				UserID:        job.Staff.UserID,
-				Title:         "Import Completed",
-				Message:       "Your book import job has completed successfully.",
-				ReferenceType: "IMPORT_BOOKS",
-				ReferenceID:   &job.ID,
-			}); err != nil {
-				fmt.Printf("failed to send notification for job %s: %v\n", job.ID, err)
-			}
+	if job.Staff != nil {
+		if err := u.EnqueueNotification(ctx, Notification{
+			UserID:        job.Staff.UserID,
+			Title:         "Import Completed",
+			Message:       "Your book import job has completed successfully.",
+			ReferenceType: "IMPORT_BOOKS",
+			ReferenceID:   &job.ID,
+		}); err != nil {
+			fmt.Printf("failed to enqueue notification for job %s: %v\n", job.ID, err)
 		}
-	}()
+	}
 
 	return nil
 }

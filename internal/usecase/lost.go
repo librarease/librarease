@@ -113,17 +113,15 @@ func (u Usecase) LostBorrowing(ctx context.Context, borrowingID uuid.UUID, l Los
 	}
 
 	// Send notification to user
-	go func() {
-		if err := u.CreateNotification(context.Background(), Notification{
-			Title:         "Book Reported Lost",
-			Message:       fmt.Sprintf("Book %s has been reported lost.", borrow.Book.Title),
-			UserID:        borrow.Subscription.UserID,
-			ReferenceID:   &borrowingID,
-			ReferenceType: "BORROWING",
-		}); err != nil {
-			fmt.Printf("lost: failed to create notification: %v\n", err)
-		}
-	}()
+	if err := u.EnqueueNotification(ctx, Notification{
+		Title:         "Book Reported Lost",
+		Message:       fmt.Sprintf("Book %s has been reported lost.", borrow.Book.Title),
+		UserID:        borrow.Subscription.UserID,
+		ReferenceID:   &borrowingID,
+		ReferenceType: "BORROWING",
+	}); err != nil {
+		fmt.Printf("lost: failed to enqueue notification: %v\n", err)
+	}
 
 	return lost, nil
 }

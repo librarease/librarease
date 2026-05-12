@@ -13,7 +13,9 @@ import (
 
 type Notification struct {
 	ID            uuid.UUID
+	EventID       uuid.UUID
 	UserID        uuid.UUID
+	RecipientIDs  uuid.UUIDs
 	Title         string
 	Message       string
 	CreatedAt     time.Time
@@ -126,13 +128,44 @@ func (u Usecase) CreateNotification(ctx context.Context, n Notification) error {
 		return err
 	}
 
+	if u.queueClient == nil {
+		return u.DeliverNotification(ctx, noti.EventID)
+	}
+	if err := u.queueClient.EnqueueNotificationDelivery(ctx, noti.EventID); err != nil {
+		return fmt.Errorf("enqueue notification delivery: %w", err)
+	}
+	return nil
+}
+
+func (u Usecase) EnqueueNotification(ctx context.Context, n Notification) error {
+	if u.queueClient == nil {
+		return u.CreateNotification(ctx, n)
+	}
+	return u.queueClient.EnqueueNotification(ctx, n)
+}
+
+func (u Usecase) DeliverNotification(ctx context.Context, notificationID uuid.UUID) error {
+	recipients, err := u.repo.ListNotificationRecipients(ctx, notificationID)
+	if err != nil {
+		return fmt.Errorf("list notification recipients: %w", err)
+	}
+	if len(recipients) == 0 {
+		return nil
+	}
+
+	userIDs := make(uuid.UUIDs, 0, len(recipients))
+	for _, recipient := range recipients {
+		userIDs = append(userIDs, recipient.UserID)
+	}
+
 	tokens, _, err := u.repo.ListPushTokens(ctx, ListPushTokensOption{
-		UserIDs: uuid.UUIDs{n.UserID},
+		UserIDs: userIDs,
 	})
 	if err != nil {
 		return err
 	}
 
+	noti := recipients[0]
 	if err := u.dispatcher.Send(ctx, tokens, noti); err != nil {
 		var invalidErr InvalidTokenError
 		if errors.As(err, &invalidErr) {

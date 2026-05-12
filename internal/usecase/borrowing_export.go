@@ -111,19 +111,17 @@ func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID
 	}
 
 	// 6. Send notification to staff
-	go func() {
-		if job.Staff != nil {
-			if err := u.CreateNotification(context.Background(), Notification{
-				UserID:        job.Staff.UserID,
-				Title:         "Export Ready",
-				Message:       "Your borrowings export is ready for download",
-				ReferenceType: "EXPORT_BORROWING",
-				ReferenceID:   &job.ID,
-			}); err != nil {
-				fmt.Printf("failed to send notification for job %s: %v\n", job.ID, err)
-			}
+	if job.Staff != nil {
+		if err := u.EnqueueNotification(ctx, Notification{
+			UserID:        job.Staff.UserID,
+			Title:         "Export Ready",
+			Message:       "Your borrowings export is ready for download",
+			ReferenceType: "EXPORT_BORROWING",
+			ReferenceID:   &job.ID,
+		}); err != nil {
+			fmt.Printf("failed to enqueue notification for job %s: %v\n", job.ID, err)
 		}
-	}()
+	}
 
 	return nil
 }

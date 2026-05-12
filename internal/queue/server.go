@@ -30,6 +30,7 @@ type Server struct {
 	mux         *asynq.ServeMux
 	gormDB      *gorm.DB
 	sqlDB       *sql.DB
+	queueClient *Client
 }
 
 // Worker represents a worker application with all its dependencies
@@ -101,17 +102,17 @@ func NewWorker(logger *slog.Logger) (*Worker, error) {
 	)
 	fsp := filestorage.NewMinIOStorage(bucket, temp, public, endpoint, accessKey, secretKey)
 
-	dp := push.NewPushDispatcher(fb)
-
-	// Create usecase without queue client (workers don't need to enqueue)
-	uc := usecase.New(repo, fb, fsp, mp, dp, nil, logger.With(slog.String("component", "usecase")))
-
 	// Setup Asynq server
 	redisAddr := fmt.Sprintf("%s:%s",
 		os.Getenv(config.ENV_KEY_REDIS_HOST),
 		os.Getenv(config.ENV_KEY_REDIS_PORT),
 	)
 	redisPassword := os.Getenv(config.ENV_KEY_REDIS_PASSWORD)
+
+	dp := push.NewPushDispatcher(fb)
+	qc := NewClient(redisAddr, redisPassword)
+
+	uc := usecase.New(repo, fb, fsp, mp, dp, qc, logger.With(slog.String("component", "usecase")))
 
 	workerConcurrency := 10
 	if wc := os.Getenv(config.ENV_KEY_WORKER_CONCURRENCY); wc != "" {
@@ -129,9 +130,12 @@ func NewWorker(logger *slog.Logger) (*Worker, error) {
 		asynq.Config{
 			Concurrency: workerConcurrency,
 			Queues: map[string]int{
-				"critical": 6,
-				"default":  3,
-				"low":      1,
+				"critical":         6,
+				QueueNotifications: 4,
+				QueueExports:       2,
+				QueueImports:       2,
+				QueueDefault:       3,
+				"low":              1,
 			},
 		},
 	)
@@ -139,9 +143,11 @@ func NewWorker(logger *slog.Logger) (*Worker, error) {
 	mux := asynq.NewServeMux()
 	h := handlers.NewHandlers(uc)
 
-	mux.HandleFunc("export:borrowings", h.HandleExportBorrowings)
-	mux.HandleFunc("notification:check-overdue", h.HandleCheckOverdue)
-	mux.HandleFunc("import:books", h.HandleImportBooks)
+	mux.HandleFunc(TaskExportBorrowings, h.HandleExportBorrowings)
+	mux.HandleFunc(TaskNotificationCheckOverdue, h.HandleCheckOverdue)
+	mux.HandleFunc(TaskNotificationCreate, h.HandleCreateNotification)
+	mux.HandleFunc(TaskNotificationDeliver, h.HandleDeliverNotification)
+	mux.HandleFunc(TaskImportBooks, h.HandleImportBooks)
 
 	logger.Info("Worker registered handlers:",
 		slog.String("handlers", "export:borrowings, notification:check-overdue, import:books"),
@@ -159,6 +165,7 @@ func NewWorker(logger *slog.Logger) (*Worker, error) {
 		mux:         mux,
 		gormDB:      gormDB,
 		sqlDB:       sqlDB,
+		queueClient: qc,
 	}
 
 	return &Worker{
@@ -178,6 +185,12 @@ func (w *Worker) Start() error {
 func (w *Worker) Stop() {
 	w.logger.Info("Stopping worker...")
 	w.server.asynqServer.Shutdown()
+
+	if w.server.queueClient != nil {
+		if err := w.server.queueClient.Close(); err != nil {
+			log.Printf("Error closing queue client: %v", err)
+		}
+	}
 
 	// Close database connections
 	if w.server.sqlDB != nil {
@@ -244,11 +257,11 @@ func registerPeriodicTasks(scheduler *asynq.Scheduler, logger *slog.Logger) erro
 	entryID, err := scheduler.Register(
 		"@every 1h",
 		asynq.NewTask(
-			"notification:check-overdue",
+			TaskNotificationCheckOverdue,
 			nil,
 			asynq.TaskID("unique-notification-check-overdue-task"),
 		),
-		asynq.Queue("default"),
+		asynq.Queue(QueueNotifications),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to register overdue check task: %w", err)

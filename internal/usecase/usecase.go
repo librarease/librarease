@@ -109,6 +109,8 @@ type Repository interface {
 	// notification
 	SubscribeNotifications(context.Context, chan<- Notification) error
 	UnsubscribeNotifications(context.Context, chan<- Notification) error
+	GetNotification(context.Context, uuid.UUID) (Notification, error)
+	ListNotificationRecipients(context.Context, uuid.UUID) ([]Notification, error)
 	ListNotifications(context.Context, ListNotificationsOption) ([]Notification, int, int, error)
 	ReadNotification(context.Context, uuid.UUID) error
 	ReadAllNotifications(context.Context, uuid.UUID) error
@@ -190,6 +192,8 @@ type Dispatcher interface {
 
 type QueueClient interface {
 	EnqueueJob(ctx context.Context, jobID uuid.UUID, jobType string, payload []byte) error
+	EnqueueNotification(ctx context.Context, n Notification) error
+	EnqueueNotificationDelivery(ctx context.Context, notificationID uuid.UUID) error
 }
 
 type Usecase struct {

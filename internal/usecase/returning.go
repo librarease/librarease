@@ -123,38 +123,38 @@ func (u Usecase) ReturnBorrowing(ctx context.Context, borrowingID uuid.UUID, r R
 		return Borrowing{}, err
 	}
 
-	go func() {
-		if err := u.CreateNotification(context.Background(), Notification{
-			Title:         "Book Returned",
-			Message:       fmt.Sprintf("Book %s has been returned", borrow.Book.Title),
-			UserID:        borrow.Subscription.UserID,
-			ReferenceID:   &borrowingID,
-			ReferenceType: "BORROWING",
-		}); err != nil {
-			fmt.Printf("returning: failed to create notification: %v\n", err)
-		}
-	}()
+	if err := u.EnqueueNotification(ctx, Notification{
+		Title:         "Book Returned",
+		Message:       fmt.Sprintf("Book %s has been returned", borrow.Book.Title),
+		UserID:        borrow.Subscription.UserID,
+		ReferenceID:   &borrowingID,
+		ReferenceType: "BORROWING",
+	}); err != nil {
+		fmt.Printf("returning: failed to enqueue notification: %v\n", err)
+	}
 
-	go func() {
-		list, _, err := u.repo.ListWatchlists(context.Background(), ListWatchlistsOption{
-			BookID: borrow.BookID,
-		})
-		if err != nil {
-			log.Printf("err_ReturnBorrowing_ListWatchlists: %v\n", err)
-			return
-		}
+	list, _, err := u.repo.ListWatchlists(ctx, ListWatchlistsOption{
+		BookID: borrow.BookID,
+	})
+	if err != nil {
+		log.Printf("err_ReturnBorrowing_ListWatchlists: %v\n", err)
+	} else {
+		recipientIDs := make(uuid.UUIDs, 0, len(list))
 		for _, w := range list {
-			if err := u.CreateNotification(context.Background(), Notification{
+			recipientIDs = append(recipientIDs, w.UserID)
+		}
+		if len(recipientIDs) > 0 {
+			if err := u.EnqueueNotification(ctx, Notification{
 				Title:         "Book Available",
 				Message:       fmt.Sprintf("Book %s is now available", borrow.Book.Title),
-				UserID:        w.UserID,
+				RecipientIDs:  recipientIDs,
 				ReferenceID:   &borrow.BookID,
 				ReferenceType: "BOOK",
 			}); err != nil {
-				log.Printf("err_ReturnBorrowing_CreateNotification: %v\n", err)
+				log.Printf("err_ReturnBorrowing_EnqueueNotification: %v\n", err)
 			}
 		}
-	}()
+	}
 
 	return rb, nil
 }
@@ -186,17 +186,15 @@ func (u Usecase) DeleteReturn(ctx context.Context, borrowingId uuid.UUID) error 
 		return err
 	}
 
-	go func() {
-		if err := u.CreateNotification(context.Background(), Notification{
-			Title:         "Undo Book Return",
-			Message:       fmt.Sprintf("Return of book %s has been undone", borrow.Book.Title),
-			UserID:        borrow.Subscription.UserID,
-			ReferenceID:   &borrowingId,
-			ReferenceType: "BORROWING",
-		}); err != nil {
-			fmt.Printf("returning: failed to create notification: %v\n", err)
-		}
-	}()
+	if err := u.EnqueueNotification(ctx, Notification{
+		Title:         "Undo Book Return",
+		Message:       fmt.Sprintf("Return of book %s has been undone", borrow.Book.Title),
+		UserID:        borrow.Subscription.UserID,
+		ReferenceID:   &borrowingId,
+		ReferenceType: "BORROWING",
+	}); err != nil {
+		fmt.Printf("returning: failed to enqueue notification: %v\n", err)
+	}
 
 	return nil
 }
