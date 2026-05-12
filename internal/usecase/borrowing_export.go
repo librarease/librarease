@@ -6,10 +6,14 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/librarease/librarease/internal/config"
+	"github.com/librarease/librarease/internal/telemetry"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type ExportBorrowingsOption struct {
@@ -68,7 +72,13 @@ func (u Usecase) ExportBorrowings(ctx context.Context, opt ExportBorrowingsOptio
 	return job.ID.String(), nil
 }
 
-func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID) error {
+func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID) (err error) {
+	ctx, span := telemetry.StartSpan(ctx, "usecase.job.process_export_borrowings",
+		attribute.String("job.id", jobID.String()),
+		attribute.String("job.type", "export:borrowings"),
+	)
+	defer func() { telemetry.EndSpan(span, err) }()
+
 	// 1. Get job from database
 	job, err := u.repo.GetJobByID(ctx, jobID)
 	if err != nil {
@@ -88,6 +98,7 @@ func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID
 	if _, err := u.repo.UpdateJob(ctx, job); err != nil {
 		return fmt.Errorf("failed to update job to PROCESSING: %w", err)
 	}
+	span.AddEvent("job.status_changed", trace.WithAttributes(attribute.String("job.status", "PROCESSING")))
 
 	// 4. Execute the export work
 	res, err := u.executeExport(ctx, payload)
@@ -97,7 +108,13 @@ func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID
 		job.Status = "FAILED"
 		job.Error = err.Error()
 		job.FinishedAt = &finished
-		u.repo.UpdateJob(ctx, job)
+		if _, updateErr := u.repo.UpdateJob(ctx, job); updateErr != nil {
+			span.AddEvent("job.failure_status_update_failed", trace.WithAttributes(attribute.String("err", updateErr.Error())))
+			u.logger.ErrorContext(ctx, "failed to update export job to failed",
+				slog.String("job_id", job.ID.String()),
+				slog.String("err", updateErr.Error()))
+		}
+		span.AddEvent("job.status_changed", trace.WithAttributes(attribute.String("job.status", "FAILED")))
 		return fmt.Errorf("export failed: %w", err)
 	}
 
@@ -109,6 +126,7 @@ func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID
 	if _, err := u.repo.UpdateJob(ctx, job); err != nil {
 		return fmt.Errorf("failed to update job to COMPLETED: %w", err)
 	}
+	span.AddEvent("job.status_changed", trace.WithAttributes(attribute.String("job.status", "COMPLETED")))
 
 	// 6. Send notification to staff
 	if job.Staff != nil {
@@ -119,14 +137,25 @@ func (u Usecase) ProcessExportBorrowingsJob(ctx context.Context, jobID uuid.UUID
 			ReferenceType: "EXPORT_BORROWING",
 			ReferenceID:   &job.ID,
 		}); err != nil {
-			fmt.Printf("failed to enqueue notification for job %s: %v\n", job.ID, err)
+			span.AddEvent("job.notification_enqueue_failed", trace.WithAttributes(attribute.String("err", err.Error())))
+			u.logger.ErrorContext(ctx, "failed to enqueue export job notification",
+				slog.String("job_id", job.ID.String()),
+				slog.String("err", err.Error()))
 		}
 	}
 
 	return nil
 }
 
-func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobPayload) ([]byte, error) {
+func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobPayload) (result []byte, err error) {
+	ctx, span := telemetry.StartSpan(ctx, "usecase.borrowings.execute_export",
+		attribute.String("library.id", payload.LibraryID.String()),
+		attribute.Bool("borrowings.filter.is_active", payload.IsActive),
+		attribute.Bool("borrowings.filter.is_overdue", payload.IsOverdue),
+		attribute.Bool("borrowings.filter.is_returned", payload.IsReturned),
+		attribute.Bool("borrowings.filter.is_lost", payload.IsLost),
+	)
+	defer func() { telemetry.EndSpan(span, err) }()
 
 	// 1. Query borrowings with filters
 	borrowings, _, err := u.repo.ListBorrowings(ctx, ListBorrowingsOption{
@@ -143,6 +172,7 @@ func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobP
 	if err != nil {
 		return nil, fmt.Errorf("failed to list borrowings: %w", err)
 	}
+	span.SetAttributes(attribute.Int("borrowings.export.row_count", len(borrowings)))
 
 	// 2. Generate CSV file
 	csvData := generateBorrowingCSV(borrowings)
@@ -154,6 +184,10 @@ func (u Usecase) executeExport(ctx context.Context, payload ExportBorrowingsJobP
 	if err := u.fileStorageProvider.UploadFile(ctx, path, csvData); err != nil {
 		return nil, fmt.Errorf("failed to upload export file: %w", err)
 	}
+	span.SetAttributes(
+		attribute.String("borrowings.export.path", path),
+		attribute.Int("borrowings.export.size_bytes", len(csvData)),
+	)
 
 	return json.Marshal(map[string]any{
 		"path": path,

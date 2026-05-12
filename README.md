@@ -25,6 +25,8 @@ For educational, personal, and noncommercial use only. If you're interested in c
 
 ## Quick Setup
 
+For a complete local setup guide, see [Local Development](LOCAL_DEVELOPMENT.md).
+
 ### 1. Configure Environment
 
 ```bash

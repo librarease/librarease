@@ -81,7 +81,7 @@ func NewWorker(deps WorkerDeps) (*Worker, error) {
 	)
 
 	mux := asynq.NewServeMux()
-	h := handlers.NewHandlers(deps.Service)
+	h := handlers.NewHandlers(deps.Service, logger)
 
 	mux.HandleFunc(TaskExportBorrowings, h.HandleExportBorrowings)
 	mux.HandleFunc(TaskNotificationCheckOverdue, h.HandleCheckOverdue)

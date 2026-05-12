@@ -1,14 +1,20 @@
 package handlers
 
-import "github.com/librarease/librarease/internal/usecase"
+import (
+	"log/slog"
+
+	"github.com/librarease/librarease/internal/usecase"
+)
 
 type Handlers struct {
 	usecase usecase.Usecase
+	logger  *slog.Logger
 }
 
-func NewHandlers(uc usecase.Usecase) *Handlers {
+func NewHandlers(uc usecase.Usecase, logger *slog.Logger) *Handlers {
 	return &Handlers{
 		usecase: uc,
+		logger:  logger.With(slog.String("component", "queue.handlers")),
 	}
 }
 

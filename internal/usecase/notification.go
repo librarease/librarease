@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/librarease/librarease/internal/config"
+	"github.com/librarease/librarease/internal/telemetry"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Notification struct {
@@ -122,34 +125,57 @@ func NewInvalidTokenError(m map[uuid.UUID]string) InvalidTokenError {
 	return InvalidTokenError(m)
 }
 
-func (u Usecase) CreateNotification(ctx context.Context, n Notification) error {
+func (u Usecase) CreateNotification(ctx context.Context, n Notification) (err error) {
+	ctx, span := telemetry.StartSpan(ctx, "usecase.notification.create",
+		attribute.String("notification.user_id", n.UserID.String()),
+		attribute.String("notification.reference_type", n.ReferenceType),
+	)
+	defer func() { telemetry.EndSpan(span, err) }()
+
 	noti, err := u.repo.CreateNotification(ctx, n)
 	if err != nil {
 		return err
 	}
+	span.SetAttributes(attribute.String("notification.event_id", noti.EventID.String()))
 
 	if u.queueClient == nil {
+		span.AddEvent("notification.delivery_inline")
 		return u.DeliverNotification(ctx, noti.EventID)
 	}
+	span.AddEvent("notification.delivery_enqueued")
 	if err := u.queueClient.EnqueueNotificationDelivery(ctx, noti.EventID); err != nil {
 		return fmt.Errorf("enqueue notification delivery: %w", err)
 	}
 	return nil
 }
 
-func (u Usecase) EnqueueNotification(ctx context.Context, n Notification) error {
+func (u Usecase) EnqueueNotification(ctx context.Context, n Notification) (err error) {
+	ctx, span := telemetry.StartSpan(ctx, "usecase.notification.enqueue",
+		attribute.String("notification.user_id", n.UserID.String()),
+		attribute.String("notification.reference_type", n.ReferenceType),
+	)
+	defer func() { telemetry.EndSpan(span, err) }()
+
 	if u.queueClient == nil {
+		span.AddEvent("notification.queue_unavailable_inline_create")
 		return u.CreateNotification(ctx, n)
 	}
 	return u.queueClient.EnqueueNotification(ctx, n)
 }
 
-func (u Usecase) DeliverNotification(ctx context.Context, notificationID uuid.UUID) error {
+func (u Usecase) DeliverNotification(ctx context.Context, notificationID uuid.UUID) (err error) {
+	ctx, span := telemetry.StartSpan(ctx, "usecase.notification.deliver",
+		attribute.String("notification.id", notificationID.String()),
+	)
+	defer func() { telemetry.EndSpan(span, err) }()
+
 	recipients, err := u.repo.ListNotificationRecipients(ctx, notificationID)
 	if err != nil {
 		return fmt.Errorf("list notification recipients: %w", err)
 	}
+	span.SetAttributes(attribute.Int("notification.recipient_count", len(recipients)))
 	if len(recipients) == 0 {
+		span.AddEvent("notification.delivery_skipped", trace.WithAttributes(attribute.String("reason", "no_recipients")))
 		return nil
 	}
 
@@ -164,15 +190,25 @@ func (u Usecase) DeliverNotification(ctx context.Context, notificationID uuid.UU
 	if err != nil {
 		return err
 	}
+	span.SetAttributes(attribute.Int("notification.push_token_count", len(tokens)))
 
 	noti := recipients[0]
 	if err := u.dispatcher.Send(ctx, tokens, noti); err != nil {
 		var invalidErr InvalidTokenError
 		if errors.As(err, &invalidErr) {
+			span.AddEvent("notification.invalid_tokens", trace.WithAttributes(attribute.Int("notification.invalid_token_count", len(invalidErr))))
 			for id, reason := range invalidErr {
-				fmt.Printf("deleting invalid token %s: %s\n", id, reason)
+				u.logger.WarnContext(ctx, "deleting invalid push token",
+					slog.String("push_token_id", id.String()),
+					slog.String("reason", reason))
 				if err := u.repo.DeletePushToken(ctx, id); err != nil {
-					fmt.Printf("failed to delete invalid token %s: %v\n", id, err)
+					span.AddEvent("notification.invalid_token_delete_failed", trace.WithAttributes(
+						attribute.String("push_token_id", id.String()),
+						attribute.String("err", err.Error()),
+					))
+					u.logger.ErrorContext(ctx, "failed to delete invalid push token",
+						slog.String("push_token_id", id.String()),
+						slog.String("err", err.Error()))
 				}
 			}
 			// return nil because the notification is created successfully
@@ -184,7 +220,9 @@ func (u Usecase) DeliverNotification(ctx context.Context, notificationID uuid.UU
 }
 
 // ProcessOverdueNotifications handles the scheduled overdue notification job
-func (u Usecase) ProcessOverdueNotifications(ctx context.Context) error {
+func (u Usecase) ProcessOverdueNotifications(ctx context.Context) (err error) {
+	ctx, span := telemetry.StartSpan(ctx, "usecase.notification.process_overdue")
+	defer func() { telemetry.EndSpan(span, err) }()
 
 	nearDueSummaries, err := u.findBorrowingSummariesOverdue(ctx, 24*time.Hour)
 	if err != nil {
@@ -195,6 +233,10 @@ func (u Usecase) ProcessOverdueNotifications(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to find 1-day overdue borrowings: %w", err)
 	}
+	span.SetAttributes(
+		attribute.Int("notification.near_due_count", len(nearDueSummaries)),
+		attribute.Int("notification.overdue_1_day_count", len(overdue1DaySummaries)),
+	)
 
 	if err := u.sendNearDueNotificationsFromSummaries(ctx, nearDueSummaries); err != nil {
 		return fmt.Errorf("failed to send near due notifications: %w", err)
@@ -204,8 +246,9 @@ func (u Usecase) ProcessOverdueNotifications(ctx context.Context) error {
 		return fmt.Errorf("failed to send 1-day overdue notifications: %w", err)
 	}
 
-	log.Printf("Overdue notification processing complete: %d near due, %d (1 day)",
-		len(nearDueSummaries), len(overdue1DaySummaries))
+	u.logger.InfoContext(ctx, "overdue notification processing complete",
+		slog.Int("near_due_count", len(nearDueSummaries)),
+		slog.Int("overdue_1_day_count", len(overdue1DaySummaries)))
 
 	return nil
 }
@@ -227,6 +270,7 @@ func (u Usecase) findBorrowingSummariesOverdue(ctx context.Context, overdueDurat
 }
 
 func (u Usecase) sendNearDueNotificationsFromSummaries(ctx context.Context, summaries []BorrowingSummary) error {
+	var failedCount int
 	for _, summary := range summaries {
 		if err := u.CreateNotification(ctx, Notification{
 			Title:         "Book Due Soon",
@@ -235,13 +279,21 @@ func (u Usecase) sendNearDueNotificationsFromSummaries(ctx context.Context, summ
 			ReferenceID:   &summary.ID,
 			ReferenceType: "NEAR_DUE",
 		}); err != nil {
-			log.Printf("Failed to send near due notification for borrowing %s: %v", summary.ID, err)
+			failedCount++
+			u.logger.ErrorContext(ctx, "failed to create near due notification",
+				slog.String("borrowing_id", summary.ID.String()),
+				slog.String("err", err.Error()))
 		}
 	}
+	trace.SpanFromContext(ctx).AddEvent("notification.near_due_batch_complete", trace.WithAttributes(
+		attribute.Int("notification.attempted_count", len(summaries)),
+		attribute.Int("notification.failed_count", failedCount),
+	))
 	return nil
 }
 
 func (u Usecase) sendOverdueNotificationsFromSummaries(ctx context.Context, summaries []BorrowingSummary) error {
+	var failedCount int
 	for _, summary := range summaries {
 		if err := u.CreateNotification(ctx, Notification{
 			Title:         "Book Overdue",
@@ -250,8 +302,15 @@ func (u Usecase) sendOverdueNotificationsFromSummaries(ctx context.Context, summ
 			ReferenceID:   &summary.ID,
 			ReferenceType: "BORROWING",
 		}); err != nil {
-			log.Printf("Failed to send overdue notification for borrowing %s: %v", summary.ID, err)
+			failedCount++
+			u.logger.ErrorContext(ctx, "failed to create overdue notification",
+				slog.String("borrowing_id", summary.ID.String()),
+				slog.String("err", err.Error()))
 		}
 	}
+	trace.SpanFromContext(ctx).AddEvent("notification.overdue_batch_complete", trace.WithAttributes(
+		attribute.Int("notification.attempted_count", len(summaries)),
+		attribute.Int("notification.failed_count", failedCount),
+	))
 	return nil
 }

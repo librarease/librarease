@@ -6,11 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/librarease/librarease/internal/config"
+	"github.com/librarease/librarease/internal/telemetry"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -44,7 +48,15 @@ type ValidatedBookRow struct {
 	ErrMsg string
 }
 
-func (u Usecase) validateImportBooksCSV(ctx context.Context, libID uuid.UUID, r io.Reader) ([]ValidatedBookRow, error) {
+func (u Usecase) validateImportBooksCSV(ctx context.Context, libID uuid.UUID, r io.Reader) (rows []ValidatedBookRow, err error) {
+	ctx, span := telemetry.StartSpan(ctx, "usecase.books.validate_import_csv",
+		attribute.String("library.id", libID.String()),
+	)
+	defer func() {
+		span.SetAttributes(attribute.Int("books.import.validated_rows", len(rows)))
+		telemetry.EndSpan(span, err)
+	}()
+
 	type csvRow struct {
 		rowNum int
 		id     string
@@ -201,8 +213,6 @@ func (u Usecase) validateImportBooksCSV(ctx context.Context, libID uuid.UUID, r 
 	})
 
 	// Stage 3: Collector
-	var validatedRows []ValidatedBookRow
-
 	g.Go(func() error {
 		for v := range validatedChan {
 			select {
@@ -211,7 +221,7 @@ func (u Usecase) validateImportBooksCSV(ctx context.Context, libID uuid.UUID, r 
 			default:
 			}
 
-			validatedRows = append(validatedRows, v)
+			rows = append(rows, v)
 		}
 		return nil
 	})
@@ -220,7 +230,24 @@ func (u Usecase) validateImportBooksCSV(ctx context.Context, libID uuid.UUID, r 
 		return nil, err
 	}
 
-	return validatedRows, nil
+	var createCount, updateCount, invalidCount int
+	for _, row := range rows {
+		switch row.Status {
+		case "create":
+			createCount++
+		case "update":
+			updateCount++
+		case "invalid":
+			invalidCount++
+		}
+	}
+	span.SetAttributes(
+		attribute.Int("books.import.create_count", createCount),
+		attribute.Int("books.import.update_count", updateCount),
+		attribute.Int("books.import.invalid_count", invalidCount),
+	)
+
+	return rows, nil
 }
 
 func (u Usecase) PreviewImportBooks(ctx context.Context, libID uuid.UUID, path string) (PreviewImportBooksResult, error) {
@@ -342,7 +369,12 @@ func (u Usecase) ConfirmImportBooks(ctx context.Context, libID uuid.UUID, path s
 
 }
 
-func (u Usecase) ProcessImportBooksJob(ctx context.Context, jobID uuid.UUID) error {
+func (u Usecase) ProcessImportBooksJob(ctx context.Context, jobID uuid.UUID) (err error) {
+	ctx, span := telemetry.StartSpan(ctx, "usecase.job.process_import_books",
+		attribute.String("job.id", jobID.String()),
+		attribute.String("job.type", "import:books"),
+	)
+	defer func() { telemetry.EndSpan(span, err) }()
 
 	// 1. Get job from database
 	job, err := u.repo.GetJobByID(ctx, jobID)
@@ -366,6 +398,7 @@ func (u Usecase) ProcessImportBooksJob(ctx context.Context, jobID uuid.UUID) err
 	if _, err := u.repo.UpdateJob(ctx, job); err != nil {
 		return fmt.Errorf("failed to update job to PROCESSING: %w", err)
 	}
+	span.AddEvent("job.status_changed", trace.WithAttributes(attribute.String("job.status", "PROCESSING")))
 
 	// 4. Execute the import work
 	res, err := u.executeImportBooks(ctx, payload.LibID, payload.Path)
@@ -375,7 +408,13 @@ func (u Usecase) ProcessImportBooksJob(ctx context.Context, jobID uuid.UUID) err
 		job.Status = "FAILED"
 		job.Error = err.Error()
 		job.FinishedAt = &finished
-		u.repo.UpdateJob(ctx, job)
+		if _, updateErr := u.repo.UpdateJob(ctx, job); updateErr != nil {
+			span.AddEvent("job.failure_status_update_failed", trace.WithAttributes(attribute.String("err", updateErr.Error())))
+			u.logger.ErrorContext(ctx, "failed to update import job to failed",
+				slog.String("job_id", job.ID.String()),
+				slog.String("err", updateErr.Error()))
+		}
+		span.AddEvent("job.status_changed", trace.WithAttributes(attribute.String("job.status", "FAILED")))
 		return fmt.Errorf("import failed: %w", err)
 	}
 
@@ -391,6 +430,13 @@ func (u Usecase) ProcessImportBooksJob(ctx context.Context, jobID uuid.UUID) err
 	if _, err := u.repo.UpdateJob(ctx, job); err != nil {
 		return fmt.Errorf("failed to update job to COMPLETED: %w", err)
 	}
+	span.AddEvent("job.status_changed", trace.WithAttributes(attribute.String("job.status", "COMPLETED")))
+	span.SetAttributes(
+		attribute.Int("books.import.total_rows", res.TotalRows),
+		attribute.Int("books.import.success_count", res.SuccessCount),
+		attribute.Int("books.import.failed_count", res.FailedCount),
+		attribute.Int("books.import.skipped_count", res.SkippedCount),
+	)
 
 	// 6. Send notification to staff
 	if job.Staff != nil {
@@ -401,7 +447,10 @@ func (u Usecase) ProcessImportBooksJob(ctx context.Context, jobID uuid.UUID) err
 			ReferenceType: "IMPORT_BOOKS",
 			ReferenceID:   &job.ID,
 		}); err != nil {
-			fmt.Printf("failed to enqueue notification for job %s: %v\n", job.ID, err)
+			span.AddEvent("job.notification_enqueue_failed", trace.WithAttributes(attribute.String("err", err.Error())))
+			u.logger.ErrorContext(ctx, "failed to enqueue import job notification",
+				slog.String("job_id", job.ID.String()),
+				slog.String("err", err.Error()))
 		}
 	}
 
@@ -425,7 +474,20 @@ type ImportFailedRow struct {
 	Error  string `json:"error"`
 }
 
-func (u Usecase) executeImportBooks(ctx context.Context, libID uuid.UUID, path string) (ImportBooksResult, error) {
+func (u Usecase) executeImportBooks(ctx context.Context, libID uuid.UUID, path string) (result ImportBooksResult, err error) {
+	ctx, span := telemetry.StartSpan(ctx, "usecase.books.execute_import",
+		attribute.String("library.id", libID.String()),
+		attribute.String("books.import.path", path),
+	)
+	defer func() {
+		span.SetAttributes(
+			attribute.Int("books.import.total_rows", result.TotalRows),
+			attribute.Int("books.import.success_count", result.SuccessCount),
+			attribute.Int("books.import.failed_count", result.FailedCount),
+			attribute.Int("books.import.skipped_count", result.SkippedCount),
+		)
+		telemetry.EndSpan(span, err)
+	}()
 
 	r, err := u.fileStorageProvider.GetReader(ctx, path)
 	if err != nil {
@@ -439,7 +501,7 @@ func (u Usecase) executeImportBooks(ctx context.Context, libID uuid.UUID, path s
 		return ImportBooksResult{}, err
 	}
 
-	result := ImportBooksResult{
+	result = ImportBooksResult{
 		TotalRows:    len(validatedRows),
 		CreatedBooks: []uuid.UUID{},
 		UpdatedBooks: []uuid.UUID{},
@@ -471,6 +533,11 @@ func (u Usecase) executeImportBooks(ctx context.Context, libID uuid.UUID, path s
 			})
 			if err != nil {
 				result.FailedCount++
+				span.AddEvent("books.import.row_failed", trace.WithAttributes(
+					attribute.Int("csv.row_num", v.RowNum),
+					attribute.String("books.import.row_status", "create"),
+					attribute.String("err", err.Error()),
+				))
 				result.FailedRows = append(result.FailedRows, ImportFailedRow{
 					RowNum: v.RowNum,
 					Code:   v.Code,
@@ -493,6 +560,11 @@ func (u Usecase) executeImportBooks(ctx context.Context, libID uuid.UUID, path s
 			})
 			if err != nil {
 				result.FailedCount++
+				span.AddEvent("books.import.row_failed", trace.WithAttributes(
+					attribute.Int("csv.row_num", v.RowNum),
+					attribute.String("books.import.row_status", "update"),
+					attribute.String("err", err.Error()),
+				))
 				result.FailedRows = append(result.FailedRows, ImportFailedRow{
 					RowNum: v.RowNum,
 					Code:   v.Code,

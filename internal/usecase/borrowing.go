@@ -8,8 +8,11 @@ import (
 	"time"
 
 	"github.com/librarease/librarease/internal/config"
+	"github.com/librarease/librarease/internal/telemetry"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Borrowing struct {
@@ -265,7 +268,13 @@ func (u Usecase) GetBorrowingByID(ctx context.Context, id uuid.UUID, opt Borrowi
 	return borrow, nil
 }
 
-func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowing, error) {
+func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (created Borrowing, err error) {
+	ctx, span := telemetry.StartSpan(ctx, "usecase.borrowing.create",
+		attribute.String("borrowing.book_id", borrow.BookID.String()),
+		attribute.String("borrowing.subscription_id", borrow.SubscriptionID.String()),
+		attribute.String("borrowing.staff_id", borrow.StaffID.String()),
+	)
+	defer func() { telemetry.EndSpan(span, err) }()
 
 	// 1. Check if the membership subscription is still active
 	s, err := u.repo.GetSubscriptionByID(ctx, borrow.SubscriptionID)
@@ -274,6 +283,10 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	}
 	// TODO: ErrMembershipExpired
 	if s.ExpiresAt.Before(time.Now()) {
+		span.AddEvent("borrowing.rejected", trace.WithAttributes(
+			attribute.String("reason", "subscription_expired"),
+			attribute.String("subscription.id", s.ID.String()),
+		))
 		u.logger.WarnContext(ctx, "subscription expired",
 			slog.String("subscription_id", s.ID.String()),
 			slog.Time("expires_at", s.ExpiresAt),
@@ -291,6 +304,11 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 			return Borrowing{}, err
 		}
 		if usageCount >= s.UsageLimit {
+			span.AddEvent("borrowing.rejected", trace.WithAttributes(
+				attribute.String("reason", "usage_limit_reached"),
+				attribute.Int("subscription.usage_count", usageCount),
+				attribute.Int("subscription.usage_limit", s.UsageLimit),
+			))
 			return Borrowing{}, fmt.Errorf("subscription %s has reached the usage limit %d", s.ID, s.UsageLimit)
 		}
 	}
@@ -307,6 +325,11 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	}
 	// TODO: ErrActiveLoanLimitReached
 	if s.ActiveLoanLimit <= activeBorrowCount {
+		span.AddEvent("borrowing.rejected", trace.WithAttributes(
+			attribute.String("reason", "active_loan_limit_reached"),
+			attribute.Int("subscription.active_borrow_count", activeBorrowCount),
+			attribute.Int("subscription.active_loan_limit", s.ActiveLoanLimit),
+		))
 		return Borrowing{}, fmt.Errorf("user %s has reached the active loan limit", s.UserID)
 	}
 
@@ -321,6 +344,11 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	}
 	// TODO: ErrBookNotInLibrary
 	if book.LibraryID != m.LibraryID {
+		span.AddEvent("borrowing.rejected", trace.WithAttributes(
+			attribute.String("reason", "book_not_in_membership_library"),
+			attribute.String("book.library_id", book.LibraryID.String()),
+			attribute.String("membership.library_id", m.LibraryID.String()),
+		))
 		return Borrowing{}, fmt.Errorf("book %s is not in library %s", book.ID, m.LibraryID)
 	}
 
@@ -336,6 +364,10 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	}
 	// TODO: ErrBookNotAvailable
 	if activeBookCount > 0 {
+		span.AddEvent("borrowing.rejected", trace.WithAttributes(
+			attribute.String("reason", "book_already_borrowed"),
+			attribute.Int("book.active_borrow_count", activeBookCount),
+		))
 		return Borrowing{}, fmt.Errorf("book %s is not available", borrow.BookID)
 	}
 
@@ -351,6 +383,10 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	}
 	// TODO: ErrBookNotAvailable
 	if lostBookCount > 0 {
+		span.AddEvent("borrowing.rejected", trace.WithAttributes(
+			attribute.String("reason", "book_lost"),
+			attribute.Int("book.lost_borrow_count", lostBookCount),
+		))
 		return Borrowing{}, fmt.Errorf("book %s is not available (lost)", borrow.BookID)
 	}
 
@@ -360,6 +396,11 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 		return Borrowing{}, err
 	}
 	if staff.LibraryID != m.LibraryID {
+		span.AddEvent("borrowing.rejected", trace.WithAttributes(
+			attribute.String("reason", "staff_not_in_membership_library"),
+			attribute.String("staff.library_id", staff.LibraryID.String()),
+			attribute.String("membership.library_id", m.LibraryID.String()),
+		))
 		return Borrowing{}, fmt.Errorf("staff %s is not from library %s", staff.ID, m.LibraryID)
 	}
 
@@ -377,6 +418,12 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 	if err != nil {
 		return Borrowing{}, err
 	}
+	span.SetAttributes(
+		attribute.String("borrowing.id", bw.ID.String()),
+		attribute.String("borrowing.user_id", s.UserID.String()),
+		attribute.String("borrowing.library_id", m.LibraryID.String()),
+	)
+	span.AddEvent("borrowing.created")
 
 	if err := u.EnqueueNotification(ctx, Notification{
 		Title: "Book Borrowed",
@@ -388,7 +435,11 @@ func (u Usecase) CreateBorrowing(ctx context.Context, borrow Borrowing) (Borrowi
 		ReferenceType: "BORROWING",
 		ReferenceID:   &bw.ID,
 	}); err != nil {
-		fmt.Printf("borrowing: failed to enqueue notification: %v\n", err)
+		span.AddEvent("borrowing.notification_enqueue_failed", trace.WithAttributes(attribute.String("err", err.Error())))
+		u.logger.ErrorContext(ctx, "failed to enqueue borrowing notification",
+			slog.String("borrowing_id", bw.ID.String()),
+			slog.String("user_id", s.UserID.String()),
+			slog.String("err", err.Error()))
 	}
 
 	return bw, nil
