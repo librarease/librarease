@@ -6,21 +6,10 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"os"
 
 	"github.com/hibiken/asynq"
-	_ "github.com/joho/godotenv/autoload"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 
-	"github.com/librarease/librarease/internal/config"
-	"github.com/librarease/librarease/internal/database"
-	"github.com/librarease/librarease/internal/email"
-	"github.com/librarease/librarease/internal/filestorage"
-	"github.com/librarease/librarease/internal/firebase"
-	"github.com/librarease/librarease/internal/push"
 	"github.com/librarease/librarease/internal/queue/handlers"
-	"github.com/librarease/librarease/internal/telemetry"
 	"github.com/librarease/librarease/internal/usecase"
 )
 
@@ -28,7 +17,6 @@ import (
 type Server struct {
 	asynqServer *asynq.Server
 	mux         *asynq.ServeMux
-	gormDB      *gorm.DB
 	sqlDB       *sql.DB
 	queueClient *Client
 }
@@ -46,86 +34,38 @@ type Scheduler struct {
 	otelCleanup func(context.Context) error
 }
 
+type WorkerDeps struct {
+	Logger        *slog.Logger
+	Service       usecase.Usecase
+	SQL           *sql.DB
+	QueueClient   *Client
+	OTELCleanup   func(context.Context) error
+	Concurrency   int
+	RedisAddr     string
+	RedisPassword string
+}
+
+type SchedulerDeps struct {
+	Logger        *slog.Logger
+	OTELCleanup   func(context.Context) error
+	RedisAddr     string
+	RedisPassword string
+}
+
 // NewWorker creates a fully configured worker with all dependencies
-func NewWorker(logger *slog.Logger) (*Worker, error) {
+func NewWorker(deps WorkerDeps) (*Worker, error) {
+	logger := deps.Logger
 	logger.Info("Initializing worker dependencies...")
 
-	// Setup database connection
-	var (
-		dbname = os.Getenv(config.ENV_KEY_DB_DATABASE)
-		dbpass = os.Getenv(config.ENV_KEY_DB_PASSWORD)
-		dbuser = os.Getenv(config.ENV_KEY_DB_USER)
-		dbport = os.Getenv(config.ENV_KEY_DB_PORT)
-		dbhost = os.Getenv(config.ENV_KEY_DB_HOST)
-	)
-
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbuser, dbpass, dbhost, dbport, dbname)
-	sqlDB, err := sql.Open("pgx", connStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database connection: %w", err)
-	}
-
-	// Create GORM DB with the configured sql.DB
-	gormDB, err := gorm.Open(postgres.New(postgres.Config{
-		Conn: sqlDB,
-	}), &gorm.Config{
-		Logger: database.NewSlogGormLogger(logger),
-	})
-	if err != nil {
-		sqlDB.Close()
-		return nil, fmt.Errorf("failed to open gorm database connection: %w", err)
-	}
-
-	// Setup repository (workers don't need pgx.Conn for notifications)
-	repo, err := database.New(gormDB, nil, nil)
-	if err != nil {
-		sqlDB.Close()
-		return nil, fmt.Errorf("failed to create repository: %w", err)
-	}
-
-	// Setup providers
-	fb := firebase.New()
-	mp := email.NewEmailProvider(
-		os.Getenv(config.ENV_KEY_SMTP_HOST),
-		os.Getenv(config.ENV_KEY_SMTP_USERNAME),
-		os.Getenv(config.ENV_KEY_SMTP_PASSWORD),
-		os.Getenv(config.ENV_KEY_SMTP_PORT),
-	)
-
-	var (
-		bucket    = os.Getenv(config.ENV_KEY_MINIO_BUCKET)
-		temp      = os.Getenv(config.ENV_KEY_MINIO_TEMP_PATH)
-		public    = os.Getenv(config.ENV_KEY_MINIO_PUBLIC_PATH)
-		endpoint  = os.Getenv(config.ENV_KEY_MINIO_ENDPOINT)
-		accessKey = os.Getenv(config.ENV_KEY_MINIO_ACCESS_KEY)
-		secretKey = os.Getenv(config.ENV_KEY_MINIO_SECRET_KEY)
-	)
-	fsp := filestorage.NewMinIOStorage(bucket, temp, public, endpoint, accessKey, secretKey)
-
-	// Setup Asynq server
-	redisAddr := fmt.Sprintf("%s:%s",
-		os.Getenv(config.ENV_KEY_REDIS_HOST),
-		os.Getenv(config.ENV_KEY_REDIS_PORT),
-	)
-	redisPassword := os.Getenv(config.ENV_KEY_REDIS_PASSWORD)
-
-	dp := push.NewPushDispatcher(fb)
-	qc := NewClient(redisAddr, redisPassword)
-
-	uc := usecase.New(repo, fb, fsp, mp, dp, qc, logger.With(slog.String("component", "usecase")))
-
-	workerConcurrency := 10
-	if wc := os.Getenv(config.ENV_KEY_WORKER_CONCURRENCY); wc != "" {
-		var n int
-		if _, err := fmt.Sscanf(wc, "%d", &n); err == nil && n > 0 {
-			workerConcurrency = n
-		}
+	workerConcurrency := deps.Concurrency
+	if workerConcurrency <= 0 {
+		workerConcurrency = 10
 	}
 
 	asynqServer := asynq.NewServer(
 		asynq.RedisClientOpt{
-			Addr:     redisAddr,
-			Password: redisPassword,
+			Addr:     deps.RedisAddr,
+			Password: deps.RedisPassword,
 		},
 		asynq.Config{
 			Concurrency: workerConcurrency,
@@ -141,7 +81,7 @@ func NewWorker(logger *slog.Logger) (*Worker, error) {
 	)
 
 	mux := asynq.NewServeMux()
-	h := handlers.NewHandlers(uc)
+	h := handlers.NewHandlers(deps.Service)
 
 	mux.HandleFunc(TaskExportBorrowings, h.HandleExportBorrowings)
 	mux.HandleFunc(TaskNotificationCheckOverdue, h.HandleCheckOverdue)
@@ -153,24 +93,16 @@ func NewWorker(logger *slog.Logger) (*Worker, error) {
 		slog.String("handlers", "export:borrowings, notification:check-overdue, import:books"),
 	)
 
-	// Set up OpenTelemetry
-	otelShutdown, err := telemetry.SetupOTelSDK(context.Background())
-	if err != nil {
-		sqlDB.Close()
-		return nil, fmt.Errorf("failed to set up OpenTelemetry: %w", err)
-	}
-
 	server := &Server{
 		asynqServer: asynqServer,
 		mux:         mux,
-		gormDB:      gormDB,
-		sqlDB:       sqlDB,
-		queueClient: qc,
+		sqlDB:       deps.SQL,
+		queueClient: deps.QueueClient,
 	}
 
 	return &Worker{
 		server:      server,
-		otelCleanup: otelShutdown,
+		otelCleanup: deps.OTELCleanup,
 		logger:      logger,
 	}, nil
 }
@@ -209,21 +141,15 @@ func (w *Worker) Stop() {
 }
 
 // NewScheduler creates a fully configured scheduler with all dependencies
-func NewScheduler(logger *slog.Logger) (*Scheduler, error) {
+func NewScheduler(deps SchedulerDeps) (*Scheduler, error) {
+	logger := deps.Logger
 	logger.Info("Initializing scheduler...")
-
-	// Setup Redis connection (same as worker)
-	redisAddr := fmt.Sprintf("%s:%s",
-		os.Getenv(config.ENV_KEY_REDIS_HOST),
-		os.Getenv(config.ENV_KEY_REDIS_PORT),
-	)
-	redisPassword := os.Getenv(config.ENV_KEY_REDIS_PASSWORD)
 
 	// Create Asynq scheduler
 	asynqScheduler := asynq.NewScheduler(
 		asynq.RedisClientOpt{
-			Addr:     redisAddr,
-			Password: redisPassword,
+			Addr:     deps.RedisAddr,
+			Password: deps.RedisPassword,
 		},
 		&asynq.SchedulerOpts{
 			LogLevel: asynq.InfoLevel,
@@ -235,17 +161,11 @@ func NewScheduler(logger *slog.Logger) (*Scheduler, error) {
 		return nil, fmt.Errorf("failed to register periodic tasks: %w", err)
 	}
 
-	// Set up OpenTelemetry
-	otelShutdown, err := telemetry.SetupOTelSDK(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("failed to set up OpenTelemetry: %w", err)
-	}
-
 	logger.Info("Scheduler initialized successfully")
 
 	return &Scheduler{
 		scheduler:   asynqScheduler,
-		otelCleanup: otelShutdown,
+		otelCleanup: deps.OTELCleanup,
 	}, nil
 }
 

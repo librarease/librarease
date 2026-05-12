@@ -16,33 +16,30 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/librarease/librarease/internal/config"
+	"github.com/librarease/librarease/internal/bootstrap"
 	"github.com/librarease/librarease/internal/server"
-	"github.com/librarease/librarease/internal/telemetry"
 )
 
 func main() {
-	level := slog.LevelInfo
-	if lvl := os.Getenv(config.ENV_KEY_LOG_LEVEL); lvl != "" {
-		switch lvl {
-		case "DEBUG":
-			level = slog.LevelDebug
-		case "INFO":
-			level = slog.LevelInfo
-		case "WARN":
-			level = slog.LevelWarn
-		case "ERROR":
-			level = slog.LevelError
-		default:
-			level = slog.LevelInfo
-		}
+	cfg := bootstrap.LoadConfig()
+	logger := bootstrap.NewLogger(cfg)
+
+	apiService, err := bootstrap.NewAPIService(context.Background(), cfg, logger)
+	if err != nil {
+		logger.Error("Failed to initialize API dependencies", slog.String("err", err.Error()))
+		os.Exit(1)
 	}
 
-	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: level,
+	app, err := server.NewApp(server.AppDeps{
+		Service:     apiService.Service,
+		SQL:         apiService.SQL,
+		NotifyConn:  apiService.NotifyConn,
+		RedisClient: apiService.RedisClient,
+		QueueClient: apiService.QueueClient,
+		OTELCleanup: apiService.OTELCleanup,
+		Logger:      logger,
+		Port:        apiService.Port,
 	})
-	logger := slog.New(telemetry.NewTraceHandler(jsonHandler))
-	app, err := server.NewApp(logger)
 	if err != nil {
 		logger.Error("Failed to create app", slog.String("err", err.Error()))
 		os.Exit(1)

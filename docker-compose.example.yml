@@ -106,7 +106,7 @@ services:
     restart: always
     image: 211125740494.dkr.ecr.ap-southeast-1.amazonaws.com/libraraease:backend
     container_name: scheduler-service
-    command: ["./worker", "-mode", "scheduler"]
+    command: ["./scheduler"]
     networks:
       - internal_network
     volumes:

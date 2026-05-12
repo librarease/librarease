@@ -13,7 +13,7 @@ For educational, personal, and noncommercial use only. If you're interested in c
 
 - **API Server** (`cmd/api/main.go`) - HTTP REST API
 - **Worker** (`cmd/worker/main.go`) - Background job processor
-- **Scheduler** (`cmd/worker/main.go -mode scheduler`) - Periodic task scheduler
+- **Scheduler** (`cmd/scheduler/main.go`) - Periodic task scheduler
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ Edit `.env` with required values. Reference `docker-compose.example.yml` (exclud
 
 ### Storage Provider Notes
 
-- Runtime wiring currently uses the MinIO provider in API server and worker startup.
+- Runtime wiring currently uses the MinIO provider from shared bootstrap startup.
 - The S3 provider is maintained with the same `FileStorageProvider` behavior and can be swapped in without usecase changes.
 - S3 provider configuration uses `AWS_S3_BUCKET_NAME`, `AWS_S3_BUCKET_TEMP_PATH`, plus standard AWS SDK environment variables (`AWS_REGION`, credentials).
 
@@ -67,6 +67,7 @@ make run-worker      # Run worker
 make run-scheduler   # Run scheduler
 make watch           # API with live reload
 make watch-worker    # Worker with live reload
+make watch-scheduler # Scheduler with live reload
 make test            # Unit tests
 make itest           # Integration tests
 make clean           # Remove binaries
@@ -77,7 +78,8 @@ make clean           # Remove binaries
 ```
 cmd/
   api/main.go       # API server entry point
-  worker/main.go    # Worker/scheduler entry point
+  worker/main.go    # Worker entry point
+  scheduler/main.go # Scheduler entry point
 internal/
   server/           # HTTP handlers (Echo)
   usecase/          # Business logic

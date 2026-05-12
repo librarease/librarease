@@ -7,29 +7,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	_ "github.com/joho/godotenv/autoload"
-	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
-	"github.com/redis/go-redis/v9/maintnotifications"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/plugin/opentelemetry/tracing"
 
-	"github.com/librarease/librarease/internal/config"
-	"github.com/librarease/librarease/internal/database"
-	"github.com/librarease/librarease/internal/email"
-	"github.com/librarease/librarease/internal/filestorage"
-	"github.com/librarease/librarease/internal/firebase"
-	"github.com/librarease/librarease/internal/push"
 	"github.com/librarease/librarease/internal/queue"
-	"github.com/librarease/librarease/internal/telemetry"
 	"github.com/librarease/librarease/internal/usecase"
 )
 
@@ -170,11 +155,23 @@ type Server struct {
 
 type App struct {
 	httpServer  *http.Server
-	gormDB      *gorm.DB
 	sqlDB       *sql.DB
 	notifyConn  *pgx.Conn
+	redisClient *redis.Client
+	queueClient *queue.Client
 	otelCleanup func(context.Context) error
 	logger      *slog.Logger
+}
+
+type AppDeps struct {
+	Service     Service
+	SQL         *sql.DB
+	NotifyConn  *pgx.Conn
+	RedisClient *redis.Client
+	QueueClient *queue.Client
+	OTELCleanup func(context.Context) error
+	Logger      *slog.Logger
+	Port        int
 }
 
 func (a *App) ListenAndServe() error {
@@ -199,6 +196,18 @@ func (a *App) Shutdown(ctx context.Context) error {
 		errs = append(errs, fmt.Errorf("sql db close: %w", err))
 	}
 
+	if a.redisClient != nil {
+		if err := a.redisClient.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("redis close: %w", err))
+		}
+	}
+
+	if a.queueClient != nil {
+		if err := a.queueClient.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("queue client close: %w", err))
+		}
+	}
+
 	if err := a.httpServer.Shutdown(ctx); err != nil {
 		errs = append(errs, fmt.Errorf("http server shutdown: %w", err))
 	}
@@ -210,148 +219,14 @@ func (a *App) Shutdown(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func NewApp(logger *slog.Logger) (*App, error) {
-
-	var (
-		dbname = os.Getenv(config.ENV_KEY_DB_DATABASE)
-		dbpass = os.Getenv(config.ENV_KEY_DB_PASSWORD)
-		dbuser = os.Getenv(config.ENV_KEY_DB_USER)
-		dbport = os.Getenv(config.ENV_KEY_DB_PORT)
-		dbhost = os.Getenv(config.ENV_KEY_DB_HOST)
-	)
-
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbuser, dbpass, dbhost, dbport, dbname)
-	sqlDB, err := sql.Open("pgx", connStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database connection: %w", err)
-	}
-
-	// Configure connection pool
-	maxOpenConnections := 25
-	if m, err := strconv.Atoi(os.Getenv(config.ENV_KEY_DB_MAX_OPEN_CONNECTIONS)); err == nil && m > 0 {
-		maxOpenConnections = m
-	}
-	sqlDB.SetMaxOpenConns(maxOpenConnections)
-
-	maxIdleConnections := 10
-	if m, err := strconv.Atoi(os.Getenv(config.ENV_KEY_DB_MAX_IDLE_CONNECTIONS)); err == nil && m > 0 {
-		maxIdleConnections = m
-	}
-	sqlDB.SetMaxIdleConns(maxIdleConnections)
-
-	connMaxLifetime := 5 * time.Minute
-	if m, err := strconv.Atoi(os.Getenv(config.ENV_KEY_DB_CONN_MAX_LIFETIME_MINUTES)); err == nil && m > 0 {
-		connMaxLifetime = time.Duration(m) * time.Minute
-	}
-	sqlDB.SetConnMaxLifetime(connMaxLifetime)
-
-	connMaxIdleTime := 2 * time.Minute
-	if m, err := strconv.Atoi(os.Getenv(config.ENV_KEY_DB_CONN_MAX_IDLE_TIME_MINUTES)); err == nil && m > 0 {
-		connMaxIdleTime = time.Duration(m) * time.Minute
-	}
-	sqlDB.SetConnMaxIdleTime(connMaxIdleTime)
-
-	// Create GORM DB with the configured sql.DB
-	gormDB, err := gorm.Open(postgres.New(postgres.Config{
-		Conn: sqlDB,
-	}), &gorm.Config{
-		Logger: database.NewSlogGormLogger(logger),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to open gorm database connection: %w", err)
-	}
-	if err := gormDB.Use(tracing.NewPlugin()); err != nil {
-		return nil, err
-	}
-
-	// Create separate pgx.Conn for notifications
-	notifyConn, err := pgx.Connect(context.Background(), connStr)
-	if err != nil {
-		sqlDB.Close() // cleanup previous connection
-		return nil, fmt.Errorf("failed to connect to database for notification: %w", err)
-	}
-	var (
-		redisAddr     = os.Getenv(config.ENV_KEY_REDIS_HOST) + ":" + os.Getenv(config.ENV_KEY_REDIS_PORT)
-		redisPassword = os.Getenv(config.ENV_KEY_REDIS_PASSWORD)
-	)
-
-	redis := redis.NewClient(&redis.Options{
-		Addr:     redisAddr,
-		Password: redisPassword,
-		DB:       0, // use default DB
-		MaintNotificationsConfig: &maintnotifications.Config{
-			Mode: maintnotifications.ModeDisabled,
-		},
-	})
-
-	// Enable OpenTelemetry tracing for Redis
-	if err := redisotel.InstrumentTracing(redis); err != nil {
-		sqlDB.Close()
-		notifyConn.Close(context.Background())
-		return nil, fmt.Errorf("failed to instrument redis tracing: %w", err)
-	}
-
-	// Optional: Enable metrics
-	if err := redisotel.InstrumentMetrics(redis); err != nil {
-		sqlDB.Close()
-		notifyConn.Close(context.Background())
-		return nil, fmt.Errorf("failed to instrument redis metrics: %w", err)
-	}
-
-	repo, err := database.New(gormDB, notifyConn, redis)
-	if err != nil {
-		sqlDB.Close()
-		notifyConn.Close(context.Background())
-		return nil, fmt.Errorf("failed to create database repository: %w", err)
-	}
-	fb := firebase.New()
-	mp := email.NewEmailProvider(
-		os.Getenv(config.ENV_KEY_SMTP_HOST),
-		os.Getenv(config.ENV_KEY_SMTP_USERNAME),
-		os.Getenv(config.ENV_KEY_SMTP_PASSWORD),
-		os.Getenv(config.ENV_KEY_SMTP_PORT),
-	)
-
-	// AWS S3
-	// var (
-	// 	bucket   = os.Getenv(config.ENV_KEY_S3_BUCKET)
-	// 	tempPath = os.Getenv(config.ENV_KEY_S3_TEMP_PATH)
-	// )
-
-	// fsp := filestorage.NewS3Storage(bucket, tempPath)
-
-	// MinIO (S3 compatible)
-	var (
-		bucket    = os.Getenv(config.ENV_KEY_MINIO_BUCKET)
-		temp      = os.Getenv(config.ENV_KEY_MINIO_TEMP_PATH)
-		public    = os.Getenv(config.ENV_KEY_MINIO_PUBLIC_PATH)
-		endpoint  = os.Getenv(config.ENV_KEY_MINIO_ENDPOINT)
-		accessKey = os.Getenv(config.ENV_KEY_MINIO_ACCESS_KEY)
-		secretKey = os.Getenv(config.ENV_KEY_MINIO_SECRET_KEY)
-	)
-	fsp := filestorage.NewMinIOStorage(bucket, temp, public, endpoint, accessKey, secretKey)
-
-	dp := push.NewPushDispatcher(fb)
-
-	qc := queue.NewClient(redisAddr, redisPassword)
-
-	sv := usecase.New(repo, fb, fsp, mp, dp, qc, logger.With(slog.String("component", "usecase")))
+func NewApp(deps AppDeps) (*App, error) {
 	v := validator.New()
 
-	port, _ := strconv.Atoi(os.Getenv(config.ENV_KEY_PORT))
 	s := &Server{
-		port:      port,
-		server:    sv,
+		port:      deps.Port,
+		server:    deps.Service,
 		validator: v,
-		logger:    logger.With(slog.String("component", "server")),
-	}
-
-	// Set up OpenTelemetry.
-	otelShutdown, err := telemetry.SetupOTelSDK(context.Background())
-	if err != nil {
-		sqlDB.Close()
-		notifyConn.Close(context.Background())
-		return nil, fmt.Errorf("failed to set up OpenTelemetry: %w", err)
+		logger:    deps.Logger.With(slog.String("component", "server")),
 	}
 
 	httpServer := &http.Server{
@@ -364,10 +239,11 @@ func NewApp(logger *slog.Logger) (*App, error) {
 
 	return &App{
 		httpServer:  httpServer,
-		gormDB:      gormDB,
-		sqlDB:       sqlDB,
-		notifyConn:  notifyConn,
-		otelCleanup: otelShutdown,
-		logger:      logger,
+		sqlDB:       deps.SQL,
+		notifyConn:  deps.NotifyConn,
+		redisClient: deps.RedisClient,
+		queueClient: deps.QueueClient,
+		otelCleanup: deps.OTELCleanup,
+		logger:      deps.Logger,
 	}, nil
 }

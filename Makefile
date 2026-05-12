@@ -8,6 +8,8 @@ build:
 	@go build -o bin/api cmd/api/main.go
 	@echo "Building worker..."
 	@go build -o bin/worker cmd/worker/main.go
+	@echo "Building scheduler..."
+	@go build -o bin/scheduler cmd/scheduler/main.go
 	@echo "Build complete!"
 
 build-api:
@@ -18,6 +20,10 @@ build-worker:
 	@echo "Building worker..."
 	@go build -o bin/worker cmd/worker/main.go
 
+build-scheduler:
+	@echo "Building scheduler..."
+	@go build -o bin/scheduler cmd/scheduler/main.go
+
 # Run the application
 run:
 	@go run cmd/api/main.go
@@ -26,7 +32,7 @@ run-worker:
 	@go run cmd/worker/main.go
 
 run-scheduler:
-	@go run cmd/worker/main.go -mode scheduler
+	@go run cmd/scheduler/main.go
 
 # Start local development infrastructure (DB, Redis, MinIO)
 docker-run:
@@ -73,7 +79,7 @@ itest:
 # Clean the binary
 clean:
 	@echo "Cleaning..."
-	@rm -f bin/api bin/worker
+	@rm -f bin/api bin/worker bin/scheduler
 	@rm -f main
 
 # Live Reload
@@ -110,8 +116,24 @@ watch-worker:
             fi; \
         fi
 
+watch-scheduler:
+	@if command -v air > /dev/null; then \
+            air -c .air.scheduler.toml; \
+            echo "Watching Scheduler...";\
+        else \
+            read -p "Go's 'air' is not installed on your machine. Do you want to install it? [Y/n] " choice; \
+            if [ "$$choice" != "n" ] && [ "$$choice" != "N" ]; then \
+                go install github.com/air-verse/air@latest; \
+                air -c .air.scheduler.toml; \
+                echo "Watching Scheduler...";\
+            else \
+                echo "You chose not to install air. Exiting..."; \
+                exit 1; \
+            fi; \
+        fi
+
 # Debug the application
-.PHONY: debug debug-worker
+.PHONY: debug debug-worker debug-scheduler
 
 debug:
 	@echo "Starting API debugger on :2345..."
@@ -121,4 +143,8 @@ debug-worker:
 	@echo "Starting worker debugger on :2346..."
 	@dlv debug cmd/worker/main.go --headless --listen=:2346 --api-version=2 --log
 
-.PHONY: all build build-prod run run-worker test clean watch watch-worker docker-run docker-down docker-logs itest debug debug-worker
+debug-scheduler:
+	@echo "Starting scheduler debugger on :2347..."
+	@dlv debug cmd/scheduler/main.go --headless --listen=:2347 --api-version=2 --log
+
+.PHONY: all build build-api build-worker build-scheduler run run-worker run-scheduler test clean watch watch-worker watch-scheduler docker-run docker-down docker-logs itest debug debug-worker debug-scheduler

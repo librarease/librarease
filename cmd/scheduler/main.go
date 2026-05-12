@@ -23,33 +23,29 @@ func main() {
 	cfg := bootstrap.LoadConfig()
 	logger := bootstrap.NewLogger(cfg)
 
-	logger.Info("Starting in WORKER mode...")
+	logger.Info("Starting in SCHEDULER mode...")
 
-	workerService, err := bootstrap.NewWorkerService(context.Background(), cfg, logger)
+	schedulerService, err := bootstrap.NewSchedulerService(context.Background(), cfg)
 	if err != nil {
-		logger.Error("Failed to initialize worker dependencies", slog.String("err", err.Error()))
+		logger.Error("Failed to initialize scheduler dependencies", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
 
-	worker, err := queue.NewWorker(queue.WorkerDeps{
+	scheduler, err := queue.NewScheduler(queue.SchedulerDeps{
 		Logger:        logger,
-		Service:       workerService.Service,
-		SQL:           workerService.SQL,
-		QueueClient:   workerService.QueueClient,
-		OTELCleanup:   workerService.OTELCleanup,
-		Concurrency:   workerService.Concurrency,
-		RedisAddr:     workerService.RedisAddr,
-		RedisPassword: workerService.RedisPassword,
+		OTELCleanup:   schedulerService.OTELCleanup,
+		RedisAddr:     schedulerService.RedisAddr,
+		RedisPassword: schedulerService.RedisPassword,
 	})
 	if err != nil {
-		logger.Error("Failed to create worker", slog.String("err", err.Error()))
+		logger.Error("Failed to create scheduler", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
 
 	errCh := make(chan error, 1)
 	go func() {
-		logger.Info("Starting Asynq worker...")
-		errCh <- worker.Start()
+		logger.Info("Starting Asynq scheduler...")
+		errCh <- scheduler.Start()
 	}()
 
 	quit := make(chan os.Signal, 1)
@@ -57,14 +53,14 @@ func main() {
 
 	select {
 	case <-quit:
-		logger.Info("Shutting down worker...")
-		worker.Stop()
-		logger.Info("Worker exited properly")
+		logger.Info("Shutting down scheduler...")
+		scheduler.Stop()
+		logger.Info("Scheduler exited properly")
 	case err := <-errCh:
 		if err != nil {
-			logger.Error("Worker error", slog.String("err", err.Error()))
+			logger.Error("Scheduler error", slog.String("err", err.Error()))
 		}
-		worker.Stop()
+		scheduler.Stop()
 		os.Exit(1)
 	}
 }

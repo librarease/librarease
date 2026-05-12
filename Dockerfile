@@ -8,21 +8,21 @@ RUN go mod download
 
 COPY . .
 
-# Build both binaries
+# Build service binaries
 RUN go build -o bin/api cmd/api/main.go
 RUN go build -o bin/worker cmd/worker/main.go
+RUN go build -o bin/scheduler cmd/scheduler/main.go
 
 FROM alpine:3.22 AS prod
 
 WORKDIR /app
 
-# Copy both binaries from build stage
+# Copy binaries from build stage
 COPY --from=build /app/bin/api /app/api
 COPY --from=build /app/bin/worker /app/worker
+COPY --from=build /app/bin/scheduler /app/scheduler
 
 EXPOSE 8080
 
 # Default to API server (can be overridden in docker-compose)
 CMD ["./api"]
-
-
