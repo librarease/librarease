@@ -107,10 +107,10 @@ func NewWorker(deps WorkerDeps) (*Worker, error) {
 	}, nil
 }
 
-// Start starts the worker server
+// Start starts the worker server and blocks until Shutdown is called.
 func (w *Worker) Start() error {
 	w.logger.Info("worker started successfully ")
-	return w.server.asynqServer.Start(w.server.mux)
+	return w.server.asynqServer.Run(w.server.mux)
 }
 
 // Stop stops the worker server gracefully
