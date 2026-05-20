@@ -196,7 +196,7 @@ func (s *service) GetSubscriptionByID(ctx context.Context, id uuid.UUID) (usecas
 		WithContext(ctx).
 		Table("subscriptions s").
 		Select("COUNT(b.id)").
-		Joins("JOIN borrowings b ON s.id = b.subscription_id").
+		Joins("JOIN borrowings b ON s.id = b.subscription_id AND b.deleted_at IS NULL").
 		Joins("LEFT JOIN returnings r ON b.id = r.borrowing_id AND r.deleted_at IS NULL").
 		Joins("LEFT JOIN losts l ON b.id = l.borrowing_id AND l.deleted_at IS NULL").
 		Where("s.id = ?", id).
