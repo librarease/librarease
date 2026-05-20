@@ -118,6 +118,7 @@ func (s *service) GetAnalysis(
 		Order("count DESC").
 		Offset(opt.Skip).
 		Limit(opt.Limit).
+		Where("b.deleted_at IS NULL").
 		Where("b.borrowed_at BETWEEN ? AND ?", opt.From, opt.To).
 		Where("bk.library_id = ?", opt.LibraryID).
 		Scan(&book).
